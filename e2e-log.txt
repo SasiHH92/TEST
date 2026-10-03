@@ -1,0 +1,26 @@
+Szerver elindult :3123
+--- Nyilvántartás (bögrefotók) ---
+  OK  nyilvántartás visszaad 12 játékost
+  OK  mindenkinél van titulus
+  OK  mindenkinél van priusz
+  OK  a jelvények átkerültek (pl. DÖG)
+  OK  vendég-priusz sablonok betöltve
+  OK  nincs foglalt név üres szobákkal
+--- Foglalt név és vendég ---
+  OK  szoba létrejött
+  OK  ugyanazzal a névvel a belépés elutasítva
+  OK  vendég beléphet más névvel
+  OK  a vendég profilja megérkezett (Ismeretlen tettes)
+  OK  a state profilja a plakáthoz _stats is hordoz
+--- Bűnügyi nyilvántartás (stats.json) ---
+  OK  Szipuska belépett
+  OK  marci belépett
+  OK  a vádlott előre megadott játékos (2CORE, Szipuska vagy marci)
+  OK  ítélet megérkezett
+  OK  a nyilvántartásba bekerült a vádlott ("2CORE")
+  OK  a vádlott száma nőtt: vadlott=1
+  OK  bűnös vagy ártatlan számláló nőtt
+
+==============================
+Sikeres: 18, hibás: 0
+==============================
