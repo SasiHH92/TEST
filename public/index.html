@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kamu Bíróság ⚖️</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
+</head>
+<body>
+  <!-- ===================== KI VAGY TE, GYANÚSÍTOTT? ===================== -->
+  <div id="screen-name" class="screen active screen-station">
+    <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
+    <div class="station-header">
+      <h1 class="logo">KAMU BÍRÓSÁG</h1>
+      <p class="police-line">— RENDŐRSÉGI NYILVÁNTARTÁS • KIZÁRÓLAG BÜNTETETLEN POÉNOK —</p>
+      <p class="subtitle">KI VAGY TE, GYANÚSÍTOTT? Kattints a saját bögrefotódra.</p>
+    </div>
+
+    <div id="mugGrid" class="mug-grid"></div>
+
+    <div class="new-suspect-box">        <button id="btnNewSuspect" class="btn police">ÚJ GYANÚSÍTOTT (vendég vagyok)</button>
+      <div id="guestForm" class="guest-form hidden">
+        <input id="guestName" maxlength="20" placeholder="Neved, ismeretlen tettes…">
+        <p>Milyen díszben jelenik meg a teremben?</p>
+        <div id="avatarGrid" class="avatar-grid"></div>
+        <button id="btnGuestGo" class="btn big">BELEPÉS A NYILVÁNTARTÁSBA</button>
+        <p id="guestPrior" class="guest-prior"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MENÜ (szoba létrehozása / csatlakozás) ===================== -->
+  <div id="screen-menu" class="screen screen-station">
+    <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
+    <div class="wood-panel">
+      <h1 class="logo small">KAMU BÍRÓSÁG</h1>
+      <button id="btnCreate" class="btn big full">ÚJ TÁRGYALÁS INDÍTÁSA<br><small>(új szoba)</small></button>
+      <div class="divider">vagy</div>
+      <label for="codeInput">Csatlakozás meghívó kóddal:</label>
+      <input id="codeInput" maxlength="4" placeholder="pl. KRA7" style="text-transform:uppercase">
+      <button id="btnJoin" class="btn big full">BELEPÉS A TEREMBE</button>
+      <p id="menuError" class="error"></p>
+      <p class="hint">Tipp: a szoba linkjét be lehet másolni a Discordra, aki rákattint, azonnal csatlakozik.</p>
+      <button id="btnChangeSuspect" class="btn small ghost">↩ Másik gyanúsított vagyok</button>
+    </div>
+  </div>
+
+  <!-- ===================== LOBBY: A RENDŐRŐRS FALIÚJSÁGJA ===================== -->
+  <div id="screen-lobby" class="screen screen-station">
+    <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
+    <div class="lobby-wrap">
+
+      <!-- Ügyirat száma + link + QR -->
+      <div class="casefile-header">
+        <div class="casefile-box">
+          <span class="casefile-label">ÜGYIRAT SZÁMA</span>
+          <span id="lobbyCode" class="code-badge"></span>
+        </div>
+        <div id="qrBox" class="qr-box hidden" title="Olvassátok be telefonnal – azonnal a szobában vagytok">
+          <img id="qrImg" alt="Szoba QR-kód" src="">
+          <span class="qr-label">📞 Olvasd be – csatlakozás</span>
+        </div>
+        <button id="btnCopyLink" class="btn police">Link másolása Discordra</button>
+        <button id="btnAddBot" class="btn small hidden">Bot hozzáadása</button>
+        <button id="btnRemoveBot" class="btn small hidden">Bot eltávolítása</button>
+        <button id="btnLeaveLobby" class="btn small ghost">Kilépés</button>
+      </div>
+
+      <!-- Plakátfal -->
+      <div class="board">
+        <h2 class="board-title">KÖRÖZÉS – A TEREMBEN TARTÓZKODÓK</h2>
+        <div id="pinWall" class="pin-wall"></div>
+        <p id="lobbyHint" class="lobby-hint"></p>
+      </div>
+
+      <!-- Ügyiratmappa: játékmódok + beállítások -->
+      <div id="hostSettings" class="folder hidden">
+        <div class="folder-tab">ÜGYSZÁMOK • A HÁZIGAZDA ASZTALA</div>
+        <h4 class="folder-heading">Mely ügyekben folyik a tárgyalás? (több is bejelölhető)</h4>
+        <div id="modeGrid" class="folder-grid"></div>
+        <p id="activeModes" class="hint active-modes"></p>
+        <p class="hint">Több mód is bejelölhető – ilyenkor körönként sorsolódik, melyik vezeti a tárgyalást. A kijelölés a mappára kattintással AZONNAL mentődik.</p>
+        <div class="settings-grid">
+          <label>Beszédidő (mp): <input type="number" id="setSpeech" min="15" max="180" value="60"></label>
+          <label>Védőügyvéd (mp): <input type="number" id="setDefender" min="15" max="120" value="45"></label>
+          <label>Felkészülés (mp): <input type="number" id="setPrep" min="10" max="120" value="30"></label>
+          <label>Tanú (mp): <input type="number" id="setWitness" min="10" max="120" value="30"></label>
+          <label>Zárószó (mp): <input type="number" id="setClosing" min="10" max="60" value="20"></label>
+          <label>Körök száma: <input type="number" id="setRounds" min="1" max="12" value="3"></label>
+          <label class="check"><input type="checkbox" id="setWitnessOn" checked> Meglepetés tanú</label>
+          <label class="check"><input type="checkbox" id="setChallengesOn" checked> Kihíváskártyák</label>
+        </div>
+        <h4 class="folder-heading">Kihívás-ellenőrzés: ki dönt a titkos kihívásokról?</h4>
+        <div class="judge-mode-row">
+          <label class="check radio"><input type="radio" name="challengeMode" id="setChallengeJudge" value="judge" checked> 👨‍⚖️ Bíró dönt (a tárgyalás vezetője, kihívásnál sorsolt esküdt)</label>
+          <label class="check radio"><input type="radio" name="challengeMode" id="setChallengeJury" value="jury"> 🗳️ Esküdtek szavaznak</label>
+        </div>
+        <h4 class="folder-heading">Saját vádak (belsős poénok):</h4>
+        <textarea id="customAccusations" rows="3" placeholder="Egy sor = egy vád. Pl.: A [vádlott] ellopta Bence Minecraft gyémántjait."></textarea>
+        <p class="hint">A [vádlott] a vádlott neve, a [játékos] egy másik játékosé.</p>
+        <button id="btnSaveSettings" class="btn small">BEÁLLÍTÁSOK MENTÉSE</button>
+        <button id="btnStartGame" class="btn big hidden">🔨 TÁRGYALÁS MEGKEZDÉSE</button>
+      </div>
+      <div id="nonHostNote" class="waiting-note hidden">Várakozás, míg a házigazda beállítja az ügyeket…</div>
+    </div>
+
+    <!-- Futószalag: rendőrségi hírek -->
+    <div class="ticker">
+      <span class="ticker-label">RENDKÍVÜLI</span>
+      <div class="ticker-viewport"><div id="tickerTrack" class="ticker-track"></div></div>
+    </div>
+  </div>
+
+  <!-- ===================== JÁTÉK ===================== -->
+  <div id="screen-game" class="screen">
+    <div class="game-main">
+
+      <!-- A) SZÍNPAD: a tárgyalóterem teljes fényerővel, karakterekkel -->
+      <section class="stage-zone" id="stageZone">
+        <div class="stage-canvas" id="stage">
+          <img class="stage-bg" src="/assets/targyalotterem.svg" alt="">
+
+          <!-- bútorlapok: a mögöttük álló karakterek alsó részét takarják -->
+          <div class="furniture f-bench" aria-hidden="true"></div>
+          <div class="furniture f-table-left" aria-hidden="true"></div>
+          <div class="furniture f-jury" aria-hidden="true"></div>
+          <div class="furniture f-table-front" aria-hidden="true"></div>
+
+          <!-- a terem bírója: mindig látszik, a pulpitus mögül emelkedik ki
+               (a stageSlots újratelepítéskor nem törlődhet, ezért azon kívül van) -->
+          <div class="stage-slot judge-slot" id="judge" data-role="judge">
+            <div class="st-fig"><img class="judge-svg" src="/assets/biro.svg" alt="Bíró"></div>
+            <div class="gavel" id="gavel">🔨</div>
+          </div>
+
+          <!-- karakterek -->
+          <div id="stageSlots" class="stage-slots"></div>
+
+          <div class="stage-flash" id="stageFlash"></div>
+          <div id="judgeBubble" class="judge-bubble"></div>
+          <div id="stageSpeaker" class="stage-speaker-strip"></div>
+        </div>
+      </section>
+
+      <!-- B) VÉKONY INFO SÁV: vád + kör/szobakód/hang -->
+      <div class="info-bar">
+        <span id="gameRound" class="round-badge">1. tárgyalás</span>
+        <span id="gameCode" class="code-badge"></span>
+        <div id="accusationTicker" class="accusation-ticker hidden"></div>
+        <button id="btnMute" class="btn tiny">🔊</button>
+        <input type="range" id="volume" min="0" max="100" value="70" class="volume">
+        <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
+      </div>
+
+      <!-- FÁZIS-SÁV: a fázis neve + a beszélő (EGYETLEN cím a képernyőn) -->
+      <div id="roleBanner" class="role-banner"></div>
+
+      <!-- Bírói figyelő sáv: egy sor; kinyitva lebegő panel (nem tolja a tartalmat) -->
+      <div id="judgeWatchBar" class="judge-watch-bar hidden"></div>
+
+      <!-- C) TARTALOM: kártyák, gombok – a maradék hely, függőlegesen középre -->
+      <div class="content-zone">
+        <div id="phaseContent" class="phase-content"></div>
+      </div>
+    </div>
+
+    <!-- Ponttábla-oldalsáv (desktopon fix, mobilon felcsúszó) -->
+    <aside id="scoreSidebar" class="score-sidebar">
+      <button id="sbToggle" class="sb-toggle" aria-label="Pontok megnyitása">PONTOK</button>
+      <div class="sb-inner">
+        <div class="sb-title">⚖️ PONTTÁBLA</div>
+        <div id="sbRows" class="sb-rows"></div>
+        <div class="sb-reactions">
+          <button class="react-btn" data-emoji="😂">😂</button>
+          <button class="react-btn" data-emoji="💀">💀</button>
+          <button class="react-btn" data-emoji="🤡">🤡</button>
+          <button class="react-btn" data-emoji="🔥">🔥</button>
+          <button class="react-btn" data-emoji="👏">👏</button>
+          <button id="btnOrder" class="btn tiny hidden">Rendet a teremben!</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===================== HELP MODAL ===================== -->
+  <div id="helpModal" class="help-modal hidden" role="dialog" aria-modal="true">
+    <div class="help-panel">
+      <div class="help-head">
+        <span class="help-stamp">ÜGYIRAT</span>
+        <h2 id="helpTitle">Játékleírás</h2>
+        <button id="helpClose" class="btn small">BEZÁR</button>
+      </div>
+      <div id="helpBody" class="help-body"></div>
+      <div class="help-foot"><button id="helpOk" class="btn big full">Értem, kezdjük!</button></div>
+    </div>
+  </div>
+
+  <!-- ===================== ÁTFEDÉSEK ===================== -->
+  <div id="overlay" class="overlay"></div>
+  <div id="objectionOverlay" class="objection-overlay hidden">
+    <div class="objection-text">TILTAKOZOM!</div>
+    <div class="objection-name" id="objectionName"></div>
+  </div>
+  <div id="reactionLayer" class="reaction-layer"></div>
+  <div id="unanimousOverlay" class="unanimous-overlay hidden">
+    <div class="unanimous-text">EGYHANGÚ!</div>
+  </div>
+  <div id="confettiLayer" class="confetti-layer"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/client.js"></script>
+</body>
+</html>
