@@ -1,0 +1,73 @@
+{
+  "title": "Kamu Bíróság – Játékleírás",
+  "sections": [
+    {
+      "heading": "MI EZ A JÁTÉK?",
+      "body": [
+        "A Kamu Bíróság egy online party játék, amit Discordon, hangban játszotok. A játék a böngészőben/telefonon csak levezeti a tárgyalást: kiosztja a szerepeket és a titkos kártyákat, méri az időt, és lebonyolítja a szavazást. Minden körben valakit egy abszurd, vicces bűnnel vádolnak. Ti élőszóban érveltek, védekeztek, hazudtok és röhögtök, a többiek pedig eldöntik, bűnös-e. 3–8 játékos kell hozzá."
+      ]
+    },
+    {
+      "heading": "A SZEREPEK (minden körben váltanak)",
+      "list": [
+        "Vádlott: őt vádolják. Kap egy titkos ALIBI kártyát, ezt beleszövi a védekezésébe.",
+        "Ügyész: bizonyítani akarja, hogy a vádlott bűnös. 3 titkos BIZONYÍTÉK kártyát kap, legalább egyet fel kell használnia a beszédében.",
+        "Védőügyvéd (5+ játékosnál): a vádlottat védi. 2 titkos TRÜKK kártyát kap, egyet bevethet.",
+        "Tanú (ha be van kapcsolva): meglepetés vallomást tesz, a kártyája alapján. Ő dönti el, melyik félnek segít.",
+        "Esküdtek: hallgatnak, nevetnek, reagálnak, a végén titokban szavaznak.",
+        "Bíró: a játék házigazdája. Figyeli a titkos kihívásokat, és eldönti, teljesítették-e őket."
+      ]
+    },
+    {
+      "heading": "EGY KÖR MENETE",
+      "list": [
+        "1. Vádemelés: megjelenik a vád, a vádlott felolvassa hangosan.",
+        "2. Felkészülés: mindenki megnézi a saját titkos kártyáit (rajtad kívül senki nem látja).",
+        "3. Vádbeszéd: az ügyész elmondja a vádat, felhasználva a bizonyítékokat.",
+        "4. Védekezés: a vádlott védekezik, felhasználva az alibit.",
+        "5. Védőbeszéd és tanú (ha van).",
+        "6. Zárószó: először az ügyész, aztán a vádlott.",
+        "7. Ítélet: az esküdtek titokban szavaznak: BŰNÖS vagy ÁRTATLAN.",
+        "8. Kihívás-ellenőrzés: a bíró eldönti, ki teljesítette a titkos kihívását.",
+        "9. Büntetés: ha bűnös, a bíró vicces büntetést mond ki."
+      ],
+      "after": "A beszélés alatt a beszélő karaktere világít, és a visszaszámláló mutatja az idejét. A vád mindig látszik a képernyő tetején."
+    },
+    {
+      "heading": "TITKOS KIHÍVÁSOK",
+      "body": [
+        "Az ügyész, a vádlott és a védő kaphat egy titkos kihívást is (pl. „Beszélj sportkommentátorként\", „Minden mondatod végén mondd: oksa\"). Ezt úgy kell teljesíteni a beszéd közben, hogy közben a többiek ne tudják, mi a feladat.",
+        "A bíró látja mindenki kihívását már a felkészüléstől, beszéd közben a sávban figyelteti az éppen beszélőt, és a végén ő dönti el, sikerült-e. A nehezítések ritkábbak, de dupla pontot érnek.",
+        "Ha a házigazda maga kap kihívást, abban az ügyben egy sorsolt, nem beszélő esküdt lesz a bíró – ezt a játék kiírja mindenkinek."
+      ]
+    },
+    {
+      "heading": "PONTOZÁS",
+      "list": [
+        "Ítélet: ha BŰNÖS, az ügyész annyi pontot kap, ahány BŰNÖS szavazat született. Ha ÁRTATLAN, a vádlott és a védőügyvéd is annyi pontot kap, ahány ÁRTATLAN szavazat született.",
+        "EGYHANGÚ ítélet: +1 bónuszpont a győztes félnek (ügyész vagy vádlott).",
+        "Teljesített titkos kihívás: +2 pont (bírónak be kellett írnia, hogy teljesítette).",
+        "Nehezítés-kihívás: +4 pont (dupla).",
+        "Közönségkedvenc: a körben a legtöbb 😂 reakciót kapott beszélő +1 pontot kap a kör végén.",
+        "A bűnügyi nyilvántartás a vádlott statisztikáit (elítélések/felmentések) tartja számos körön át."
+      ]
+    },
+    {
+      "heading": "GOMBOK",
+      "list": [
+        "TILTAKOZOM!: az ellenfél fél körönként egyszer megszakíthatja a másik beszédét. A bíró eldönti: elfogadva (a beszélő 10 mp-et veszít) vagy elutasítva.",
+        "Reakciók (😂 💀 🤡 🔥 👏): bárki dobhat, a legtöbb 😂-t kapó beszélő bónuszt kap.",
+        "Rendet a teremben!: csak a házigazdának, ha túl nagy a káosz."
+      ]
+    },
+    {
+      "heading": "TIPPEK",
+      "list": [
+        "Ne olvasd fel a kártyád, sződ bele a beszédbe, úgy a legviccesebb.",
+        "Hazudhatsz, kitalálhatsz bármit, a lényeg, hogy meggyőző vagy vicces legyél.",
+        "Ha lemaradtál, a vád a képernyő tetején mindig ott van.",
+        "A játék 18+, a poénok alpáriak lehetnek, de rasszista vagy mást bántó poén nem kerül bele."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,337 @@
+{
+  "repo": {
+    "nev": "R.E.P.O.",
+    "vadak": [
+      "Egy millió dolláros vázát úgy vitt vissza a kamionhoz, hogy a végére 12 dollárt ért, és azt mondta, \"már így találta\".",
+      "Proximity chatben annyit üvöltött, hogy az összes szörny odajött, aztán ő maga elbújt egy szekrényben.",
+      "A halott csapattársa fejét focilabdának használta a kamion felé menet.",
+      "Otthagyta [játékos] fejét a pályán, mert \"nehéz volt\".",
+      "Elfutott a kacsa elől, pedig ő volt az, aki felhúzta.",
+      "Az egész bolti pénzt egyedül elköltötte életerőre, aztán az első percben meghalt.",
+      "A kör végén a kamion ajtajában táncolt, amíg a többiek szörnyek elől menekültek."
+    ],
+    "bizonyitekok": [
+      "A kamion értékszámlálója, ami 0 dollárt mutat.",
+      "Egy proximity chat felvétel a vádlott sikolyáról.",
+      "Egy darabokra tört zongora a folyosón.",
+      "A csapat bolti számlája, amin csak életerő szerepel.",
+      "Karcolások a halott csapattárs fején.",
+      "A kacsa vallomása."
+    ],
+    "alibik": [
+      "Épp halott voltál, a fejed a kamionban pihent.",
+      "Egy szekrényben bujkáltál, onnan semmit nem láttál.",
+      "Épp a boltban vásároltál.",
+      "Lagoltál, és a robotod magától ment falnak.",
+      "A szörny vitt el, nem te mentél."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a váza már az elején törött volt.",
+      "Fogd az egészet a játék fizikájára.",
+      "Állítsd, hogy a kacsa volt a felbujtó.",
+      "Érvelj úgy, hogy a vádlott egy robot, tehát nem büntethető."
+    ],
+    "tanuk": [
+      "Te voltál a kacsa.",
+      "Te voltál a szekrény, amiben a vádlott bujkált.",
+      "Te voltál a halott csapattárs feje."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint aki proximity chatben suttog egy szörny elől, és néha hirtelen sikíts.",
+      "Beszélj úgy, mintha egy nagyon drága tárgyat vinnél, amit bármelyik pillanatban eltörhetsz.",
+      "Beszélj úgy, mintha épp kergetne egy szörny.",
+      "Minden mondatod végén mondd: \"vigyázz a vázára!\""
+    ],
+    "buntetesek": [
+      "Mindig ő viszi a legtörékenyebb tárgyat, és ő fizeti a kárt.",
+      "A következő 3 körben semmit nem vehet a boltban.",
+      "Ő lesz a csapat hivatalos fejhordozója."
+    ]
+  },
+  "cs": {
+    "nev": "CS:GO / CS2",
+    "vadak": [
+      "Egész meccsen campelt egy sarokban, és amikor kérdezték, azt mondta, \"stratégia\".",
+      "Teamkillelte [játékost], és azt állította, hogy az ellenfél skinje volt rajta.",
+      "Azt mondta, hogy \"jelzem nem vagyok jó benne\", aztán mindenkit lealázott, és végig ez volt a terve.",
+      "Minden elvesztett kör után a laget hibáztatta, pedig a gépe NASA-szintű.",
+      "Rage quitelt egy meccsből, és a monitort a macskára fogta.",
+      "Eladta a késskinjét, és a pénzből lángost vett az egész falunak.",
+      "Bedobta a gránátot, de a saját csapata lábához.",
+      "Kidobott egy smoke-ot a saját csapata arcába a legfontosabb pillanatban.",
+      "Azt mondta, \"gyere, rusholjunk B-re\", aztán ő A-ra ment egyedül.",
+      "Első körben megvette a legdrágább fegyvert, és egy késes ellenféltől halt meg."
+    ],
+    "bizonyitekok": [
+      "A meccs demója, amin minden látszik.",
+      "A scoreboard: 0 kill, 14 halál.",
+      "A teamkill-napló.",
+      "Egy felvétel, ahogy üvölt a mikrofonba.",
+      "A Steam-piac előzménye egy eladott késskinnel."
+    ],
+    "alibik": [
+      "A laggal harcoltál, nem az ellenféllel.",
+      "Épp a fegyverboltban voltál, amikor történt.",
+      "Nem is te voltál, hanem a smurf fiókod.",
+      "A macska lépett a billentyűzetre."
+    ],
+    "trukkok": [
+      "Követeld, hogy egy független bíró nézze át a demót.",
+      "Állítsd, hogy a vádlottnak hibás a hitboxa.",
+      "Fogd az egészet a random csapattársra.",
+      "Állítsd, hogy a szerver volt a hibás."
+    ],
+    "tanuk": [
+      "Te voltál a random csapattárs.",
+      "Te voltál az ellenfél, aki késsel megölte.",
+      "Te voltál a néző, aki mindent látott."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint aki rage quitelni készül egy 15:16-ra elvesztett meccsből.",
+      "Beszélj úgy, mint egy CS-kommentátor egy major döntőn.",
+      "Minden mondatodban szerepeljen egy callout (pl. \"B-n kettő\", \"mögötted\").",
+      "Minden mondatodat kezdd úgy: \"Ez nem az én hibám\"."
+    ],
+    "buntetesek": [
+      "A következő 10 meccsen csak Deagle-t vehet.",
+      "Egy hétig ő dobja a smoke-okat, és mindet rosszul.",
+      "Minden meccs elején előre bocsánatot kell kérnie a csapattól."
+    ]
+  },
+  "pubg": {
+    "nev": "PUBG",
+    "vadak": [
+      "Egész meccsen egy vécében bujkált Pochinkiben, és a top 3-ban meghalt a kék zónában.",
+      "Ellopta [játékos] páncélját, amíg az újraélesztésre várt.",
+      "Autóval lehajtott egy szikláról a csapattal, és azt mondta, \"ez volt a leggyorsabb út\".",
+      "Serpenyővel próbált megölni egy ellenfelet, és sikerült is, csak a saját csapattársát.",
+      "Leugrott a gépről a pálya legvégén, és 20 percig gyalogolt egyedül.",
+      "Fél órát feküdt egy bokorban, és azt mondta, \"taktika\", pedig elaludt.",
+      "Elvitte az utolsó elsősegélycsomagot, aztán elfelejtette használni."
+    ],
+    "bizonyitekok": [
+      "A visszajátszás a vécéből.",
+      "A felborult autó a szikla alján.",
+      "A serpenyő, rajta a vádlott ujjlenyomataival.",
+      "Az üres elsősegélycsomag doboza."
+    ],
+    "alibik": [
+      "A kék zónában ragadtál.",
+      "Még a gépen ültél.",
+      "Egy bokorban aludtál.",
+      "Épp lootoltál, semmire nem figyeltél."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a zóna volt a valódi gyilkos.",
+      "Érvelj úgy, hogy a sziklás eset vezetési hiba volt, nem bűncselekmény.",
+      "Állítsd, hogy a serpenyős eset önvédelem volt."
+    ],
+    "tanuk": [
+      "Te voltál a bokor.",
+      "Te ültél az autó hátsó ülésén.",
+      "Te voltál a vécé Pochinkiben."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint aki a kék zónában haldoklik, és még mindig lootolni akar.",
+      "Beszélj úgy, mint aki épp ugrik a gépről, és az ejtőernyő nem nyílik.",
+      "Minden mondatodban kiabáld, hogy \"ZÓNA!\"."
+    ],
+    "buntetesek": [
+      "Csak serpenyővel harcolhat.",
+      "Mindig ő vezet, pedig mindenki tudja, hogy nem kéne.",
+      "Mindig utolsónak ugorhat a gépről."
+    ]
+  },
+  "minecraft": {
+    "nev": "Minecraft",
+    "vadak": [
+      "Felgyújtotta [játékos] házát, mert \"csak meg akarta nézni, ég-e a fa\".",
+      "Kiásta a gyémántot [játékos] elől, és azt mondta, hogy ott eleve csak kő volt.",
+      "Beengedett egy creepert a közös bázisba, és ő maga kiment a hátsó ajtón.",
+      "Leásott egyenesen lefelé, pedig mindenki megmondta neki, hogy ne tegye, és a lávába esett az összes cuccal.",
+      "Megölte a közös kutyát, amikor egy csontvázra akart lőni.",
+      "Elrejtette az összes vasat egy titkos ládába, és három hétig figyelte, ahogy a többiek keresik.",
+      "Egy dirt-kunyhóban lakott két évig, pedig lett volna ideje kastélyt építeni.",
+      "Minden este lopott egy répát [játékos] farmjáról, és a nyulakat hibáztatta.",
+      "TNT-vel \"bányászott\" a közös szerver alatt, és a spawnt is felrobbantotta.",
+      "Eltörte [játékos] netherite csákányát, és egy fa csákányt tett a helyére."
+    ],
+    "bizonyitekok": [
+      "Egy tábla a tetthelyen a vádlott nevével.",
+      "A leégett ház hamvai.",
+      "Egy tűzkő és acél a vádlott zsebében.",
+      "A halálüzenet: \"[vádlott] belezuhant a lávába\".",
+      "A közös láda naplója."
+    ],
+    "alibik": [
+      "A Netherben voltál.",
+      "Aludtál, az ágy tanúsíthatja.",
+      "Épp egy villagerrel kereskedtél.",
+      "Egy barlang mélyén voltál, nem volt térerő."
+    ],
+    "trukkok": [
+      "Állítsd, hogy egy enderman tette odébb a blokkokat.",
+      "Fogd az egészet egy creeperre.",
+      "Érvelj úgy, hogy a lávába esés baleset volt.",
+      "Állítsd, hogy a szerver visszatöltött egy régi mentést."
+    ],
+    "tanuk": [
+      "Te voltál a villager.",
+      "Te voltál a creeper.",
+      "Te vagy a közös kutya szelleme."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy villager: minden mondatod végén mondd, hogy \"hmm\".",
+      "Beszélj úgy, mint aki épp egy creeper előtt áll.",
+      "Minden mondatodban szerepeljen egy blokk neve.",
+      "Tégy úgy a beszéd közben, mintha lávába estél volna."
+    ],
+    "buntetesek": [
+      "Egy hétig csak fa csákánnyal játszhat.",
+      "Egy hétig dirt-kunyhóban kell laknia.",
+      "Egyedül ő aratja a közös farmot."
+    ]
+  },
+  "roblox": {
+    "nev": "Roblox és ingyenes játékok",
+    "vadak": [
+      "Felnőtt emberként 40 órát töltött egy Robloxos pizzéria-szimulátorban, és kinevezték vezetőnek.",
+      "Egy Roblox-szerveren kikiáltotta magát királynak, és adót szedett.",
+      "Megvett egy 2000 robuxos kalapot, ami semmit nem csinál.",
+      "Két év alatt letöltött 300 ingyen játékot az Epicről, és egyet se indított el.",
+      "Bejelentette, hogy \"ez a legjobb free game\", aztán 200 eurót költött benne skinekre.",
+      "Fortnite-ban 40 szintes falat épített, és leesett róla.",
+      "Apexben feltámasztotta a csapattársát, aztán ő maga lelőtte.",
+      "Egy free MMO-ban 3 évig egy NPC-t tartott a legjobb barátjának, és megsértődött, amikor kiderült, hogy nem él."
+    ],
+    "bizonyitekok": [
+      "A Robux-vásárlási előzmények.",
+      "Egy gyanús trade-napló.",
+      "Az Epic-könyvtár 300 el nem indított játékkal.",
+      "Egy Fortnite-visszajátszás a leeső falról."
+    ],
+    "alibik": [
+      "Épp egy obbyt próbáltál teljesíteni, 4 órája.",
+      "Épp egy ingyen játékot töltöttél le.",
+      "Valorantban még mindig karaktert választottál."
+    ],
+    "trukkok": [
+      "Érvelj úgy, hogy ingyen volt, tehát nem számít.",
+      "Állítsd, hogy a skinek befektetésnek számítanak.",
+      "Fogd az egészet az algoritmusra."
+    ],
+    "tanuk": [
+      "Te voltál az NPC.",
+      "Te voltál a pizzéria főnöke."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy Roblox-játékos, aki mindenáron trade-et akar.",
+      "Beszélj úgy, mint egy mobiljáték-reklám."
+    ],
+    "buntetesek": [
+      "3 hónap kényszermunka a Robloxos pizzériában.",
+      "Egy hétig a 2000 robuxos kalap a profilképe.",
+      "Minden letöltött ingyen játékot végig kell játszania."
+    ]
+  },
+  "buli": {
+    "nev": "Buli",
+    "vadak": [
+      "Azt írta, hogy \"pill\", aztán három óra múlva jelentkezett azzal, hogy \"na mi van\".",
+      "Belépett a hívásba, aztán végig egyedül játszott, és csak annyit mondott, hogy \"aha\".",
+      "Két éve azt mondja minden nap, hogy \"majd jövök\", és még egyszer sem jött.",
+      "Lenémította magát, és közben egy másik Discord-szerveren beszélgetett a haverok háta mögött.",
+      "Csak azzal a feltétellel játszott, hogy bármikor elmehet, aztán elment a döntő kör közepén.",
+      "CAPS LOCK-kal üvöltött a chatbe egy dalszöveget délután hatkor, minden előzmény nélkül.",
+      "AFK volt egy teljes estén át, és a végén megkérdezte, hogy \"nyertünk?\".",
+      "Dupla lángost rendelt egy sörrel reggel 9-kor, és azt mondta, ez a reggeli.",
+      "Egy estén annyi cigit szívott el, hogy a szomszéd házban kapcsolt be a füstjelző.",
+      "Egy lagziban beleokádott a menyasszony táskájába, majd másnap tagadta, hogy ott volt.",
+      "Részegen felhívta az összes exét egy éjszaka alatt, és mindegyiknek ugyanazt a verset szavalta el.",
+      "Tizenkét fröccs után megpróbált hazamenni egy bevásárlókocsival.",
+      "Hajnali négykor egy gyrosos előtt megkérte a gyrosos kezét.",
+      "Egy első randin kizárta magát a vécéből, és 40 percig kiabált segítségért.",
+      "Egy liftben szellentett, majd egy kisgyerekre fogta.",
+      "Egy fontos Teams-hívás közben elfelejtette kikapcsolni a kamerát a vécén.",
+      "A céges karácsonyi bulin megcsókolta a főnök nagynénjét.",
+      "A Tinder-profilján egy másik ember fotóit használta, és elment a randira is.",
+      "Az exe nevét kiáltotta fel egy teljesen rossz pillanatban.",
+      "Elküldött egy nagyon kínos fotót a családi csoportba, amit valaki másnak szánt.",
+      "Megmutatta [játékos] részeg hangüzeneteit az egész szervernek.",
+      "Elhitette [játékossal], hogy a Discordon van egy titkos \"DÖG\" rang, amit csak az kap meg, aki lángost hoz neki.",
+      "Elvitte [játékos] kocsiját \"csak a sarokig\", és Szegeden kötött ki vele."
+    ],
+    "bizonyitekok": [
+      "Egy Discord-képernyőfotó hajnali 3-ról.",
+      "Egy félig megevett lángos a tetthelyen.",
+      "Egy 11 perces részeg hangüzenet.",
+      "Egy csikk, rajta a vádlott DNS-ével.",
+      "A lángosos blokkja hajnali 4:12-ről.",
+      "Egy Tinder-beszélgetés képernyőképe.",
+      "A kocsma biztonsági kamerájának felvétele.",
+      "A Discord \"utoljára aktív\" időbélyege.",
+      "A vádlott anyukájának vallomása."
+    ],
+    "alibik": [
+      "Épp a lángososnál álltál sorban, a lángosos tanúsíthatja.",
+      "Olyan részeg voltál, hogy semmire nem emlékszel.",
+      "Három órát ültél a vécén, és van róla bizonyíték.",
+      "AFK voltál, és a Discord ezt bizonyítja.",
+      "A nagymamádnál voltál vasárnapi ebéden.",
+      "Aznap éjjel az exeddel voltál, de ezt senki nem tudhatja meg.",
+      "Van egy ikertestvéred, és ő volt.",
+      "Épp frissült a Windows, 4 órán át."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a bizonyíték photoshopolt.",
+      "Állítsd, hogy a vádlott beszámíthatatlan volt, mert másnapos volt.",
+      "Mutass rá egy esküdtre, és állítsd, hogy ő a valódi tettes.",
+      "Ajánlj fel megvesztegetést: egy kör sör minden esküdtnek.",
+      "Hivatkozz egy nem létező precedensre (pl. \"a 2019-es Pistike kontra Lángosos ügy\").",
+      "Kérd a tárgyalás elnapolását azzal, hogy \"pill\".",
+      "Hívd tanúnak a vádlott anyukáját, és utánozd a hangját."
+    ],
+    "tanuk": [
+      "Láttad a vádlottat hajnalban egy bevásárlókocsiban egy kebabbal.",
+      "Te voltál a lángosos aznap este.",
+      "A szomszéd asztalnál ültél, és mindent hallottál, de nagyon részeg voltál.",
+      "Te vagy a vádlott exe.",
+      "Te is benne voltál, de ezt nem árulhatod el."
+    ],
+    "kihivasok": [
+      "Minden mondatodat fejezd be úgy: \"oksa\".",
+      "Minden 15 másodpercben mondd, hogy \"pill\", és tarts utána egy kis szünetet.",
+      "Beszélj úgy, mint aki hajnali háromkor részegen rendel a lángososnál.",
+      "Üvöltve beszélj, mintha CAPS LOCK-kal írnád.",
+      "Legalább egyszer kezdj el sírni."
+    ],
+    "buntetesek": [
+      "Köteles lángost venni az egész Discord-szervernek.",
+      "Köteles egy kör sört fizetni az esküdteknek.",
+      "Egy hónapig tilos neki a \"pill\" szó.",
+      "Egy hétig \"Elítélt Bűnös\" a Discord-neve.",
+      "Egy teljes estét a szégyensarok voice channelben kell töltenie."
+    ]
+  },
+  "altalanos": {
+    "kihivasok": [
+      "Beszélj úgy, mint egy sportkommentátor.",
+      "Beszélj úgy, mint egy természetfilm narrátora.",
+      "Beszélj úgy, mint egy túlpörgött YouTuber.",
+      "Beszélj úgy, mint egy robot.",
+      "Minden mondatodat kezdd úgy: \"Tisztelt Bíróság\".",
+      "Mondd ki háromszor a \"pogácsa\" szót.",
+      "Kétszer hivatkozz egy nem létező törvényre, számmal együtt.",
+      "Suttogva beszélj az egész idő alatt.",
+      "Tarts egy legalább 5 másodperces drámai szünetet a legfontosabb résznél.",
+      "A beszéd közben hirtelen kezdj el énekelni (a saját szavaidat).",
+      "Legalább egyszer mondj ellent saját magadnak."
+    ],
+    "nehezitesek": [
+      "Tilos az \"igen\" és a \"nem\" szó.",
+      "Minden mondatod kérdés legyen.",
+      "Minden harmadik mondatod angolul legyen.",
+      "A teljes beszéded maximum 5 mondat lehet."
+    ]
+  }
+}
