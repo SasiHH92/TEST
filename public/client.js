@@ -1332,15 +1332,6 @@ function renderLobby() {
   $('#btnStartGame').classList.toggle('hidden', !host);
   $('#btnAddBot').classList.toggle('hidden', !host);
   $('#btnRemoveBot').classList.toggle('hidden', !host || !S.players.some((p) => p.isBot));
-  // VISSZA gomb a névválasztóhoz (nem lép ki a szobából!).
-  const backBtn = $('#btnBackToName');
-  if (backBtn) {
-    backBtn.classList.remove('hidden');
-    backBtn.onclick = async () => {
-      const ok = await confirmDialog('Biztosan kilépsz a szobából?', 'KILÉPÉS');
-      if (ok) leaveToMenu();
-    };
-  }
   $('#lobbyHint').textContent = S.players.filter((p) => p.connected).length < 3
     ? 'Legalább 3 gyanúsított kell egy tárgyaláshoz!' : '';
   if (!host) $('#btnLeaveLobby').classList.remove('hidden');

@@ -87,7 +87,7 @@ ok(client.includes('Biztosan kilépsz a szobából?'), 'kilépés-megerősítés
 ok(client.includes('confirmDialog'), 'stílusos megerősítő ablak');
 ok(client.includes('popstate'), 'böngésző-vissza gomb kezelése');
 ok(client.includes('history.pushState'), 'history-őr (a vissza ne dobjon ki hirtelen)');
-ok(html.includes('btnBackToName'), 'VISSZA gomb a lobbyban');
+ok(html.includes('btnLeaveLobby') && !html.includes('btnBackToName'), 'a lobbyban egyetlen KILÉPÉS gomb van (nincs külön VISSZA)');
 ok(client.includes('leaveToMenu'), 'egységes kilépés-funkció');
 ok(game.includes('transferHostFrom'), 'motor: házigazda-átadás');
 ok(client.includes('host_changed'), 'kliens: host-átadás toast');

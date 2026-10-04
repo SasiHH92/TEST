@@ -1734,7 +1734,6 @@ svg.pin-threads circle { fill: var(--red-dark); stroke: #7e1d1d; stroke-width: 1
 .confirm-actions .ghost { background: transparent; border: 2px solid var(--ink-soft); color: var(--ink-soft); }
 
 /* --- Vissza gomb a lobbyban --- */
-#btnBackToName { margin-left: auto; }
 .casefile-header { align-items: center; }
 
 /* --- Kijelölt névkártya / avatar / mód-mappa: egységes glow + pipa --- */
