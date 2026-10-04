@@ -1,0 +1,24 @@
+# függőségek
+node_modules/
+
+# környezeti változók (port, engedélyezett origin stb.)
+.env
+.env.*
+!.env.example
+data/accounts.json
+data/accounts.json.*.tmp
+QA_SCREENSHOTS/
+test/browser-report.json
+
+# ideiglenes adatok (az ingyenes tárhelyen ígyis újrakindul)
+data/stats.json
+data/avatars.json
+
+# naplók és teszt-kimenetek
+*.log
+test/*-log.txt
+test/*.tmp
+
+# operációs rendszer felesleg
+.DS_Store
+Thumbs.db

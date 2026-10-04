@@ -1,330 +1,350 @@
 'use strict';
-// Valódi HTTP-kérések, ideiglenes fióktár. Külső belépés/levél csak teszt-transporttal.
-const assert=require('assert/strict');
-const fs=require('fs');
-const os=require('os');
-const path=require('path');
-const http=require('http');
-const crypto=require('crypto');
-const express=require('express');
-const {createAuth,loadAuthEnvironment}=require('../auth');
-const root=fs.mkdtempSync(path.join(os.tmpdir(),'kamu-auth-'));
-const servers=[];
-let passed=0,failed=0;
-async function test(name,work) {
-  try {await work();passed++;console.log('PASS: '+name);}
-  catch(error) {failed++;console.error('FAIL: '+name+'\n'+error.stack);}
+// Account routes are independent of room/game state and scoring.
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const {promisify} = require('util');
+const express = require('express');
+const derive = promisify(crypto.scrypt);
+const SCRYPT = {N:32768,r:8,p:3,maxmem:64*1024*1024};
+const COOKIE = 'kb_account';
+const SESSION_MS = 8*60*60*1000;
+const REMEMBER_MS = 30*24*60*60*1000;
+const OAUTH_MS = 10*60*1000;
+const PROVIDERS = {
+  google:{authorize:'https://accounts.google.com/o/oauth2/v2/auth',
+    token:'https://oauth2.googleapis.com/token',
+    user:'https://openidconnect.googleapis.com/v1/userinfo',scope:'openid email profile'},
+  discord:{authorize:'https://discord.com/oauth2/authorize',
+    token:'https://discord.com/api/oauth2/token',
+    user:'https://discord.com/api/v10/users/@me',scope:'identify email'}
+};
+class AuthError extends Error {
+  constructor(status,message,code) {super(message);this.status=status;this.code=code;}
 }
-async function boot(options={}) {
-  const app=express(),server=http.createServer(app);
-  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));servers.push(server);
-  const base='http://127.0.0.1:'+server.address().port;
-  const file=options.file||path.join(root,crypto.randomUUID()+'.json');
-  const env={AUTH_BASE_URL:base,...options.env};
-  app.use('/api/auth',createAuth({...options,file,env}).router);
-  app.get('/health',(req,res)=>res.send('ok'));
-  const jar=()=>new Map();
-  async function req(method,route,body,settings={}) {
-    const headers={...(method==='POST'?{'Content-Type':'application/json','Origin':base}:{}),...settings.headers};
-    if(settings.jar?.size) headers.Cookie=[...settings.jar].map(([key,value])=>key+'='+value).join('; ');
-    const response=await fetch(base+'/api/auth'+route,{method,headers,redirect:'manual',
-      body:settings.raw!==undefined?settings.raw:body===undefined?undefined:JSON.stringify(body)});
-    const cookieHeaders=response.headers.getSetCookie();
-    if(settings.jar) for(const cookie of cookieHeaders) {
-      const first=cookie.split(';')[0],index=first.indexOf('='),key=first.slice(0,index),value=first.slice(index+1);
-      if(value) settings.jar.set(key,value);else settings.jar.delete(key);
+const fail = (status,message,code) => {throw new AuthError(status,message,code);};
+const digest = value => crypto.createHash('sha256').update(value).digest('hex');
+const normalize = value => value.normalize('NFKC').trim().toLocaleLowerCase('hu-HU');
+function email(value) {
+  if(typeof value!=='string' || value.length>254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+    fail(400,'Adj meg egy érvényes e-mail címet.');
+  }
+  return value.trim().toLowerCase();
+}
+function username(value) {
+  if(typeof value!=='string') fail(400,'Add meg a felhasználóneved.');
+  const name=value.normalize('NFKC').trim();
+  if(!/^[\p{L}\p{N} _.-]{3,20}$/u.test(name)) {
+    fail(400,'A név 3–20 karakter lehet: betű, szám, szóköz, pont, kötőjel vagy aláhúzás.');
+  }
+  return name;
+}
+function newPassword(body) {
+  if(typeof body.password!=='string' || body.password.length<12 || body.password.length>128) {
+    fail(400,'A jelszó legyen 12–128 karakter hosszú.');
+  }
+  if(body.password!==body.confirmPassword) fail(400,'A két jelszó nem egyezik.');
+  return body.password;
+}
+function cookies(req) {
+  const result={};
+  for(const piece of (req.get('cookie')||'').split(';')) {
+    const index=piece.indexOf('=');
+    if(index<0) continue;
+    try {result[piece.slice(0,index).trim()]=decodeURIComponent(piece.slice(index+1).trim());}
+    catch (_) { /* malformed cookies are ignored */ }
+  }
+  return result;
+}
+function loadAuthEnvironment(file) {
+  if(!fs.existsSync(file)) return;
+  for(const line of fs.readFileSync(file,'utf8').split(/\r?\n/)) {
+    const match=line.match(/^\s*(AUTH_[A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    if(!match || process.env[match[1]]!==undefined) continue;
+    let value=match[2];
+    if(/^(['"]).*\1$/.test(value)) value=value.slice(1,-1);
+    else value=value.replace(/(^|\s+)#.*$/,'').trim();
+    process.env[match[1]]=value;
+  }
+}
+class AccountStore {
+  constructor(file,persist) {
+    this.file=file;this.persist=persist;
+    this.state={version:1,users:[],sessions:[],resets:[]};
+    try {
+      this.state=JSON.parse(fs.readFileSync(file,'utf8'));
+      if(this.state.version!==1 || !['users','sessions','resets'].every(k=>Array.isArray(this.state[k]))) {
+        throw new Error('Invalid account store');
+      }
+    } catch(error) {if(error.code!=='ENOENT') throw error;}
+  }
+  commit(edit) {
+    const next=structuredClone(this.state), result=edit(next);
+    fs.mkdirSync(path.dirname(this.file),{recursive:true});
+    const temporary=this.file+'.'+crypto.randomBytes(6).toString('hex')+'.tmp';
+    try {
+      fs.writeFileSync(temporary,JSON.stringify(next,null,2)+'\n',{mode:0o600});
+      fs.renameSync(temporary,this.file);
+    } finally {if(fs.existsSync(temporary)) fs.unlinkSync(temporary);}
+    this.state=next;
+    if(this.persist) {try {this.persist(this.file);} catch(_) { /* a külső mentés hibája nem állíthatja meg a belépést */ }}
+    return result;
+  }
+}
+function createAuth(options={}) {
+  const env=options.env||process.env, now=options.now||Date.now, request=options.fetch||fetch;
+  const file=options.file||path.resolve(__dirname,env.AUTH_STORE_PATH||'data/accounts.json');
+  let store, storageError;
+  try {store=new AccountStore(file,options.persist);} catch(error) {
+    storageError=error;console.error('A fióktár nem olvasható:',error.message);
+  }
+  let origin='';
+  if(env.AUTH_BASE_URL) {
+    try {
+      const parsed=new URL(env.AUTH_BASE_URL);
+      if(!['https:','http:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error('Invalid AUTH_BASE_URL');
+      if(parsed.protocol==='http:' && !['localhost','127.0.0.1','[::1]'].includes(parsed.hostname)) {
+        throw new Error('AUTH_BASE_URL must use HTTPS outside localhost');
+      }
+      origin=parsed.origin;
+    } catch(_) {console.error('Hibás AUTH_BASE_URL: a külső belépés és a levélküldés kikapcsolva.');}
+  }
+  const configs=Object.fromEntries(Object.keys(PROVIDERS).map(provider=>[provider,{
+    clientId:env['AUTH_'+provider.toUpperCase()+'_CLIENT_ID']||'',
+    secret:env['AUTH_'+provider.toUpperCase()+'_CLIENT_SECRET']||''
+  }]));
+  const enabled=provider=>!!(origin && configs[provider]?.clientId && configs[provider]?.secret && !storageError);
+  const mailEnabled=!!(origin && (options.sendMail || (env.AUTH_MAIL_API_KEY && env.AUTH_MAIL_FROM)));
+  const router=express.Router();
+  const publicUser=user=>user?{id:user.id,username:user.username,email:user.email,
+    hasPassword:!!user.password,providers:Object.keys(user.providers||{})}:null;
+  const session=req=>{
+    if(!store) return null;
+    const token=cookies(req)[COOKIE];
+    if(!token || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
+    const entry=store.state.sessions.find(s=>s.hash===digest(token) && s.expiresAt>now());
+    return entry?store.state.users.find(user=>user.id===entry.userId)||null:null;
+  };
+  const cookieOptions=req=>({httpOnly:true,sameSite:'lax',secure:origin.startsWith('https:')||req.secure,path:'/'});
+  const remember=req=>req.body?.remember===true;
+  function createSession(user,req,res,persistent=false) {
+    const token=crypto.randomBytes(32).toString('base64url'), duration=persistent?REMEMBER_MS:SESSION_MS;
+    const old=cookies(req)[COOKIE];
+    store.commit(data=>{
+      data.sessions=data.sessions.filter(s=>s.expiresAt>now() && (!old || s.hash!==digest(old)));
+      data.resets=data.resets.filter(r=>r.expiresAt>now());
+      data.sessions.push({hash:digest(token),userId:user.id,expiresAt:now()+duration});
+      const mine=data.sessions.filter(s=>s.userId===user.id);
+      if(mine.length>10) data.sessions=data.sessions.filter(s=>!mine.slice(0,mine.length-10).includes(s));
+    });
+    res.cookie(COOKIE,token,{...cookieOptions(req),...(persistent?{maxAge:duration}:{})});
+  }
+  const wrap=fn=>(req,res,next)=>Promise.resolve().then(()=>fn(req,res)).catch(next);
+  const attempts=new Map(), states=new Map(), hashQueue=[];
+  let hashActive=0;
+  async function hashJob(work) {
+    if(hashQueue.length>=16) fail(503,'Sok belépés érkezett egyszerre. Pár másodperc múlva próbáld újra.');
+    await new Promise(resolve=>{
+      if(hashActive<2) {hashActive++;resolve();}
+      else hashQueue.push(resolve);
+    });
+    try {return await work();} finally {
+      const next=hashQueue.shift();
+      if(next) next(); else hashActive--;
     }
-    const content=await response.text();
-    let data;try {data=JSON.parse(content);} catch(_) {data=null;}
-    return {status:response.status,data,text:content,cookies:cookieHeaders,headers:response.headers,
-      location:response.headers.get('location')};
   }
-  return {base,file,req,jar,server};
-}
-const password='Egy hosszú titok 123!';
-const registration=(name='Teszt Anna',address='anna@example.invalid')=>({username:name,email:address,password,confirmPassword:password});
-const sha=value=>crypto.createHash('sha256').update(value).digest('hex');
-async function main() {
-  let clock=Date.now();
-  const mail=[];
-  const api=await boot({now:()=>clock,maxAttempts:100,sendMail:async message=>{mail.push(message);}});
-  const first=api.jar(),remembered=api.jar(),other=api.jar();
-  let userId,resetToken;
-  await test('Névtelen állapot és konfigurációs kapcsolók',async()=>{
-    const result=await api.req('GET','/status');
-    assert.equal(result.status,200);assert.equal(result.data.user,null);assert.equal(result.data.available,true);
-    assert.deepEqual(result.data.providers,{google:false,discord:false});assert.equal(result.data.passwordReset,true);
-    assert.equal(result.headers.get('cache-control'),'no-store');assert.equal(fs.existsSync(api.file),false);
-  });
-  await test('Regisztráció: valós fiók és HttpOnly munkamenet',async()=>{
-    const result=await api.req('POST','/register',registration(),{jar:first});
-    assert.equal(result.status,201);userId=result.data.user.id;
-    assert.equal(result.data.user.username,'Teszt Anna');assert.equal(result.data.user.hasPassword,true);
-    assert.match(result.cookies[0],/HttpOnly/);assert.match(result.cookies[0],/SameSite=Lax/);
-    assert.doesNotMatch(result.cookies[0],/Max-Age/);
-    assert.equal((await api.req('GET','/status',undefined,{jar:first})).data.user.id,userId);
-  });
-  await test('Sózott scrypt, csak hash-elt session, nincs jelszó az API-ban',async()=>{
-    const raw=fs.readFileSync(api.file,'utf8'),store=JSON.parse(raw),token=first.get('kb_account');
-    assert.doesNotMatch(raw,new RegExp(password));assert.ok(!raw.includes(token));
-    assert.equal(store.users[0].password.algorithm,'scrypt-v1');assert.equal(store.sessions[0].hash,sha(token));
-    assert.equal(Buffer.from(store.users[0].password.hash,'base64url').length,64);
-    if(process.platform!=='win32') assert.equal(fs.statSync(api.file).mode&0o777,0o600);
-    const result=await api.req('GET','/status',undefined,{jar:first});
-    assert.ok(!('password' in result.data.user));assert.ok(!('sessions' in result.data));
-  });
-  await test('E-mail és név egyedisége, kis/nagybetű és Unicode normalizálás',async()=>{
-    assert.equal((await api.req('POST','/register',registration('Másik Anna','ANNA@example.invalid'))).status,409);
-    assert.equal((await api.req('POST','/register',registration('ｔｅｓｚｔ Ａｎｎａ','other@example.invalid'))).status,409);
-    assert.equal(JSON.parse(fs.readFileSync(api.file)).users.length,1);
-  });
-  await test('Hibás név, cím, rövid/eltérő/túl hosszú jelszó elutasítása',async()=>{
-    for(const values of [{username:'xy'},{username:'<script>'},{email:'hibás'},
-      {password:'rövid',confirmPassword:'rövid'},{confirmPassword:'nem azonos'},
-      {password:'x'.repeat(129),confirmPassword:'x'.repeat(129)}]) {
-      assert.equal((await api.req('POST','/register',{...registration('Érvényes','valid@example.invalid'),...values})).status,400);
+  async function hash(password,salt=crypto.randomBytes(16).toString('base64url')) {
+    const key=await hashJob(()=>derive(password,Buffer.from(salt,'base64url'),64,SCRYPT));
+    return {algorithm:'scrypt-v1',salt,hash:key.toString('base64url')};
+  }
+  const dummy={algorithm:'scrypt-v1',salt:crypto.randomBytes(16).toString('base64url'),hash:Buffer.alloc(64).toString('base64url')};
+  async function verify(password,record) {
+    const valid=record?.algorithm==='scrypt-v1' && /^[A-Za-z0-9_-]{22}$/.test(record.salt||'') &&
+      /^[A-Za-z0-9_-]{86}$/.test(record.hash||'');
+    const expected=valid?record:dummy, result=await hash(password,expected.salt);
+    return !!valid && crypto.timingSafeEqual(Buffer.from(result.hash,'base64url'),Buffer.from(expected.hash,'base64url'));
+  }
+  function rate(req,res,next) {
+    const ip=env.AUTH_TRUST_PROXY==='1'?req.ip:req.socket.remoteAddress;
+    const key=ip+':'+req.path;
+    const stamp=now(), windowMs=10*60*1000;
+    for(const [id,bucket] of attempts) if(stamp-bucket.start>windowMs) attempts.delete(id);
+    const entry=attempts.get(key)||{start:stamp,count:0};
+    entry.count++;attempts.set(key,entry);
+    if(entry.count>(options.maxAttempts||20)) {
+      res.set('Retry-After',String(Math.ceil((windowMs-(stamp-entry.start))/1000)));
+      return res.status(429).json({error:'Túl sok próbálkozás. Kicsit később próbáld újra.'});
     }
-  });
-  await test('Ismeretlen fiók és hibás jelszó azonos belépési hibát ad',async()=>{
-    const wrong=await api.req('POST','/login',{email:'anna@example.invalid',password:'Hibás jelszó 1234'});
-    const unknown=await api.req('POST','/login',{email:'unknown@example.invalid',password:'Hibás jelszó 1234'});
-    assert.equal(wrong.status,401);assert.equal(unknown.status,401);assert.deepEqual(wrong.data,unknown.data);
-    assert.equal((await api.req('POST','/login',{email:'anna@example.invalid',password:'x'.repeat(129)})).status,400);
-  });
-  await test('Emlékezz rám: 30 nap, új véletlen token, munkamenet-rotáció',async()=>{
-    const old=first.get('kb_account');
-    const result=await api.req('POST','/login',{email:' ANNA@example.invalid ',password,remember:true},{jar:first});
-    assert.equal(result.status,200);assert.match(result.cookies[0],/Max-Age=2592000/);
-    assert.notEqual(first.get('kb_account'),old);
-    remembered.set('kb_account',first.get('kb_account'));
-    const oldJar=api.jar();oldJar.set('kb_account',old);
-    assert.equal((await api.req('GET','/status',undefined,{jar:oldJar})).data.user,null);
-  });
-  await test('Kijelentkezés visszavonja a szerveroldali munkamenetet',async()=>{
-    const old=remembered.get('kb_account');
-    assert.equal((await api.req('POST','/logout',{}, {jar:first})).status,200);assert.equal(first.has('kb_account'),false);
-    const replay=api.jar();replay.set('kb_account',old);
-    assert.equal((await api.req('GET','/status',undefined,{jar:replay})).data.user,null);
-  });
-  await test('Fiók és munkamenet megmarad a fiókmodul újraindítása után',async()=>{
-    await api.req('POST','/login',{email:'anna@example.invalid',password},{jar:first});
-    const reboot=await boot({file:api.file,now:()=>clock});
-    assert.equal((await reboot.req('GET','/status',undefined,{jar:first})).data.user.id,userId);
-    assert.equal((await reboot.req('POST','/login',{email:'anna@example.invalid',password},{jar:other})).status,200);
-  });
-  await test('Alap munkamenet 8 óra után lejár, megjegyzett 30 napig él',async()=>{
-    await api.req('POST','/login',{email:'anna@example.invalid',password,remember:true},{jar:remembered});
-    clock+=8*60*60*1000+1;
-    assert.equal((await api.req('GET','/status',undefined,{jar:first})).data.user,null);
-    assert.equal((await api.req('GET','/status',undefined,{jar:remembered})).data.user.id,userId);
-    clock+=30*24*60*60*1000;
-    assert.equal((await api.req('GET','/status',undefined,{jar:remembered})).data.user,null);
-  });
-  await test('Eltérő Origin, nem JSON, hibás/túl nagy JSON elutasítása',async()=>{
-    assert.equal((await api.req('POST','/login',{}, {headers:{Origin:'https://other.invalid'}})).status,403);
-    assert.equal((await api.req('POST','/login',{}, {headers:{'Content-Type':'text/plain'}})).status,415);
-    assert.equal((await api.req('POST','/login',undefined,{raw:'{'})).status,400);
-    assert.equal((await api.req('POST','/login',{padding:'x'.repeat(9000)})).status,413);
-    assert.equal((await api.req('POST','/login',[])).status,400);
-  });
-  await test('Ismeretlen és létező e-mailre azonos visszaállítási válasz',async()=>{
-    const known=await api.req('POST','/forgot',{email:'anna@example.invalid'});
-    const unknown=await api.req('POST','/forgot',{email:'unknown@example.invalid'});
-    assert.equal(known.status,200);assert.deepEqual(known.data,unknown.data);assert.equal(mail.length,1);
-    const link=mail[0].text.match(/http[^\s]+/)[0],url=new URL(link);
-    assert.equal(url.origin,api.base);assert.equal(url.search,'');assert.match(url.hash,/^#reset=/);
-    resetToken=url.hash.slice(7);
-    const store=JSON.parse(fs.readFileSync(api.file));
-    assert.equal(store.resets[0].hash,sha(resetToken));assert.ok(!fs.readFileSync(api.file,'utf8').includes(resetToken));
-  });
-  await test('Új jelszó: egyszer használható link és minden régi session visszavonása',async()=>{
-    await api.req('POST','/login',{email:'anna@example.invalid',password},{jar:first});
-    await api.req('POST','/login',{email:'anna@example.invalid',password},{jar:other});
-    const oldFirst=new Map(first),newPassword='Ez már az új jelszó 456!';
-    const body={token:resetToken,password:newPassword,confirmPassword:newPassword};
-    assert.equal((await api.req('POST','/reset',body,{jar:first})).status,200);
-    assert.equal((await api.req('GET','/status',undefined,{jar:oldFirst})).data.user,null);
-    assert.equal((await api.req('GET','/status',undefined,{jar:other})).data.user,null);
-    assert.equal((await api.req('GET','/status',undefined,{jar:first})).data.user.id,userId);
-    assert.equal((await api.req('POST','/reset',body)).status,400);
-    assert.equal((await api.req('POST','/login',{email:'anna@example.invalid',password})).status,401);
-    assert.equal((await api.req('POST','/login',{email:'anna@example.invalid',password:newPassword})).status,200);
-  });
-  await test('Lejárt és hamis visszaállító token nem módosít jelszót',async()=>{
-    await api.req('POST','/forgot',{email:'anna@example.invalid'});
-    const token=new URL(mail[1].text.match(/http[^\s]+/)[0]).hash.slice(7);clock+=60*60*1000+1;
-    const body={token,password,confirmPassword:password};
-    assert.equal((await api.req('POST','/reset',body)).status,400);
-    assert.equal((await api.req('POST','/reset',{...body,token:'hamis'})).status,400);
-  });
-  await test('Próbálkozási korlát és Retry-After',async()=>{
-    const limited=await boot({maxAttempts:2});
-    for(let i=0;i<2;i++) assert.equal((await limited.req('POST','/login',{})).status,400);
-    const result=await limited.req('POST','/login',{});assert.equal(result.status,429);
-    assert.ok(Number(result.headers.get('retry-after'))>0);
-  });
-  await test('Secure süti HTTPS telepítésnél; szolgáltatók kulcs nélkül kikapcsolva',async()=>{
-    const secure=await boot({env:{AUTH_BASE_URL:'https://game.example.invalid'}});
-    const result=await secure.req('POST','/register',registration(),{headers:{Origin:'https://game.example.invalid'}});
-    assert.equal(result.status,201);assert.match(result.cookies[0],/Secure/);
-    assert.equal((await secure.req('GET','/google/start')).status,503);
-    assert.equal((await secure.req('GET','/discord/start')).status,503);
-    assert.equal((await secure.req('POST','/forgot',{email:'anna@example.invalid'},
-      {headers:{Origin:'https://game.example.invalid'}})).status,503);
-  });
-  await test('Sérült fióktár nem íródik felül; a többi Express útvonal működik',async()=>{
-    const file=path.join(root,'corrupt.json');fs.writeFileSync(file,'{broken');
-    const broken=await boot({file});
-    assert.equal((await broken.req('GET','/status')).data.available,false);
-    assert.equal((await broken.req('POST','/register',registration())).status,503);
-    assert.equal(fs.readFileSync(file,'utf8'),'{broken');assert.equal((await fetch(broken.base+'/health')).status,200);
-  });
-  await test('Hibás külső URL nem állítja le az e-mailes fiókkezelést',async()=>{
-    const invalid=await boot({env:{AUTH_BASE_URL:'http://unsafe.example.invalid',AUTH_GOOGLE_CLIENT_ID:'g',AUTH_GOOGLE_CLIENT_SECRET:'secret'}});
-    assert.equal((await invalid.req('GET','/status')).data.providers.google,false);
-    assert.equal((await invalid.req('POST','/register',registration())).status,201);
-  });
-  await test('.env csak AUTH_ változókat tölt és nem ír felül környezeti beállítást',async()=>{
-    const file=path.join(root,'sample.env'),key='AUTH_TEST_LOAD',keep=process.env[key];
-    fs.writeFileSync(file,'PORT=9876\nAUTH_TEST_LOAD="idézett érték"\nAUTH_TEST_EMPTY= # megjegyzés\n');
-    const oldPort=process.env.PORT;delete process.env[key];loadAuthEnvironment(file);
-    assert.equal(process.env[key],'idézett érték');assert.equal(process.env.PORT,oldPort);assert.equal(process.env.AUTH_TEST_EMPTY,'');
-    process.env[key]='külső';loadAuthEnvironment(file);assert.equal(process.env[key],'külső');
-    if(keep===undefined) delete process.env[key];else process.env[key]=keep;delete process.env.AUTH_TEST_EMPTY;
-  });
-
-  let profile={google:{sub:'google-1',email:'google@example.invalid',email_verified:true,name:'Google Játékos'},
-    discord:{id:'discord-1',email:'discord@example.invalid',verified:true,global_name:'Discord Játékos'}};
-  const exchanges=[];let failProvider=false,oauthClock=Date.now();
-  const oauth=await boot({maxAttempts:100,now:()=>oauthClock,
-    env:{AUTH_GOOGLE_CLIENT_ID:'google-test',AUTH_GOOGLE_CLIENT_SECRET:'google-secret',
-      AUTH_DISCORD_CLIENT_ID:'discord-test',AUTH_DISCORD_CLIENT_SECRET:'discord-secret'},
-    fetch:async(url,settings)=>{
-      exchanges.push({url,settings});
-      if(failProvider) return new Response('{}',{status:503});
-      const provider=url.includes('discord')?'discord':'google';
-      return Response.json(url.includes('/token')?{access_token:'test-access-token'}:profile[provider]);
-    }});
-  const googleJar=oauth.jar(),discordJar=oauth.jar(),localJar=oauth.jar();let googleId,localId;
-  async function start(provider,jar,query='') {
-    const result=await oauth.req('GET','/'+provider+'/start'+query,undefined,{jar});
-    assert.equal(result.status,302);return {result,url:new URL(result.location)};
+    next();
   }
-  async function callback(provider,jar,nonce,query='&code=mock-code') {
-    return oauth.req('GET','/'+provider+'/callback?state='+encodeURIComponent(nonce)+query,undefined,{jar});
-  }
-  await test('Google indítás: redirect, state, HttpOnly süti, S256 PKCE, szobameghívó',async()=>{
-    const {result,url}=await start('google',googleJar,'?room=abcd&remember=1');
-    assert.equal(url.origin,'https://accounts.google.com');assert.equal(url.searchParams.get('scope'),'openid email profile');
-    assert.equal(url.searchParams.get('redirect_uri'),oauth.base+'/api/auth/google/callback');
-    assert.equal(url.searchParams.get('code_challenge_method'),'S256');assert.match(result.cookies[0],/HttpOnly/);
-    const nonce=url.searchParams.get('state');assert.equal(googleJar.get('kb_oauth_google'),nonce);
-    const result2=await callback('google',googleJar,nonce);
-    assert.equal(result2.location,'/?auth=success&room=ABCD');assert.match(result2.cookies.join(';'),/Max-Age=2592000/);
-    const tokenRequest=exchanges.find(item=>item.url==='https://oauth2.googleapis.com/token');
-    const body=new URLSearchParams(tokenRequest.settings.body);
-    assert.equal(body.get('client_secret'),'google-secret');assert.equal(body.get('grant_type'),'authorization_code');
-    assert.equal(crypto.createHash('sha256').update(body.get('code_verifier')).digest('base64url'),url.searchParams.get('code_challenge'));
-    const user=(await oauth.req('GET','/status',undefined,{jar:googleJar})).data.user;
-    googleId=user.id;assert.equal(user.hasPassword,false);assert.deepEqual(user.providers,['google']);
+  router.use((req,res,next)=>{
+    res.set('Cache-Control','no-store');
+    res.set('X-Content-Type-Options','nosniff');
+    res.set('Referrer-Policy','no-referrer');
+    next();
   });
-  await test('Discord: identify/email, form-urlencoded tokenkérés, ellenőrzött fiók',async()=>{
-    const {url}=await start('discord',discordJar);
-    assert.equal(url.origin,'https://discord.com');assert.equal(url.searchParams.get('scope'),'identify email');
-    assert.equal((await callback('discord',discordJar,url.searchParams.get('state'))).location,'/?auth=success');
-    const exchange=exchanges.find(item=>item.url==='https://discord.com/api/oauth2/token');
-    assert.equal(exchange.settings.headers['Content-Type'],'application/x-www-form-urlencoded');
-    assert.equal(new URLSearchParams(exchange.settings.body).get('client_secret'),'discord-secret');
-    const user=(await oauth.req('GET','/status',undefined,{jar:discordJar})).data.user;
-    assert.equal(user.email,'discord@example.invalid');assert.deepEqual(user.providers,['discord']);
+  router.use(express.json({limit:'8kb'}));
+  router.use((req,res,next)=>{
+    if(req.method!=='POST') return next();
+    if(!req.is('application/json')) return res.status(415).json({error:'JSON-kérés szükséges.'});
+    const expected=origin||req.protocol+'://'+req.get('host');
+    if(req.get('origin') && req.get('origin')!==expected) return res.status(403).json({error:'A kérés másik oldalról érkezett.'});
+    if(!req.body || Array.isArray(req.body)) return res.status(400).json({error:'Hiányzó űrlapadatok.'});
+    rate(req,res,next);
   });
-  await test('Hiányzó/hamis state vagy kötő süti nem indít tokenváltást',async()=>{
-    let calls=exchanges.length;
-    assert.match((await callback('google',oauth.jar(),'hamis')).location,/auth_error=expired/);
-    const {url}=await start('google',oauth.jar());
-    assert.match((await callback('google',oauth.jar(),url.searchParams.get('state'))).location,/auth_error=expired/);
-    assert.equal(exchanges.length,calls);
+  router.get('/status',(req,res)=>res.json({user:publicUser(session(req)),
+    available:!storageError,providers:{google:enabled('google'),discord:enabled('discord')},
+    passwordReset:mailEnabled && !storageError}));
+  router.use((req,res,next)=>storageError?res.status(503).json({error:'A fiókkezelés most nem elérhető. Próbáld újra később.'}):next());
+  router.post('/register',wrap(async(req,res)=>{
+    const address=email(req.body.email),name=username(req.body.username),password=newPassword(req.body);
+    const record=await hash(password);
+    const user=store.commit(data=>{
+      if(data.users.some(u=>u.email===address)) fail(409,'Ezzel az e-mail címmel már van fiók.');
+      if(data.users.some(u=>normalize(u.username)===normalize(name))) fail(409,'Ez a felhasználónév már foglalt.');
+      const user={id:crypto.randomUUID(),username:name,email:address,password:record,providers:{},createdAt:now()};
+      data.users.push(user);return user;
+    });
+    createSession(user,req,res);
+    res.status(201).json({user:publicUser(user)});
+  }));
+  router.post('/login',wrap(async(req,res)=>{
+    const address=email(req.body.email);
+    if(typeof req.body.password!=='string' || !req.body.password.length || req.body.password.length>128) fail(400,'Add meg a jelszavad.');
+    const user=store.state.users.find(u=>u.email===address);
+    if(!(await verify(req.body.password,user?.password))) fail(401,'Hibás e-mail cím vagy jelszó.');
+    createSession(user,req,res,remember(req));res.json({user:publicUser(user)});
+  }));
+  router.post('/logout',wrap((req,res)=>{
+    const token=cookies(req)[COOKIE];
+    if(token) store.commit(data=>{data.sessions=data.sessions.filter(s=>s.hash!==digest(token));});
+    res.clearCookie(COOKIE,cookieOptions(req));res.json({ok:true});
+  }));
+  router.post('/forgot',wrap(async(req,res)=>{
+    if(!mailEnabled) fail(503,'A jelszó-visszaállítás jelenleg nem elérhető.');
+    const address=email(req.body.email), user=store.state.users.find(u=>u.email===address && u.password);
+    if(user) {
+      const token=crypto.randomBytes(32).toString('base64url');
+      store.commit(data=>{
+        data.resets=data.resets.filter(r=>r.userId!==user.id && r.expiresAt>now());
+        data.resets.push({hash:digest(token),userId:user.id,expiresAt:now()+60*60*1000});
+      });
+      const link=origin+'/#reset='+token;
+      const message={to:user.email,subject:'Kamu Bíróság – új jelszó',
+        text:'Új jelszó beállításához nyisd meg ezt a linket:\n'+link+'\n\nA link 1 óráig, egyszer használható. Ha nem te kérted, hagyd figyelmen kívül.'};
+      // Respond uniformly; email transport never reveals whether an account exists.
+      const send=options.sendMail?()=>options.sendMail(message):async()=>{
+        const result=await request('https://api.resend.com/emails',{method:'POST',
+          headers:{Authorization:'Bearer '+env.AUTH_MAIL_API_KEY,'Content-Type':'application/json'},
+          body:JSON.stringify({...message,from:env.AUTH_MAIL_FROM,to:[message.to]}),signal:AbortSignal.timeout(10000)});
+        if(!result.ok) throw new Error('Mail delivery failed');
+      };
+      Promise.resolve().then(send).catch(()=>{
+        try {store.commit(data=>{data.resets=data.resets.filter(r=>r.hash!==digest(token));});}
+        catch(_) {console.error('A sikertelen visszaállító link törlése nem sikerült.');}
+        console.error('A jelszó-visszaállító levél kézbesítése nem sikerült.');
+      });
+    }
+    res.json({message:'Ha ehhez a címhez jelszavas fiók tartozik, elküldjük a visszaállító linket.'});
+  }));
+  router.post('/reset',wrap(async(req,res)=>{
+    if(typeof req.body.token!=='string' || !/^[A-Za-z0-9_-]{43}$/.test(req.body.token)) fail(400,'A link lejárt vagy érvénytelen.');
+    const tokenHash=digest(req.body.token), record=await hash(newPassword(req.body));
+    const user=store.commit(data=>{
+      const reset=data.resets.find(r=>r.hash===tokenHash && r.expiresAt>now());
+      if(!reset) fail(400,'A link lejárt vagy már felhasználtad.');
+      const user=data.users.find(u=>u.id===reset.userId);
+      if(!user) fail(400,'A link érvénytelen.');
+      user.password=record;
+      data.sessions=data.sessions.filter(s=>s.userId!==user.id);
+      data.resets=data.resets.filter(r=>r.userId!==user.id);
+      return user;
+    });
+    createSession(user,req,res);res.json({user:publicUser(user)});
+  }));
+  router.get('/:provider/start',rate,wrap((req,res)=>{
+    const provider=req.params.provider;
+    if(!enabled(provider)) fail(503,'Ez a belépési mód még nem elérhető.');
+    const linked=req.query.link==='1', user=session(req);
+    if(linked && !user) fail(401,'Előbb jelentkezz be a fiókodba.');
+    for(const [key,state] of states) if(state.expiresAt<now()) states.delete(key);
+    if(states.size>=1024) fail(503,'Próbáld újra kicsit később.');
+    const nonce=crypto.randomBytes(32).toString('base64url'),verifier=crypto.randomBytes(32).toString('base64url');
+    const room=/^[A-Z0-9]{4}$/i.test(req.query.room||'')?req.query.room.toUpperCase():'';
+    states.set(nonce,{provider,verifier,room,userId:linked?user.id:null,
+      persistent:req.query.remember==='1',expiresAt:now()+OAUTH_MS});
+    res.cookie('kb_oauth_'+provider,nonce,{...cookieOptions(req),maxAge:OAUTH_MS});
+    const url=new URL(PROVIDERS[provider].authorize);
+    for(const [key,value] of Object.entries({client_id:configs[provider].clientId,response_type:'code',
+      redirect_uri:origin+'/api/auth/'+provider+'/callback',scope:PROVIDERS[provider].scope,
+      state:nonce,prompt:provider==='google'?'select_account':'consent'})) url.searchParams.set(key,value);
+    if(provider==='google') {
+      url.searchParams.set('code_challenge',crypto.createHash('sha256').update(verifier).digest('base64url'));
+      url.searchParams.set('code_challenge_method','S256');
+    }
+    res.redirect(url.toString());
+  }));
+  router.get('/:provider/callback',rate,wrap(async(req,res)=>{
+    const provider=req.params.provider, nonce=req.query.state, state=typeof nonce==='string'?states.get(nonce):null;
+    const bounce=code=>res.redirect('/?auth_error='+encodeURIComponent(code)+(state?.room?'&room='+state.room:''));
+    res.clearCookie('kb_oauth_'+provider,cookieOptions(req));
+    if(!enabled(provider) || !state || state.provider!==provider || state.expiresAt<now() ||
+      cookies(req)['kb_oauth_'+provider]!==nonce) return bounce('expired');
+    states.delete(nonce); // single-use before any exchange
+    if(req.query.error) return bounce('cancelled');
+    if(typeof req.query.code!=='string' || req.query.code.length>4096) return bounce('provider');
+    try {
+      const cfg=configs[provider],meta=PROVIDERS[provider];
+      const body=new URLSearchParams({grant_type:'authorization_code',code:req.query.code,
+        client_id:cfg.clientId,client_secret:cfg.secret,redirect_uri:origin+'/api/auth/'+provider+'/callback'});
+      if(provider==='google') body.set('code_verifier',state.verifier);
+      const exchange=await request(meta.token,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:body.toString(),signal:AbortSignal.timeout(10000)});
+      if(!exchange.ok) return bounce('provider');
+      const token=await exchange.json();
+      if(typeof token.access_token!=='string') return bounce('provider');
+      const response=await request(meta.user,{headers:{Authorization:'Bearer '+token.access_token},signal:AbortSignal.timeout(10000)});
+      if(!response.ok) return bounce('provider');
+      const profile=await response.json();
+      const providerId=provider==='google'?profile.sub:profile.id;
+      if(typeof providerId!=='string' || !providerId.length || providerId.length>255 ||
+        !(provider==='google'?profile.email_verified===true:profile.verified===true)) return bounce('unverified');
+      const address=email(profile.email);
+      const existing=store.state.users.find(u=>u.providers?.[provider]===providerId);
+      let user;
+      if(state.userId) {
+        if(session(req)?.id!==state.userId) return bounce('expired');
+        if(existing && existing.id!==state.userId) return bounce('provider_used');
+        user=store.commit(data=>{
+          const user=data.users.find(u=>u.id===state.userId);
+          user.providers[provider]=providerId;return user;
+        });
+      } else if(existing) user=existing;
+      else {
+        // Matching an email alone never links a provider to an existing password account.
+        if(store.state.users.some(u=>u.email===address)) return bounce('email_used');
+        const raw=String(profile.global_name||profile.name||profile.username||'Játékos')
+          .normalize('NFKC').replace(/[^\p{L}\p{N} _.-]/gu,'').trim().slice(0,16)||'Játékos';
+        user=store.commit(data=>{
+          let name=raw.length>=3?raw:'Játékos',suffix=1;
+          while(data.users.some(u=>normalize(u.username)===normalize(name))) name=raw.slice(0,14)+'-'+suffix++;
+          const user={id:crypto.randomUUID(),username:name,email:address,password:null,
+            providers:{[provider]:providerId},createdAt:now()};
+          data.users.push(user);return user;
+        });
+      }
+      if(!state.userId) createSession(user,req,res,state.persistent);
+      res.redirect('/?auth=success'+(state.room?'&room='+state.room:''));
+    } catch(_) {return bounce('provider');}
+  }));
+  router.use((error,req,res,next)=>{
+    if(res.headersSent) return next(error);
+    if(error instanceof AuthError) return res.status(error.status).json({error:error.message});
+    if(error.type==='entity.too.large') return res.status(413).json({error:'Túl nagy kérés.'});
+    if(error.type==='entity.parse.failed') return res.status(400).json({error:'Érvénytelen kérés.'});
+    console.error('Fiókkezelési hiba:',error.code||error.name);
+    res.status(503).json({error:'A fiókkezelés most nem elérhető. Próbáld újra később.'});
   });
-  await test('OAuth-visszatérés egyszer használható, ugyanahhoz a provider-ID-hez lép be',async()=>{
-    const {url}=await start('google',googleJar),nonce=url.searchParams.get('state');
-    assert.match((await callback('google',googleJar,nonce)).location,/auth=success/);
-    const calls=exchanges.length;
-    assert.match((await callback('google',googleJar,nonce)).location,/auth_error=expired/);assert.equal(exchanges.length,calls);
-    assert.equal((await oauth.req('GET','/status',undefined,{jar:googleJar})).data.user.id,googleId);
-    assert.equal(JSON.parse(fs.readFileSync(oauth.file)).users.length,2);
-  });
-  await test('Megszakított és lejárt OAuth-kérés érthető hibával tér vissza',async()=>{
-    let flow=await start('discord',discordJar),calls=exchanges.length;
-    assert.match((await callback('discord',discordJar,flow.url.searchParams.get('state'),'&error=access_denied')).location,/auth_error=cancelled/);
-    flow=await start('discord',discordJar);oauthClock+=10*60*1000+1;
-    assert.match((await callback('discord',discordJar,flow.url.searchParams.get('state'))).location,/auth_error=expired/);
-    assert.equal(exchanges.length,calls);
-  });
-  await test('Nem igazolt e-mail és szolgáltatói hiba nem hoz létre fiókot',async()=>{
-    const previous=profile.google;profile.google={...previous,sub:'unverified',email_verified:false};
-    let flow=await start('google',googleJar);
-    assert.match((await callback('google',googleJar,flow.url.searchParams.get('state'))).location,/auth_error=unverified/);
-    profile.google={...previous,sub:''};flow=await start('google',googleJar);
-    assert.match((await callback('google',googleJar,flow.url.searchParams.get('state'))).location,/auth_error=unverified/);
-    profile.google=previous;failProvider=true;flow=await start('discord',discordJar);
-    assert.match((await callback('discord',discordJar,flow.url.searchParams.get('state'))).location,/auth_error=provider/);
-    failProvider=false;assert.equal(JSON.parse(fs.readFileSync(oauth.file)).users.length,2);
-  });
-  await test('Azonos e-mail nem kapcsolódik automatikusan jelszavas fiókhoz',async()=>{
-    const result=await oauth.req('POST','/register',registration('Helyi Játékos','local@example.invalid'),{jar:localJar});
-    localId=result.data.user.id;profile.google={sub:'google-local',email:'local@example.invalid',email_verified:true,name:'Helyi Játékos'};
-    const flow=await start('google',oauth.jar());
-    const result2=await callback('google',new Map([['kb_oauth_google',flow.url.searchParams.get('state')]]),flow.url.searchParams.get('state'));
-    assert.match(result2.location,/auth_error=email_used/);
-    assert.deepEqual((await oauth.req('GET','/status',undefined,{jar:localJar})).data.user.providers,[]);
-  });
-  await test('Külső fiók csak bejelentkezett tulajdonos kérésére kapcsolható össze',async()=>{
-    assert.equal((await oauth.req('GET','/google/start?link=1')).status,401);
-    const flow=await start('google',localJar,'?link=1');
-    assert.match((await callback('google',localJar,flow.url.searchParams.get('state'))).location,/auth=success/);
-    const user=(await oauth.req('GET','/status',undefined,{jar:localJar})).data.user;
-    assert.equal(user.id,localId);assert.deepEqual(user.providers,['google']);assert.equal(user.hasPassword,true);
-    const fresh=oauth.jar(),again=await start('google',fresh);
-    assert.match((await callback('google',fresh,again.url.searchParams.get('state'))).location,/auth=success/);
-    assert.equal((await oauth.req('GET','/status',undefined,{jar:fresh})).data.user.id,localId);
-  });
-  await test('Másik fiókhoz kötött provider és megszűnt linkelő session elutasítása',async()=>{
-    profile.discord={id:'discord-1',email:'discord@example.invalid',verified:true};
-    let flow=await start('discord',localJar,'?link=1');
-    assert.match((await callback('discord',localJar,flow.url.searchParams.get('state'))).location,/auth_error=provider_used/);
-    flow=await start('discord',localJar,'?link=1');
-    await oauth.req('POST','/logout',{}, {jar:localJar});
-    assert.match((await callback('discord',localJar,flow.url.searchParams.get('state'))).location,/auth_error=expired/);
-    assert.equal(JSON.parse(fs.readFileSync(oauth.file)).users.length,3);
-  });
-  await test('Google/Discord titkok és tokenek nem kerülnek nyilvános válaszba',async()=>{
-    const status=await oauth.req('GET','/status',undefined,{jar:googleJar});
-    assert.doesNotMatch(status.text,/google-secret|discord-secret|test-access-token|"password"\s*:|"sessions"\s*:|"hash"\s*:/);
-    const raw=fs.readFileSync(oauth.file,'utf8');assert.doesNotMatch(raw,/google-secret|discord-secret|test-access-token/);
-  });
-  await test('Resend transport: címzett, feladó és Bearer fejléc',async()=>{
-    let sent;
-    const resend=await boot({env:{AUTH_MAIL_API_KEY:'test-mail-key',AUTH_MAIL_FROM:'Kamu <sender@example.invalid>'},
-      fetch:async(url,settings)=>{sent={url,settings};return Response.json({id:'test-mail'});}});
-    await resend.req('POST','/register',registration());
-    assert.equal((await resend.req('POST','/forgot',{email:'anna@example.invalid'})).status,200);
-    assert.equal(sent.url,'https://api.resend.com/emails');assert.equal(sent.settings.headers.Authorization,'Bearer test-mail-key');
-    const body=JSON.parse(sent.settings.body);assert.deepEqual(body.to,['anna@example.invalid']);
-    assert.equal(body.from,'Kamu <sender@example.invalid>');assert.match(body.text,/#reset=/);
-  });
-  await test('Sikertelen levélküldés visszavonja a kiadott reset-linket',async()=>{
-    const failure=await boot({sendMail:async()=>{throw new Error('Mock delivery failure');}});
-    await failure.req('POST','/register',registration());
-    assert.equal((await failure.req('POST','/forgot',{email:'anna@example.invalid'})).status,200);
-    await new Promise(resolve=>setTimeout(resolve,25));
-    assert.equal(JSON.parse(fs.readFileSync(failure.file)).resets.length,0);
-  });
+  return {router};
 }
-main().catch(error=>{failed++;console.error(error.stack);}).finally(async()=>{
-  for(const server of servers) {
-    server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
-  }
-  fs.rmSync(root,{recursive:true,force:true});
-  console.log('\nFiókkezelés: '+passed+' sikeres, '+failed+' hibás teszt.');
-  process.exitCode=failed?1:0;
-});
+module.exports={createAuth,loadAuthEnvironment};

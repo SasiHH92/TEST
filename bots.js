@@ -144,6 +144,22 @@ class BotManager {
         }, rand(g.settings.closingSeconds * 700));
         break;
       }
+      case 'objection': {
+        const od = g.objectionData;
+        if (!od) break;
+        if (od.phase === 'defense') {
+          const speaker = g.getPlayer(od.speakerId);
+          if (speaker && speaker.isBot && speaker.connected) this.schedule(() => {
+            if (g.objectionData === od && od.phase === 'defense') g.objectionDefenseDone(speaker.id);
+          }, 3000 + Math.random() * 5000);
+        } else if (od.phase === 'judge') {
+          const judge = g.getPlayer(d.currentJudgeId);
+          if (judge && judge.isBot && judge.connected) this.schedule(() => {
+            if (g.objectionData === od && od.phase === 'judge') g.objectionJudgeDecision(judge.id, Math.random() < 0.5);
+          }, 3000 + Math.random() * 5000);
+        }
+        break;
+      }
       case PHASES.VERDICT_VOTE: {
         // Minden bot-esküdt szavaz: kis szórás, végletszavazat.
         // (A voters a beállított esküdtek listája – bot és ember is lehet.)

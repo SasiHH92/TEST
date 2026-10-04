@@ -15,14 +15,14 @@
         "Védőügyvéd (5+ játékosnál): a vádlottat védi. 2 titkos TRÜKK kártyát kap, egyet bevethet.",
         "Tanú (ha be van kapcsolva): meglepetés vallomást tesz, a kártyája alapján. Ő dönti el, melyik félnek segít.",
         "Esküdtek: hallgatnak, nevetnek, reagálnak, a végén titokban szavaznak.",
-        "Bíró: a játék házigazdája. Figyeli a titkos kihívásokat, és eldönti, teljesítették-e őket."
+        "Bíró: körönként más, nem beszélő játékos. Figyeli és elbírálja a kihívásokat, dönt a tiltakozásokról, és használhatja a Rendet a teremben! gombot. A házigazda szerepétől független."
       ]
     },
     {
       "heading": "EGY KÖR MENETE",
       "list": [
         "1. Vádemelés: megjelenik a vád, a vádlott felolvassa hangosan.",
-        "2. Felkészülés: mindenki megnézi a saját titkos kártyáit (rajtad kívül senki nem látja).",
+        "2. Felkészülés: 30 másodperc a titkos kártyák megjegyzésére. Az alibi, tanúkártya és saját kihívás utána elrejtődik. Az ügyész végig látja a 3 bizonyítékát, a védő ezek mellett a saját 2 trükkjét is. A kör végén minden kártya felfedődik.",
         "3. Vádbeszéd: az ügyész elmondja a vádat, felhasználva a bizonyítékokat.",
         "4. Védekezés: a vádlott védekezik, felhasználva az alibit.",
         "5. Védőbeszéd és tanú (ha van).",
@@ -38,7 +38,7 @@
       "body": [
         "Az ügyész, a vádlott és a védő kaphat egy titkos kihívást is (pl. „Beszélj sportkommentátorként\", „Minden mondatod végén mondd: oksa\"). Ezt úgy kell teljesíteni a beszéd közben, hogy közben a többiek ne tudják, mi a feladat.",
         "A bíró látja mindenki kihívását már a felkészüléstől, beszéd közben a sávban figyelteti az éppen beszélőt, és a végén ő dönti el, sikerült-e. A nehezítések ritkábbak, de dupla pontot érnek.",
-        "Ha a házigazda maga kap kihívást, abban az ügyben egy sorsolt, nem beszélő esküdt lesz a bíró – ezt a játék kiírja mindenkinek."
+        "Körönként új bíró kerül sorra, aki abban a körben nem ügyész, vádlott, védő vagy tanú. A felkészüléstől látja az összes kihívást. Az ellenőrzéskor kihívásonként 20 másodperce van dönteni; időtúllépésnél NEM SIKERÜLT az eredmény. A lobbyban választható az esküdtek szavazása is. A kihívásra adott 😂/👎 reakció nem ad pontot."
       ]
     },
     {
@@ -46,6 +46,7 @@
       "list": [
         "Ítélet: ha BŰNÖS, az ügyész annyi pontot kap, ahány BŰNÖS szavazat született. Ha ÁRTATLAN, a vádlott és a védőügyvéd is annyi pontot kap, ahány ÁRTATLAN szavazat született.",
         "EGYHANGÚ ítélet: +1 bónuszpont a győztes félnek (ügyész vagy vádlott).",
+        "Esküdtek: az ítélettel egyező szavazat +1 pont. Döntetlennél minden szavazó +1 pontot kap.",
         "Teljesített titkos kihívás: +2 pont (bírónak be kellett írnia, hogy teljesítette).",
         "Nehezítés-kihívás: +4 pont (dupla).",
         "Közönségkedvenc: a körben a legtöbb 😂 reakciót kapott beszélő +1 pontot kap a kör végén.",
@@ -55,9 +56,16 @@
     {
       "heading": "GOMBOK",
       "list": [
-        "TILTAKOZOM!: az ellenfél fél körönként egyszer megszakíthatja a másik beszédét. A bíró eldönti: elfogadva (a beszélő 10 mp-et veszít) vagy elutasítva.",
+        "TILTAKOZOM!: az ügyész a vádlott/védő, a vádlott és a védő az ügyész beszéde közben használhatja; játékosonként beszédfázisonként egyszer, körönként legfeljebb kétszer. A beszédóra megáll. A megtámadott beszélő 20 másodpercig védekezhet, majd a bíró 15 másodpercen belül dönt. JOGOS: a beszélő hátralévő idejéből 20 másodperc levonás, legalább 5 másodperc marad. NEM JOGOS vagy döntési időtúllépés: a tiltakozó következő beszédéből 20 másodperc levonás, ha van még beszéde.",
         "Reakciók (😂 💀 🤡 🔥 👏): bárki dobhat, a legtöbb 😂-t kapó beszélő bónuszt kap.",
-        "Rendet a teremben!: csak a házigazdának, ha túl nagy a káosz."
+        "Rendet a teremben!: kizárólag az adott kör bírójának, ha túl nagy a káosz."
+      ]
+    },
+    {
+      "heading": "KILÉPÉS ÉS KÖVETKEZŐ JÁTÉK",
+      "body": [
+        "Véletlen kapcsolatvesztésnél 20 másodpercig megtartod a szereped. Utána egy nem szereplő esküdt veszi át ugyanazokkal a kártyákkal és a hátralévő idővel, legalább 15 másodperccel. Késői visszatéréskor esküdtként folytatod. A házigazda joga 30 másodperces kiesés után a legrégebben bent lévő játékosé. A szándékos kilépés és kirúgás azonnali; három fő alatt a játék visszatér a lobbyba.",
+        "Az automatikus következő kör és új játék alapból be van kapcsolva. A szerver 5 másodperc után léptet tovább. A házigazda korábban is továbbléphet, a végeredménynél pedig a MEGÁLLÍT gombbal leállíthatja az új játékot. Az új játék ugyanazokkal a beállításokkal indul, nullázott pontokkal."
       ]
     },
     {

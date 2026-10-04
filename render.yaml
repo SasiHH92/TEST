@@ -10,7 +10,20 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     autoDeploy: true
-    # Opcionális környezeti változók – alapban egyik sem szükséges:
-    # envVars:
-    #   - key: ALLOWED_ORIGIN        # csak akkor, ha külső domainről is csatlakoznának
+    # Környezeti változók (a Render felületén is megadhatók: Environment fül).
+    # A DATABASE_URL a TAROLAS.md szerint kell: nélküle a fiókok, a statisztika és az
+    # avatárok az ingyenes Renderen minden újraindításkor elvesznek.
+    envVars:
+      - key: DATABASE_URL        # külső Postgres kapcsolati sztring (pl. Neon) – TITKOS, nem kerül a repóba
+        sync: false
+      - key: AUTH_BASE_URL       # a játék pontos címe, pl. https://kamu-birosag.onrender.com
+        sync: false
+      - key: AUTH_TRUST_PROXY    # a Render proxy mögött 1
+        value: "1"
+      # Discord-belépés (opcionális): lásd AUTH_BEALLITAS.md
+      # - key: AUTH_DISCORD_CLIENT_ID
+      #   sync: false
+      # - key: AUTH_DISCORD_CLIENT_SECRET
+      #   sync: false
+    #   - key: ALLOWED_ORIGIN    # csak akkor, ha külső domainről is csatlakoznának
     #     value: https://sajat-domain.hu

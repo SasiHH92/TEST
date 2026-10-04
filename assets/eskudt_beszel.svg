@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="400" height="600">
+<defs>
+<linearGradient id="body" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#cdbcff"/><stop offset=".5" stop-color="#a78bfa"/><stop offset="1" stop-color="#4a2fb0"/></linearGradient>
+<radialGradient id="skin" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#f6d3b3"/><stop offset="1" stop-color="#dcaf8a"/></radialGradient>
+<linearGradient id="skind" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcaf8a"/><stop offset="1" stop-color="#f6d3b3"/></linearGradient>
+<linearGradient id="hair" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b87a3c"/><stop offset="1" stop-color="#7a4a24"/></linearGradient>
+<radialGradient id="shadow"><stop offset="0" stop-color="#000" stop-opacity=".5"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+</defs>
+<ellipse cx="200" cy="582" rx="150" ry="20" fill="url(#shadow)"/>
+<path d="M108 210 C92 310 106 352 138 360 L262 360 C294 352 308 310 292 210 C292 120 250 100 200 100 C150 100 108 120 108 210Z" fill="url(#hair)"/>
+<path d="M50 600 C52 470 70 395 135 362 Q200 340 265 362 C330 395 348 470 350 600Z" fill="url(#body)"/>
+<path d="M50 600 C52 470 70 395 135 362 L150 366 C100 400 92 480 96 600Z" fill="#ffffff" opacity=".12"/>
+<path d="M350 600 C348 470 330 395 265 362 L250 366 C300 400 308 480 304 600Z" fill="#000" opacity=".22"/>
+<path d="M160 358 L200 410 L240 358 L240 600 L160 600Z" fill="#ffffff"/><path d="M150 366 L196 440 L180 600 L104 600Z" fill="#8c6df0"/><path d="M250 366 L204 440 L220 600 L296 600Z" fill="#8c6df0"/><rect x="164" y="450" width="72" height="34" rx="8" fill="#fff"/><text x="200" y="474" font-family="Impact,Arial Black,sans-serif" font-size="20" fill="#4a2fb0" text-anchor="middle">ESKÜDT</text>
+<path d="M166 292 L166 352 Q200 378 234 352 L234 292Z" fill="url(#skind)"/>
+<ellipse cx="200" cy="312" rx="52" ry="20" fill="#000" opacity=".22"/>
+<ellipse cx="121" cy="226" rx="13" ry="22" fill="#dcaf8a"/><ellipse cx="279" cy="226" rx="13" ry="22" fill="#dcaf8a"/>
+<ellipse cx="200" cy="215" rx="80" ry="92" fill="url(#skin)"/>
+<ellipse cx="148" cy="248" rx="16" ry="10" fill="#e8737a" opacity=".28"/><ellipse cx="252" cy="248" rx="16" ry="10" fill="#e8737a" opacity=".28"/>
+<ellipse cx="165" cy="217" rx="16" ry="11.5" fill="#fff"/><circle cx="166" cy="218" r="8.5" fill="#2f7a5a"/><circle cx="166" cy="218" r="4.2" fill="#0d0d0d"/><circle cx="169" cy="214" r="2.6" fill="#fff"/><path d="M149 214 Q165 202 181 214" stroke="#000000" stroke-opacity="0.33" stroke-width="3" fill="none"/><ellipse cx="235" cy="217" rx="16" ry="11.5" fill="#fff"/><circle cx="234" cy="218" r="8.5" fill="#2f7a5a"/><circle cx="234" cy="218" r="4.2" fill="#0d0d0d"/><circle cx="239" cy="214" r="2.6" fill="#fff"/><path d="M219 214 Q235 202 251 214" stroke="#000000" stroke-opacity="0.33" stroke-width="3" fill="none"/><path d="M142 200 L186 206" stroke="#7a4a24" stroke-width="7" stroke-linecap="round"/><path d="M258 200 L214 206" stroke="#7a4a24" stroke-width="7" stroke-linecap="round"/>
+<path d="M200 222 Q190 250 198 256 Q212 258 214 252" stroke="#dcaf8a" stroke-width="4" fill="none" stroke-linecap="round"/>
+<path d="M172 256 Q200 305 228 256 Q200 262 172 256Z" fill="#4a1414"/><path d="M176 257 Q200 264 224 257 L222 265 Q200 270 178 265Z" fill="#fff"/><ellipse cx="200" cy="288" rx="14" ry="7" fill="#c9585c"/>
+<path d="M122 212 C124 138 164 118 202 122 C244 118 278 140 278 212 C256 172 228 160 202 168 C176 160 146 172 122 212Z" fill="url(#hair)"/><path d="M140 140 Q200 120 262 142" stroke="#ffffff" stroke-opacity="0.20" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+
+</svg>

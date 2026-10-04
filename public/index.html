@@ -8,11 +8,114 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
+  <link rel="preload" href="/assets/terem-hatter.webp" as="image">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
 </head>
 <body>
+  <!-- ===================== BELÉPÉS A TÁRGYALÓTEREMBE ===================== -->
+  <main id="screen-auth" class="screen active auth-screen">
+    <img class="auth-background" src="/assets/terem-hatter.webp" alt="" fetchpriority="high">
+    <div class="auth-shade" aria-hidden="true"></div>
+    <button class="info-btn auth-help" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
+    <div class="auth-layout">
+      <header class="auth-header">
+        <p class="auth-eyebrow">A TÁRGYALÓTEREM AJTAJA NYITVA</p>
+        <h1 class="auth-logo">KAMU BÍRÓSÁG <span aria-hidden="true">🔨</span></h1>
+        <p class="auth-ribbon">RENDŐRSÉGI NYILVÁNTARTÁS · KIZÁRÓLAG BÜNTETETLEN POÉNOK</p>
+      </header>
+      <div class="auth-slogan"><strong>KI A BŰNÖS?</strong><span>KATTINTS. VÁLASSZ. TÁRGYALJ. NEVESS.</span></div>
+      <img class="auth-character auth-judge" src="/assets/biro.png" alt="" aria-hidden="true">
+      <img class="auth-character auth-prosecutor" src="/assets/ugyesz.png" alt="" aria-hidden="true">
+
+      <div class="auth-forms" data-tab="login">
+        <div class="auth-tabs" role="tablist" aria-label="Belépés vagy regisztráció">
+          <button id="authLoginTab" role="tab" aria-selected="true" aria-controls="authLoginCard" type="button">BEJELENTKEZÉS</button>
+          <button id="authRegisterTab" role="tab" aria-selected="false" aria-controls="authRegisterCard" type="button" tabindex="-1">REGISZTRÁCIÓ</button>
+        </div>
+        <section id="authLoginCard" class="auth-card" aria-labelledby="authLoginTitle">
+          <p class="auth-stamp" aria-hidden="true">BELÉPÉSI ENGEDÉLY</p>
+          <h2 id="authLoginTitle">Bejelentkezés</h2>
+          <p class="auth-card-intro">Már szerepelsz a nyilvántartásban?</p>
+          <form id="authLoginForm">
+            <label for="authLoginEmail">E-mail cím</label>
+            <input id="authLoginEmail" type="email" name="email" autocomplete="username" required maxlength="254" placeholder="pelda@email.hu">
+            <label for="authLoginPassword">Jelszó</label>
+            <div class="auth-password">
+              <input id="authLoginPassword" type="password" name="password" autocomplete="current-password" required maxlength="128" placeholder="A titkos jelszavad">
+              <button type="button" data-password="authLoginPassword" aria-label="Jelszó megjelenítése" aria-pressed="false">◉</button>
+            </div>
+            <div class="auth-options">
+              <label class="auth-check"><input id="authRemember" type="checkbox" name="remember"> Emlékezz rám</label>
+              <button id="authForgot" class="auth-text-button" type="button" disabled>Elfelejtett jelszó?</button>
+            </div>
+            <p id="authLoginMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+            <button id="authLoginSubmit" type="submit" class="auth-submit" disabled>BELÉPÉS A TEREMBE <span aria-hidden="true">→</span></button>
+          </form>
+          <div class="auth-divider"><span>vagy lépj be ezzel</span></div>
+          <div class="auth-providers">
+            <button type="button" data-provider="discord" class="auth-provider auth-discord" disabled><span aria-hidden="true">🎮</span> Discord</button>
+            <button type="button" data-provider="google" class="auth-provider auth-google" disabled><b aria-hidden="true">G</b> Google</button>
+          </div>
+          <p id="authProviderHint" class="auth-small"></p>
+          <p class="auth-switch">Új vagy itt? <button type="button" data-auth-tab="register" class="auth-text-button">Regisztrálj!</button></p>
+        </section>
+
+        <section id="authRegisterCard" class="auth-card" aria-labelledby="authRegisterTitle">
+          <p class="auth-stamp" aria-hidden="true">ÚJ ÜGYIRAT</p>
+          <h2 id="authRegisterTitle">Regisztráció</h2>
+          <p class="auth-card-intro">Írd be magad a nyilvántartásba!</p>
+          <form id="authRegisterForm">
+            <label for="authRegisterName">Felhasználónév</label>
+            <input id="authRegisterName" name="username" autocomplete="nickname" required minlength="3" maxlength="20" placeholder="Így szólítsunk a teremben">
+            <label for="authRegisterEmail">E-mail cím</label>
+            <input id="authRegisterEmail" type="email" name="email" autocomplete="email" required maxlength="254" placeholder="pelda@email.hu">
+            <label for="authRegisterPassword">Jelszó <small>(legalább 12 karakter)</small></label>
+            <div class="auth-password">
+              <input id="authRegisterPassword" type="password" name="password" autocomplete="new-password" required minlength="12" maxlength="128" placeholder="Egy jó hosszú titok">
+              <button type="button" data-password="authRegisterPassword" aria-label="Jelszó megjelenítése" aria-pressed="false">◉</button>
+            </div>
+            <label for="authRegisterConfirm">Jelszó még egyszer</label>
+            <div class="auth-password">
+              <input id="authRegisterConfirm" type="password" name="confirmPassword" autocomplete="new-password" required minlength="12" maxlength="128" placeholder="Ugyanaz a titok">
+              <button type="button" data-password="authRegisterConfirm" aria-label="Jelszó megjelenítése" aria-pressed="false">◉</button>
+            </div>
+            <p id="authRegisterMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+            <button id="authRegisterSubmit" type="submit" class="auth-submit" disabled>REGISZTRÁCIÓ <span aria-hidden="true">✦</span></button>
+          </form>
+          <p class="auth-switch">Már van fiókod? <button type="button" data-auth-tab="login" class="auth-text-button">Bejelentkezés</button></p>
+        </section>
+      </div>
+      <p id="authStatus" class="auth-status" role="status" aria-live="polite">A belépés előkészítése…</p>
+      <button id="authRetry" type="button" class="auth-guest hidden">ÚJRAPRÓBÁLOM</button>
+      <button id="authContinue" type="button" class="auth-guest hidden">FOLYTATÁS MINT <b id="authContinueName"></b> <span aria-hidden="true">→</span></button>
+      <button id="authGuest" type="button" class="auth-guest">JÁTÉK VENDÉGKÉNT <span aria-hidden="true">→</span></button>
+      <footer class="auth-features">
+        <span><b aria-hidden="true">🕵️</b> VÁLASSZ KARAKTERT</span>
+        <span><b aria-hidden="true">⚖️</b> TÁRGYALJ ÉS NEVESS</span>
+        <span><b aria-hidden="true">🏆</b> GYŰJTSD A PONTOKAT</span>
+      </footer>
+    </div>
+  </main>
+
+  <dialog id="authRecovery" class="auth-recovery" aria-labelledby="authRecoveryTitle">
+    <form id="authRecoveryForm" class="auth-card">
+      <button id="authRecoveryClose" type="button" class="auth-close" aria-label="Bezárás">×</button>
+      <h2 id="authRecoveryTitle">Elfelejtett jelszó</h2>
+      <p id="authRecoveryIntro" class="auth-card-intro">Elküldjük az új jelszó beállításához szükséges linket.</p>
+      <div id="authForgotFields"><label for="authRecoveryEmail">E-mail cím</label><input id="authRecoveryEmail" type="email" autocomplete="email" maxlength="254" required></div>
+      <div id="authResetFields" class="hidden">
+        <label for="authNewPassword">Új jelszó (legalább 12 karakter)</label>
+        <input id="authNewPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128">
+        <label for="authNewConfirm">Új jelszó még egyszer</label>
+        <input id="authNewConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128">
+      </div>
+      <p id="authRecoveryMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+      <button id="authRecoverySubmit" type="submit" class="auth-submit">LINK KÜLDÉSE</button>
+    </form>
+  </dialog>
+
   <!-- ===================== KI VAGY TE, GYANÚSÍTOTT? ===================== -->
-  <div id="screen-name" class="screen active screen-station">
+  <div id="screen-name" class="screen screen-station">
     <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
     <div class="station-header">
       <h1 class="logo">KAMU BÍRÓSÁG</h1>
@@ -20,7 +123,10 @@
       <p class="subtitle">KI VAGY TE, GYANÚSÍTOTT? Kattints a saját bögrefotódra.</p>
     </div>
 
+    <div id="registryStatus" class="registry-status" role="status" aria-live="polite"></div>
+    <button id="btnRegistryRetry" class="btn small hidden">ÚJRA</button>
     <div id="mugGrid" class="mug-grid"></div>
+    <button id="btnNameBack" class="btn small ghost">↩ VISSZA</button>
 
     <div class="new-suspect-box">        <button id="btnNewSuspect" class="btn police">ÚJ GYANÚSÍTOTT (vendég vagyok)</button>
       <div id="guestForm" class="guest-form hidden">
@@ -31,6 +137,37 @@
         <p id="guestPrior" class="guest-prior"></p>
       </div>
     </div>
+  </div>
+
+  <!-- Avatárválasztó: a bögrekártyára kattintás után ugrik fel -->
+  <div id="avatarModal" class="avatar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="avatarModalTitle">
+    <div class="avatar-panel">
+      <div class="avatar-panel-head">
+        <img id="avatarModalPreview" class="avatar-preview" src="" alt="">
+        <div>
+          <h2 id="avatarModalTitle">Válaszd ki az avatárodat!</h2>
+          <p>Ezzel a figurával jelensz meg a teremben: <b id="avatarModalName"></b></p>
+        </div>
+      </div>
+      <div id="avatarModalGrid" class="avatar-grid avatar-modal-grid"></div>
+      <div class="avatar-panel-foot">
+        <button id="avatarModalCancel" type="button" class="btn small ghost">MÉGSEM</button>
+        <button id="avatarModalOk" type="button" class="btn big">BELÉPÉS A NYILVÁNTARTÁSBA</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="accountDock" class="account-dock hidden">
+    <details id="accountDetails">
+      <summary id="accountLabel">FIÓKOM</summary>
+      <div class="account-content">
+        <p id="accountEmail"></p>
+        <div id="accountConnections" class="account-connections"></div>
+        <p id="accountMessage" role="status" aria-live="polite"></p>
+        <button id="accountLogout" type="button" class="btn small ghost">KIJELENTKEZÉS</button>
+      </div>
+    </details>
+    <button id="accountSignIn" type="button" class="btn small ghost hidden">BEJELENTKEZÉS / REGISZTRÁCIÓ</button>
   </div>
 
   <!-- ===================== MENÜ (szoba létrehozása / csatlakozás) ===================== -->
@@ -67,7 +204,8 @@
         <button id="btnCopyLink" class="btn police">Link másolása Discordra</button>
         <button id="btnAddBot" class="btn small hidden">Bot hozzáadása</button>
         <button id="btnRemoveBot" class="btn small hidden">Bot eltávolítása</button>
-        <button id="btnLeaveLobby" class="btn small ghost">Kilépés</button>
+        <button id="btnLeaveLobby" class="btn small ghost">KILÉPÉS</button>
+        <button id="btnBackToName" class="btn small ghost hidden">↩ VISSZA</button>
       </div>
 
       <!-- Plakátfal -->
@@ -93,10 +231,12 @@
           <label>Körök száma: <input type="number" id="setRounds" min="1" max="12" value="3"></label>
           <label class="check"><input type="checkbox" id="setWitnessOn" checked> Meglepetés tanú</label>
           <label class="check"><input type="checkbox" id="setChallengesOn" checked> Kihíváskártyák</label>
+          <label class="check"><input type="checkbox" id="setAutoRound" checked> Automatikus következő kör</label>
+          <label class="check"><input type="checkbox" id="setAutoGame" checked> Automatikus új játék</label>
         </div>
         <h4 class="folder-heading">Kihívás-ellenőrzés: ki dönt a titkos kihívásokról?</h4>
         <div class="judge-mode-row">
-          <label class="check radio"><input type="radio" name="challengeMode" id="setChallengeJudge" value="judge" checked> 👨‍⚖️ Bíró dönt (a tárgyalás vezetője, kihívásnál sorsolt esküdt)</label>
+          <label class="check radio"><input type="radio" name="challengeMode" id="setChallengeJudge" value="judge" checked> 👨‍⚖️ Bíró dönt (az adott kör bírója)</label>
           <label class="check radio"><input type="radio" name="challengeMode" id="setChallengeJury" value="jury"> 🗳️ Esküdtek szavaznak</label>
         </div>
         <h4 class="folder-heading">Saját vádak (belsős poénok):</h4>
@@ -122,23 +262,22 @@
       <!-- A) SZÍNPAD: a tárgyalóterem teljes fényerővel, karakterekkel -->
       <section class="stage-zone" id="stageZone">
         <div class="stage-canvas" id="stage">
-          <img class="stage-bg" src="/assets/targyalotterem.svg" alt="">
-
-          <!-- bútorlapok: a mögöttük álló karakterek alsó részét takarják -->
-          <div class="furniture f-bench" aria-hidden="true"></div>
-          <div class="furniture f-table-left" aria-hidden="true"></div>
-          <div class="furniture f-jury" aria-hidden="true"></div>
-          <div class="furniture f-table-front" aria-hidden="true"></div>
+          <img class="stage-bg" src="/assets/targyalotterem.jpg" alt="">
 
           <!-- a terem bírója: mindig látszik, a pulpitus mögül emelkedik ki
                (a stageSlots újratelepítéskor nem törlődhet, ezért azon kívül van) -->
           <div class="stage-slot judge-slot" id="judge" data-role="judge">
-            <div class="st-fig"><img class="judge-svg" src="/assets/biro.svg" alt="Bíró"></div>
+            <div class="st-fig"><div class="st-art"><img class="st-base" src="/assets/biro.png" alt="Bíró"><div class="st-fallback"><span>⚖️</span></div></div></div>
             <div class="gavel" id="gavel">🔨</div>
           </div>
 
           <!-- karakterek -->
           <div id="stageSlots" class="stage-slots"></div>
+          <!-- A háttér ugyanazon képrészletei takarják a bútorok mögötti alakokat. -->
+          <div id="sceneFurniture" class="scene-furniture" aria-hidden="true"></div>
+          <div id="stagePlates" class="stage-plates">
+            <div id="judgePlate" class="stage-plate judge-plate" data-role="judge"></div>
+          </div>
 
           <div class="stage-flash" id="stageFlash"></div>
           <div id="judgeBubble" class="judge-bubble"></div>
@@ -146,14 +285,17 @@
         </div>
       </section>
 
-      <!-- B) VÉKONY INFO SÁV: vád + kör/szobakód/hang -->
+      <div id="accusationTicker" class="accusation-ticker hidden" role="button" tabindex="0" aria-expanded="false" aria-label="A teljes vád megnyitása"></div>
+
+      <!-- Lebegő HUD: kör/szobakód/hang, külön a vád-táblától. -->
       <div class="info-bar">
         <span id="gameRound" class="round-badge">1. tárgyalás</span>
         <span id="gameCode" class="code-badge"></span>
-        <div id="accusationTicker" class="accusation-ticker hidden"></div>
-        <button id="btnMute" class="btn tiny">🔊</button>
-        <input type="range" id="volume" min="0" max="100" value="70" class="volume">
-        <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
+      <button id="btnMute" class="btn tiny">🔊</button>
+      <input type="range" id="volume" min="0" max="100" value="70" class="volume">
+      <button id="btnReduceMotion" class="btn tiny" title="Mozgás csökkentése" aria-label="Mozgás csökkentése" aria-pressed="false">🏃 Mozgás: TELJES</button>
+      <button id="btnLeaveGame" class="btn tiny ghost">KILÉPÉS</button>
+      <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
       </div>
 
       <!-- FÁZIS-SÁV: a fázis neve + a beszélő (EGYETLEN cím a képernyőn) -->
@@ -162,8 +304,11 @@
       <!-- Bírói figyelő sáv: egy sor; kinyitva lebegő panel (nem tolja a tartalmat) -->
       <div id="judgeWatchBar" class="judge-watch-bar hidden"></div>
 
-      <!-- C) TARTALOM: kártyák, gombok – a maradék hely, függőlegesen középre -->
-      <div class="content-zone">
+      <!-- KÁRTYÁIM sáv: az ügyész és a védőügyvéd folyamatos kártyái (kompakt, nem tolja a tartalmat) -->
+      <div id="myCardsBar" class="my-cards-bar hidden"></div>
+
+      <!-- Áttetsző fázispanel: a tartalom fölött a jelenet továbbra is látszik. -->
+      <div class="content-zone" id="scenePanel" aria-label="Tárgyalási műveletek">
         <div id="phaseContent" class="phase-content"></div>
       </div>
     </div>
@@ -213,5 +358,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/client.js"></script>
+  <script src="/auth.js"></script>
 </body>
 </html>

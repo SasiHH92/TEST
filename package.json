@@ -4,18 +4,26 @@
   "description": "Online multiplayer party játék – hangalapú kamubíróság Discordon",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "node test/e2e.js"
+    "start": "node hydrate.js && node server.js",
+    "test": "node test/e2e.js",
+    "test:rules": "node test/rules.js",
+    "test:rooms": "node test/room-sockets.js",
+    "test:bots": "node test/e2e-bots.js",
+    "test:browser": "node test/browser-check.js",
+    "test:auth": "node test/auth.js",
+    "test:storage": "node test/storage.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "express": "^4.19.2",
+    "pg": "^8.23.1",
     "qrcode": "^1.5.4",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
+    "pg-mem": "^3.0.14",
     "socket.io-client": "^4.8.4"
   }
 }

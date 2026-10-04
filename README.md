@@ -1,5 +1,7 @@
 # ⚖️ KAMU BÍRÓSÁG
 
+Új belépés és regisztráció: [AUTH_BEALLITAS.md](AUTH_BEALLITAS.md). Az e-mailes fiókok önállóan működnek; a Google-, Discord- és jelszó-visszaállítási beállításokat ez az útmutató tartalmazza. Vendégként továbbra is lehet játszani.
+
 Online multiplayer party játék 3–8 játékosnak, **Discord hanggal**.
 
 A játék a tárgyalást vezeti le: kiosztja a szerepeket, megmutatja a vádat és a titkos kártyákat, méri, ki mennyi ideig beszélhet, és lebonyolítja a szavazást. A vádbeszéd és a védekezés **élőszóban, Discordon** zajlik – a játékban nincs se gépelés, se chat. A hangulat teljesen komolytalan, de "hivatalos" bírósági körítéssel – ráadásul **rendőrségi nyilvántartásos lobbyval**: körözési plakátokkal, bögrefotó-kártyákkal és futószalagos rendőrségi hírekkel.
@@ -11,7 +13,7 @@ A játék a tárgyalást vezeti le: kiosztja a szerepeket, megmutatja a vádat �
 - A bent lévők **KÖRÖZÉS – WANTED plakátokon** látszanak a faliújságon: név, jelvény, titulus, priusz, **vérdíj** (a pontszámból: pl. „3 lángos és egy sör"), és „Elítélve: Xx | Felmentve: Yx". Új plakát rajzszög-animációval tűződik fel, kilépő leesik. A legtöbbet elítéltnek **„KÖZELLENSÉG №1"** szalag jár, a házigazdának **„A TÁRGYALÁS VEZETŐJE"** pecsét. Pár plakátot **piros nyomozós fonál** köt össze.
 - A játékmód-választó **ügyiratmappa**: „ÜGYSZÁM: MINECRAFT" stb., a kiválasztottakon piros **AKTÍV ÜGY** pecsét.
 - A szobakód **„ÜGYIRAT SZÁMA"** dobozban van, mellette Discord-link másoló és **QR-kód**: a telefonnal beolvasva azonnal a szobába kerülsz (kattintásra nagyít).
-- **AFK-védelem** is épül a menetbe: a vádemelés, a szavazás és a kihívás-szavazás **automatikusan lezárul** (2–3 perc), ha valaki nem reagál – a hiányzó szavazat „ártatlan"/„nem teljesített" alapértékkel számol, így egy kiesett játékos nem állítja le az estét.
+- **AFK-védelem** is épül a menetbe: a vádemelés, a szavazás és a kihívás-szavazás **automatikusan lezárul** (2–3 perc), ha valaki nem reagál – az ítéletet a leadott szavazatok döntik el, a hiányzó kihívás-szavazatok nem teljesítettnek számítanak, így egy kiesett játékos nem állítja le az estét.
 - Lent **futószalag** fut a véletlenszerű rendőrségi hírekkel a bent lévőkről („RENDKÍVÜLI: [név] ismét 'pill'-t írt…").
 
 ## Bűnügyi nyilvántartás (data/stats.json)
@@ -29,14 +31,14 @@ A szerver név szerint megjegyzi az előre megadott játékosokra: **hányiszor 
 7. **ZÁRÓSZÓ (20–20 mp)** – először az ügyész, aztán a vádlott.
 8. **ÍTÉLET** – az esküdtek titkosan szavaznak: BŰNÖS vagy ÁRTATLAN. Dobpergés, kalapácsütés, majd a bíró kihirdeti az eredményt *és azt is, ki hogyan szavazott*.
 
-> **AFK-védelem:** a fenti 1. (vádemelés) és a 8. (szavazás) lépés, valamint a kihívás-szavazás időzítővel is rendelkezik – lejáratkor automatikusan továbblép, a hiányzó szavazatok „ártatlan"/„nem teljesített" kimenetet kapnak.
+> **AFK-védelem:** a fenti 1. (vádemelés) és a 8. (szavazás) lépés, valamint a kihívás-szavazás időzítővel is rendelkezik – lejáratkor automatikusan továbblép, az ítéletet a leadott szavazatok döntik el, a hiányzó kihívás-szavazat nem teljesítettnek számít.
 
 ## Extrák
 
-- **TILTAKOZOM!** – az ellenfél fél körönként egyszer tiltakozhat a másik beszéde közben: nagy animáció + hang, az idő 5 mp-re megáll, a bíró véletlenszerűen dönt: „Elfogadva!" (a beszélő 10 mp-et veszít) vagy „Elutasítva!".
+- **TILTAKOZOM!** – az ellenfél a beszéd alatt tiltakozhat a másik beszéde közben: nagy animáció + hang, a beszédóra megáll, a beszélő 20 mp-ig védekezik, majd a kör bírója 15 mp-en belül dönt. Jogos: −20 mp a beszélőtől (legalább 5 mp marad). Nem jogos/időtúllépés: −20 mp a tiltakozó következő beszédéből, ha van még. Játékosonként beszédfázisonként 1, körönként legfeljebb 2 tiltakozás.
 - **Reakciógombok** az esküdteknek (😂 💀 🤡 🔥 👏) – az emoji átrepül mindenki képernyőjén. A legtöbb 😂-t kapó beszélő **Közönségkedvenc** bónuszt kap.
-- **Kihíváskártyák** – ügyész és vádlott titkos beszéd-kihívást kap („Suttogva beszélj", „Használd a 'pogácsa' szót háromszor"…). A kör végén az esküdtek szavaznak, hogy teljesítették-e – bónusz pont jár érte.
-- **„Rendet a teremben!"** – házigazdai gomb kalapácsütéssel.
+- **Kihíváskártyák** – ügyész és vádlott titkos beszéd-kihívást kap („Suttogva beszélj", „Használd a 'pogácsa' szót háromszor"…). Alapból a kör bírója dönt, kihívásonként 20 mp alatt; időtúllépés = nem sikerült. Teljesítés +2, nehezítés +4 pont. Az esküdtek szavazása a lobbyban választható.
+- **„Rendet a teremben!"** – csak a kör bírója használhatja, kalapácsütéssel.
 - **Vicces ítéletek** – bűnösség esetén 60-féle büntetés („3 hónap közösségi munka egy kacsaúsztatóban"), felmentés esetén gyanakvó felmentő szövegek.
 - **Bírósági jegyzőkönyv** – minden tárgyalás után letölthető PNG-kép, amit be lehet dobni a Discordra.
 - **Játék vége** – ranglista, konfetti és díjak: A legjobb ügyvéd, A legnagyobb bűnöző, Közönségkedvenc, Kihívás bajnok. + „Új tárgyalás" gomb.
@@ -107,36 +109,6 @@ Egyedül is ki tudod próbálni a teljes játékot: a házigazda a lobbyban boto
 
 > Tipp: a leggyorsabb egyedüli teszt – hozz létre egy szobát, nyomj 3× **Bot hozzáadása**, majd **Tárgyalás indítása**. Az egész tárgyalás így is végigfut, amíg a botok időzítői engedik.
 
-## Ellenőrzések
-
-```bash
-npm test
-npm run test:auth
-npm run test:rules
-npm run test:rooms
-npm run test:bots
-node test/deploy-check.js
-```
-
-Az alapteszt és a hálózati bot-teszt statisztikát írhat, ezért egymás után fusson. A `test:rules` a játékszabályokat, titkos kártyák címzettjeit, bírórotációt, tiltakozást, kihívást, szerepátadást és automatikát ellenőrzi. A stresszteszt a valódi BotManager hívásait futtatja virtuális órával, hat teljes, háromkörös játékban, 3–8 fővel.
-
-A böngészős ellenőrzés opcionális Playwrightot és Chromiumot igényel:
-
-```bash
-npm install --no-save playwright
-npx playwright install chromium
-npm run test:browser
-```
-
-Ez a 12 névkártya, vendég/módválasztás/kilépés és 15 fázis × 5 képernyőméret ellenőrzésére szolgál: 1366×768, 1643×600, 1920×1080, 390×844 és 360×640. A 4. fázis végén a parancsot újra elindítottuk, de a Chromium futtatható fájlja hiányzott. A másik böngésző a helyi oldalt `ERR_BLOCKED_BY_CLIENT` hibával blokkolta. A méretek tényleges mérése ezért nem futott le; a teszt forrása nem jelent sikeres vizuális eredményt. `QA_SCREENSHOTS` megadásával képeket is menthet.
-
-A korábban készített, opcionális képfeldolgozó teszt szintetikus bemenetet használ. A csatolt v3 képeket változtatás nélkül használjuk; a játék futtatásához vagy a kész grafikák beépítéséhez ez a Python-teszt nem szükséges:
-
-```bash
-python -m pip install -r scripts/graphics-requirements.txt
-python test/assets-pipeline.py
-```
-
 ## Helyi futtatás
 
 ```bash
@@ -151,12 +123,16 @@ A port átírható: `PORT=8080 npm start`
 ### Tesztelés
 
 ```bash
-npm test                  # 4 virtuális játékossal végigjátssza a teljes játékot (39 ellenőrzés)
+npm test                  # nyilvántartás, vendég és játék/pontírás (18 ellenőrzés)
+npm run test:rules        # 12 szabály- és időzítési tesztcsoport
+npm run test:rooms        # valódi Socket.io: jogosultságok, kirúgás, kilépés
 node test/e2e-bots.js     # 1 ember + 4 bot, 2 kör botokkal (22 ellenőrzés)
-node test/stress-bots.js  # 6 szimulált botos játék megbízhatósági futtatás
+node test/stress-bots.js  # 6 teljes, háromkörös botjáték virtuális órával (3–8 fő)
 ```
 
-A bot-tesztek is valós szervert indítanak, végigjátszanak rajta két kört, és ellenőrzik, hogy a botok nem kerülnek be a nyilvántartásba.
+A hálózati bot-teszt valós szerveren, valós időzítőkkel játszik két kört. A stresszteszt a valódi BotManager időzített műveleteit futtatja virtuális órával; mind a hat játékmódot és a 3–8 fős szobákat ellenőrzi.
+
+A kész v3 karakter-PNG-k és a tárgyalóterem JPG/PNG háttere az `assets/` mappában van. A színpad ezekkel működik, külön beszélőképek és Python utómunka nélkül. A `GRAPHICS_V4.md` írja le a beépítést; a `CHANGES_V4.md` az elkészült javításokat, teszteket és a helyben ellenőrizendő böngészős elrendezést.
 
 ## Online üzem ingyen: Render.com
 
@@ -196,8 +172,8 @@ A kapott `https://…onrender.com` linket dobd be a Discord szobába. A szobakó
 ### 4. Amit az ingyenes csomagról érdemes tudni ⚠️
 
 - **Alvás:** kb. **15 perc inaktivitás** után a Render leállítja a szervert. Az első látogató **kb. 30–60 mp-et vár**, míg újraindul. Játék előtt nyissa meg a linket a házigazda, várja meg, míg betölt, és utána hívja be a többieket.
-- **Újraindulás = szobák elvesznek:** a szobák a memóriában élnek, így a szerver alvás/újraterelés után üresen indít. A játék közben megszakadó kapcsolatnál a kliens **automatikusan újracsatlakozik** („Kapcsolat megszakadt, újracsatlakozás…” sáv); ha a szoba már nem létezik, a kliens értelmes hibát kap („A szoba megszűnt, hozz létre egy újat!") és vissza tud lépni a menübe.
-- **A lemez ideiglenes:** a `data/stats.json` (bűnügyi nyilvántartás) újraindításkor **nullázódhat** – ez nem hiba, a játék tökéletesen fut nélküle (a kód kezeli, ha a fájl hiányzik vagy sérült). Ha tartósan szeretnéd a statisztikákat, akkor fizetős tárhely kell tartós lemezzel.
+- **Újraindulás = szobák elvesznek:** a szobák a memóriában élnek, így a szerver alvás/újraterelés után üresen indít. A játék közben megszakadó kapcsolatnál a kliens **automatikusan újracsatlakozik** („Kapcsolat megszakadt, újracsatlakozás…” sáv); ha a szoba már nem létezik, a kliens értelmes hibát kap („A szoba megszűnt, hozz létre egy újat!”) és vissza tud lépni a menübe.
+- **A lemez ideiglenes:** a fiókok, a statisztika (`data/stats.json`) és az avatárok újraindításkor elveszhetnek. Tartós tárolásra a `DATABASE_URL` megadásával egy ingyenes külső Postgres használható, lásd **[TAROLAS.md](TAROLAS.md)**.
 - **Frissítés (deploy):** minden `git push` után a Render újraindítja a szervert – **a futó játékok megszakadnak**. Frissítést érdemes játék szünetében tenni.
 - **Alacsony processzor-limit:** az ingyenes példány lassabban ébred, és nagy terhelésnél lassíthat – 8 fős társasjátékhoz bőven elég.
 
@@ -222,7 +198,7 @@ A kapott `https://…onrender.com` linket dobd be a Discord szobába. A szobakó
 - **Backend:** Node.js + Express + Socket.io
 - **Frontend:** sima HTML/CSS/JavaScript (nincs build lépés)
 - **Minden játéklogika szerveren fut:** időzítők, szerepkiosztás, titkos kártyák, szavazás, pontozás. A titkos kártyák csak az adott játékos böngészőjébe kerülnek – a többiek state-jében soha nem utaznak.
-- **Visszacsatlakozás:** a kliens saját azonosítót (localStorage) használ, kiesés után a pontok megmaradnak, és a játék a kiesett játékos körében automatikusan továbbugrik.
+- **Visszacsatlakozás:** a kliens saját azonosítót és privát munkamenetkulcsot használ. 20 mp-en belül megtartja a szerepét, utána átadás történik, legalább 15 mp hátralévő idővel. A pontok a kilépő nevén megmaradnak. Hostátadás: 30 mp.
 
 ```
 kamu-birosag/
@@ -241,5 +217,4 @@ kamu-birosag/
     ├── e2e.js         # teljes játék 4 virtuális játékossal
     ├── e2e-bots.js    # teljes játék botokkal (1 ember + 4 bot)
     └── stress-bots.js # bot-megbízhatósági szimuláció (6 futás)
-```
 ```

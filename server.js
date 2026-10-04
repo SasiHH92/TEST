@@ -16,6 +16,9 @@ const express = require('express');
 const { Server } = require('socket.io');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
+const {createAuth,loadAuthEnvironment} = require('./auth');
+loadAuthEnvironment(path.join(__dirname,'.env'));
+const {storage} = require('./storage'); // tartós mentés külső adatbázisba (DATABASE_URL)
 
 const { Game, PHASES, ALL_MODES } = require('./game');
 
@@ -40,6 +43,7 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 
 // Reverse proxy (Render) mögött a kliens IP-je a proxy fejlécéből jön.
 app.set('trust proxy', 1);
+app.use('/api/auth',createAuth({persist:()=>storage.push('accounts')}).router);
 
 // Statikus fájlok: a html/js/css ETag/Last-Modified fejléccel (nem cache-el hosszan),
 // a rajzok (assets/) hosszan cache-elhetők, mert ritkán változnak.
@@ -107,11 +111,15 @@ let lastStatsSaveError = null;
 // Kis késleltetéssel írunk, hogy sok szavazatnál ne splutterjön a lemez.
 // HIBATŰRŐ: ha a lemez nem írható (pl. az ingyenes tárhely ideiglenes lemeze),
 // a játék fut tovább, csak a nyilvántartás elveszhet – ugyanaz a hiba csak egyszer naplózódik.
+let statsPending = false;
 function saveStats() {
   clearTimeout(statsSaveTimer);
+  statsPending = true;
   statsSaveTimer = setTimeout(() => {
+    statsPending = false;
     try {
       fs.writeFileSync(STATS_FILE, JSON.stringify(STATS, null, 2));
+      storage.push('stats');
       lastStatsSaveError = null;
     } catch (e) {
       if (lastStatsSaveError !== e.code) {
@@ -146,6 +154,29 @@ const REGISTRY = PLAYER_DB.players.map((p) => ({
   priusz: p.priusz || '',
   stats: statsForName(p.nev)
 }));
+
+// A nyilvántartott játékosok utoljára választott avatárja (név -> "av01"…"av50"),
+// hogy a névválasztó kártyákon mindenkinél látsszon. Hibatűrő mentés, mint a statisztikánál.
+const AVATARS_FILE = path.join(__dirname, 'data', 'avatars.json');
+const AVATAR_ID_RE = /^av(0[1-9]|[1-4]\d|50)$/;
+let PROFILE_AVATARS = {};
+try {
+  PROFILE_AVATARS = JSON.parse(fs.readFileSync(AVATARS_FILE, 'utf8')) || {};
+} catch (e) {
+  if (e.code !== 'ENOENT') console.error('data/avatars.json nem olvasható – üresen indul:', e.message);
+}
+let avatarSaveTimer = null;
+let avatarsPending = false;
+function saveProfileAvatars() {
+  clearTimeout(avatarSaveTimer);
+  avatarsPending = true;
+  avatarSaveTimer = setTimeout(() => {
+    avatarsPending = false;
+    try { fs.writeFileSync(AVATARS_FILE, JSON.stringify(PROFILE_AVATARS, null, 2)); storage.push('avatars'); } catch (e) {
+      console.error('Nem sikerült menteni az avatárokat:', e.message);
+    }
+  }, 300);
+}
 
 const GUEST_PRIORS = PLAYER_DB.vendeg_priuszok || ['Előélete tiszta. Túl tiszta.'];
 
@@ -198,6 +229,8 @@ function sanitizeSettings(s, prev) {
     rounds: num('rounds', 1, 12),
     witnessEnabled: bool('witnessEnabled'),
     challengesEnabled: bool('challengesEnabled'),
+    autoNextRound: bool('autoNextRound'),
+    autoNewGame: bool('autoNewGame'),
     challengeMode: s.challengeMode !== undefined ? (s.challengeMode === 'jury' ? 'jury' : 'judge') : prev.challengeMode, // 'judge' = bíró dönt, 'jury' = esküdtek szavaznak
     // Csak olyan módok maradhatnak, amelyekhez létezik pakli a cards.json-ben.
     modes: Array.isArray(s.modes)
@@ -234,7 +267,7 @@ function isRateLimited(socket, evt) {
   return false;
 }
 
-const pidRoom = (playerId) => 'p:' + playerId;
+const pidRoom = (playerId, code) => 'p:' + code + ':' + playerId;
 
 // Avatar-dekorációk (nem kártyatartalom).
 const APPEARANCES = ['bírói kalap', 'paróka', 'rabruha', 'napszemüveg', 'feltűnő csokornyakkendő', 'birkajelmez', 'pókaszapityó', 'ünnepi kalap'];
@@ -273,11 +306,29 @@ io.on('connection', (socket) => {
       }
     }
     if (typeof ack === 'function') ack({
-      registry: REGISTRY,
+      registry: REGISTRY.map((r) => ({ ...r, avatar: PROFILE_AVATARS[r.nev] || '' })),
       vendegPriuszok: GUEST_PRIORS,
       takenNames: Array.from(taken)
     });
   });
+
+  // ---- Egy nyilvántartott játékos avatárjának mentése (kártyára kattintás után) ----
+  safeOn('set_avatar', ({ name, avatar } = {}) => {
+    if (typeof name !== 'string' || !REGISTRY.some((r) => r.nev === name)) return;
+    if (typeof avatar !== 'string' || !AVATAR_ID_RE.test(avatar)) return;
+    PROFILE_AVATARS[name] = avatar;
+    saveProfileAvatars();
+  });
+
+  function detachPreviousRoom() {
+    const prev=sockets.get(socket.id);
+    if (!prev) return;
+    sockets.delete(socket.id);
+    socket.leave(prev.code);
+    socket.leave(pidRoom(prev.playerId, prev.code));
+    const game=rooms.get(prev.code);
+    if (game && ![...sockets.values()].some((x)=>x.code===prev.code&&x.playerId===prev.playerId)) game.handleLeave(prev.playerId);
+  }
 
   // ---- Szoba létrehozása ----
   safeOn('create_room', ({ name, avatar, playerId, profile }, ack) => {
@@ -285,19 +336,21 @@ io.on('connection', (socket) => {
     const code = newCode();
     if (!code) return ack && ack({ error: 'Nem sikerült szobát létrehozni.' });
     const pid = cleanPlayerId(playerId, socket.id);
+    detachPreviousRoom();
     const game = new Game(code, io);
     rooms.set(code, game);
     game.addPlayer(pid, name, cleanAvatar(avatar), true);
     game.getPlayer(pid).profile = cleanProfile(profile);
+    game.getPlayer(pid).sessionToken = crypto.randomBytes(24).toString('hex');
     socket.join(code);
-    socket.join(pidRoom(pid));
+    socket.join(pidRoom(pid, code));
     sockets.set(socket.id, { code, playerId: pid });
-    ack && ack({ code, playerId: pid, state: game.publicState(pid), appearances: APPEARANCES });
+    ack && ack({ code, playerId: pid, sessionToken: game.getPlayer(pid).sessionToken, state: game.publicState(pid), appearances: APPEARANCES });
     game.broadcast();
   });
 
   // ---- Csatlakozás kóddal (visszacsatlakozás is ez) ----
-  safeOn('join_room', ({ code, name, avatar, playerId, profile }, ack) => {
+  safeOn('join_room', ({ code, name, avatar, playerId, profile, sessionToken }, ack) => {
     const norm = String(code || '').trim().toUpperCase();
     const game = rooms.get(norm);
     if (!game) {
@@ -306,9 +359,18 @@ io.on('connection', (socket) => {
       return ack && ack({ error: 'A szoba megszűnt, hozz létre egy újat! (' + norm + ')' });
     }
     const pid = cleanPlayerId(playerId, socket.id);
+    // KIRÚGOTT játékos: az adott játék alatt a kóddal sem tud visszalépni.
+    // A lobbyba visszatérve (vagy új játékkal) a házigazda újra meghívhatja.
+    if ((game.kickedIds.has(pid) || game.kickedNames.has(String(name).slice(0,20).toLowerCase())) && game.phase !== 'lobby') {
+      return ack && ack({ error: 'A házigazda kirúgott a szobából – a lobbyba visszatérve, vagy új játékkal csatlakozhatsz újra.' });
+    }
     const returning = game.players.has(pid);
+    const existing = game.getPlayer(pid);
+    if (returning && existing.sessionToken && existing.sessionToken !== sessionToken) {
+      return ack && ack({error:'Ez a játékosazonosító másik munkamenethez tartozik.'});
+    }
     if (!returning) {
-      if (game.players.size >= 8) {
+      if (game.activePlayers().length >= 8) {
         return ack && ack({ error: 'A szoba tele van (max 8 játékos).' });
       }
       // Ugyanaz a név egyszer lehet a szobában.
@@ -318,13 +380,21 @@ io.on('connection', (socket) => {
         return ack && ack({ error: '"' + name + '" már ŐRIZETBEN van ebben a szobában!' });
       }
     }
+    const prev=sockets.get(socket.id);
+    if (prev && (prev.code!==norm || prev.playerId!==pid)) detachPreviousRoom();
     game.addPlayer(pid, name, cleanAvatar(avatar), false);
-    game.getPlayer(pid).profile = cleanProfile(profile);
-    if (returning) game.handleReconnect(pid);
+    const meP = game.getPlayer(pid);
+    if (meP.kickedOut) {
+      meP.kickedOut = false; // lobbyban a házigazda visszahívhatta
+      game.kickedIds.delete(pid);
+    }
+    meP.profile = cleanProfile(profile);
+    if (!meP.sessionToken) meP.sessionToken = crypto.randomBytes(24).toString('hex');
     socket.join(norm);
-    socket.join(pidRoom(pid));
+    socket.join(pidRoom(pid, norm));
     sockets.set(socket.id, { code: norm, playerId: pid });
-    ack && ack({ code: norm, playerId: pid, state: game.publicState(pid), appearances: APPEARANCES });
+    if (returning) game.handleReconnect(pid);
+    ack && ack({ code: norm, playerId: pid, sessionToken: meP.sessionToken, state: game.publicState(pid), appearances: APPEARANCES });
     game.broadcast();
   });
 
@@ -374,6 +444,8 @@ io.on('connection', (socket) => {
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
     if (!game) return;
+    if (game.hostId() !== sess.playerId) return ack && ack({error:'Csak a házigazda indíthat tárgyalást.'});
+    if (game.activePlayers().length < 3) return ack && ack({error:'Legalább 3 játékos kell.'});
     const payload = args.find((a) => a && typeof a === 'object' && !Array.isArray(a));
     const raw = (payload && payload.settings) || null;
     // A start-gombbal érkező beállítások is fertőtlenítve mennek a motorhoz
@@ -443,7 +515,7 @@ io.on('connection', (socket) => {
   safeOn('proceed_after_verdict', () => {
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
-    if (game) game.proceedAfterVerdict();
+    if (game && game.hostId() === sess.playerId) game.proceedAfterVerdict();
   });
 
   safeOn('next_round', () => {
@@ -452,28 +524,43 @@ io.on('connection', (socket) => {
     if (game) game.nextAfterResults(sess.playerId);
   });
 
-  safeOn('new_game', () => {
-    const sess = sockets.get(socket.id);
-    const game = sess && rooms.get(sess.code);
-    if (!game || game.hostId() !== sess.playerId) return;
-    game.phase = PHASES.LOBBY;
-    game.round = 0;
-    game.roundData = null;
-    game.clearTimers();
-    for (const p of game.players.values()) {
-      p.score = 0;
-      p.laughCount = 0;
-      p.convictions = 0;
-      p.challengesDone = 0;
-    }
-    game.broadcast();
+  safeOn('new_game', (...args) => {
+    const ack=findAck(args);
+    const sess=sockets.get(socket.id);
+    const game=sess&&rooms.get(sess.code);
+    const ok=game&&game.restartGame(sess.playerId);
+    ack && ack(ok ? {ok:true} : {error:'Az új játékot csak a házigazda indíthatja a ranglistáról.'});
+  });
+  safeOn('stop_auto_game', (...args) => {
+    const ack=findAck(args);
+    const sess=sockets.get(socket.id);
+    const game=sess&&rooms.get(sess.code);
+    const ok=game&&game.stopAutomaticRestart(sess.playerId);
+    ack && ack(ok ? {ok:true} : {error:'Csak a házigazda állíthatja meg az új játékot.'});
   });
 
-  // ---- TILTAKOZOM! ----
+  // ---- TILTAKOZOM! (új rendszer) ----
   safeOn('objection', () => {
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
     if (game) game.tryObjection(sess.playerId);
+  });
+
+  // Védekezés vége: a megtámadott beszélő "Végeztem"-ot nyom.
+  safeOn('objection_defense_done', () => {
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    if (game) game.objectionDefenseDone(sess.playerId);
+  });
+
+  // Bíró döntése a tiltakozásról (csak a bíró küldheti).
+  safeOn('objection_judge_decision', ({ accepted }, ack) => {
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    if (!game) return ack && ack({ error: 'Nincs szoba.' });
+    const ok = game.objectionJudgeDecision(sess.playerId, !!accepted);
+    if (!ok) return ack && ack({ error: 'Nem tegyél ilyet!' });
+    ack && ack({ ok: true });
   });
 
   // ---- Reakciók ----
@@ -483,22 +570,58 @@ io.on('connection', (socket) => {
     if (game) game.handleReaction(sess.playerId, emoji);
   });
 
-  // ---- Rendet a teremben! (csak házigazda) ----
+  // ---- Rendet a teremben! (csak az aktuális KÖR BÍRÓJA) ----
+  // SZERVERI ELLENŐRZÉS: a házigazda-iesség nem elég, csak a kör bírója
+  // kalapácsolhat. Körbíró nélkül ez a művelet nem elérhető.
   safeOn('order_in_court', () => {
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
-    if (!game || game.hostId() !== sess.playerId) return;
-    game.broadcastAll('order_in_court', {});
+    if (!game) return;
+    const d = game.roundData;
+    const roundJudge = (game.phase !== 'lobby' && d && d.currentJudgeId) ? d.currentJudgeId : null;
+    const allowed = !!roundJudge && roundJudge === sess.playerId;
+    if (!allowed) return;
+    game.broadcastAll('order_in_court', { by: sess.playerId });
+  });
+
+  // ---- HÁZIGAZDAI KIRÚGÁS ----
+  // SZERVERI ELLENŐRZÉS: csak a házigazda kérheti, magát nem rúghatja ki.
+  safeOn('kick_player', ({ playerId: targetId }, ack) => {
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    if (!game) return ack && ack({ error: 'Nincs szoba.' });
+    if (game.hostId() !== sess.playerId) return ack && ack({ error: 'Csak a házigazda rúghat ki játékost.' });
+    if (!targetId || targetId === sess.playerId) return ack && ack({ error: 'Érvénytelen kirúgás.' });
+    const target = game.getPlayer(targetId);
+    if (!target) return ack && ack({ error: 'Nincs ilyen játékos a szobában.' });
+    const ok = game.kickPlayer(targetId);
+    if (!ok) return ack && ack({ error: 'Nem sikerült a kirúgás.' });
+    // A kirúgott socket-munkamenetei megszűnnek (nem kaphat több szoba-eseményt,
+    // és nem tud eseményeket küldeni – pl. szavazatot).
+    for (const [sid, s] of sockets) {
+      if (s.playerId === targetId && s.code === game.code) sockets.delete(sid);
+    }
+    // Rövid késleltetéssel bontjuk a kapcsolatát, hogy a kliens előbb megkapja
+    // a you_are_kicked üzenetet és visszaérjen a menübe.
+    setTimeout(() => {
+      try { io.in(game.playerRoom(targetId)).disconnectSockets(true); } catch (e) { /* */ }
+    }, 600);
+    ack && ack({ ok: true });
   });
 
   // ---- Kilépés ----
-  safeOn('leave_room', () => {
+  safeOn('leave_room', (...args) => {
+    const ack = findAck(args);
     const sess = sockets.get(socket.id);
-    if (!sess) return;
+    if (!sess) return ack && ack({ ok: true });
     const game = rooms.get(sess.code);
     sockets.delete(socket.id);
+    socket.leave(sess.code);
+    socket.leave(pidRoom(sess.playerId, sess.code));
     if (game) game.handleLeave(sess.playerId);
-  });  safeOn('disconnect', () => {
+    ack && ack({ ok: true });
+  });
+  safeOn('disconnect', () => {
     rateWindows.delete(socket.id); // rate-limit ablak felszabadítása
     const sess = sockets.get(socket.id);
     if (!sess) return;
@@ -506,7 +629,7 @@ io.on('connection', (socket) => {
 
     sockets.delete(socket.id);
     if (game) {
-      game.handleDisconnect(sess.playerId);
+      if (![...sockets.values()].some((x)=>x.code===sess.code&&x.playerId===sess.playerId)) game.handleDisconnect(sess.playerId);
       // Ha a szoba teljesen kiürült, 10 perc múlva törlődik – addig még
       // visszacsatlakozhat bárki (pl. szerver újraindítás utáni frissítés).
       if (game.activePlayers().length === 0) {
@@ -552,6 +675,24 @@ Game.setStatRecorder((name, key, by) => bumpStat(name, key, by));
 
 // A state-küldés előtt frissítjük a profilok nyilvántartási számait.
 Game.setStateHook(attachStats);
+
+// Leállításkor (Render újraindítás / új telepítés) a függő mentések azonnal kiíródnak,
+// és feltöltődnek a külső adatbázisba.
+let shuttingDown = false;
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.on(sig, async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    try {
+      if (statsPending) { fs.writeFileSync(STATS_FILE, JSON.stringify(STATS, null, 2)); storage.push('stats'); }
+      if (avatarsPending) { fs.writeFileSync(AVATARS_FILE, JSON.stringify(PROFILE_AVATARS, null, 2)); storage.push('avatars'); }
+      await storage.flush();
+    } catch (e) {
+      console.error('Leállítás közbeni mentés sikertelen:', e.message);
+    }
+    process.exit(0);
+  });
+}
 
 server.listen(PORT, HOST, () => {
   console.log('KAMU BÍRÓSÁG fut: http://' + (HOST === '0.0.0.0' ? 'localhost' : HOST) + ':' + PORT + ' (PORT=' + PORT + ')');
