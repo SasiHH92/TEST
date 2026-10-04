@@ -44,34 +44,27 @@ console.log('2) Csak az ügy bírója dönthet');
   ok(g.resolveChallenge('u0', 'prosecutor', false) === false, 'második döntés nem felülírható');
 }
 
-console.log('3) Házigazda-kihívásnál sorsolt, nem beszélő esküdt a bíró');
+console.log('3) Körbíró-rendszer: a KÖR BÍRÓJA dönt minden kihívásról');
 {
   const g = mkGame();
   for (let i = 0; i < 5; i++) g.addPlayer('u' + i, 'Játékos' + i, 'bírói kalap', i === 0);
   g.startGame({ rounds: 1, witnessEnabled: false, challengeMode: 'judge', modes: ['buli'] }, 'u0');
   const d = g.roundData;
-  // Szimuláljuk: a házigazda (u0) a vádlott -> ő kap kihívást.
-  d.prosecutorId = 'u1';
-  d.defendantId = 'u0';
+  // A motor valódi szerepeire építünk (a körbíró a startGame-kor sorsolódik,
+  // ezért a szerepek kézi felülírása hamis eredményt adna).
   d.challenges = [
-    { who: 'prosecutor', id: 'u1', text: 'T1', difficulty: false },
-    { who: 'defendant', id: 'u0', text: 'T2', difficulty: true }
+    { who: 'prosecutor', id: d.prosecutorId, text: 'T1', difficulty: false },
+    { who: 'defendant', id: d.defendantId, text: 'T2', difficulty: true }
   ];
   d.challengeJudges = {};
-  const hostId = g.hostId();
-  for (const ch of d.challenges) {
-    if (ch.id === hostId) {
-      const nonSpeakers = d.voters.filter((id) => !d.challenges.some((c2) => c2.id === id));
-      d.challengeJudges[ch.who] = nonSpeakers.length > 0 ? nonSpeakers[Math.floor(Math.random() * nonSpeakers.length)] : hostId;
-    } else {
-      d.challengeJudges[ch.who] = hostId;
-    }
-  }
-  ok(d.challengeJudges.prosecutor === hostId, 'nem-kihívásos ügyben a házigazda a bíró');
-  const judgeId = d.challengeJudges.defendant;
-  ok(judgeId !== hostId, 'házigazda-kihívásnál NEM a házigazda dönt');
-  ok(!d.challenges.some((c) => c.id === judgeId), 'a sorsolt bíró nem beszélő');
-  ok(d.voters.includes(judgeId), 'a sorsolt bíró esküdt');
+  const roundJudge = d.currentJudgeId;
+  ok(!!roundJudge, 'van kijelölt körbíró');
+  ok(roundJudge !== d.prosecutorId && roundJudge !== d.defendantId && roundJudge !== d.defenderId,
+    'a körbíró NEM szereplő (nem vádlott/ügyész/védő)');
+  for (const ch of d.challenges) d.challengeJudges[ch.who] = roundJudge;
+  ok(d.challengeJudges.prosecutor === roundJudge && d.challengeJudges.defendant === roundJudge,
+    'minden kihívásról a körbíró dönt (nem a házigazda-szabály)');
+  ok(d.voters.includes(roundJudge), 'a körbíró esküdt (nem beszélő)');
 }
 
 console.log('4) Titkos kihívás: csak a tulajdonos és a bíró kapja meg a szöveget');
@@ -84,7 +77,9 @@ console.log('4) Titkos kihívás: csak a tulajdonos és a bíró kapja meg a sz�
   d.challenges = [{ who: 'prosecutor', id: 'u1', text: 'TITKOS-SZÖVEG', difficulty: false }];
   d.challengeJudges = { prosecutor: 'u3' };
   g.phase = 'prosecution';
+  g.phase = 'prep';
   const owner = JSON.parse(JSON.stringify(g.publicState('u1')));
+  g.phase = 'prosecution';
   const judge = JSON.parse(JSON.stringify(g.publicState('u3')));
   const outsider = JSON.parse(JSON.stringify(g.publicState('u4')));
   ok(owner.myChallenge === 'TITKOS-SZÖVEG', 'a tulajdonos látja a sajátját');

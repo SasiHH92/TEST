@@ -22,10 +22,10 @@ function check(name, cond) {
 
 function makeGame() {
   const warnings = [];
-  const g = new Game('TART', { to: () => ({ emit: () => {} }) });
-  g.io.emit = (evt, payload) => {
+  const emit = (evt, payload) => {
     if (evt === 'host_warning') warnings.push(payload && payload.message);
   };
+  const g = new Game('TART', { to: () => ({ emit }) });
   g.addPlayer('h1', 'Ember', 'paróka', true);
   for (let k = 0; k < 4; k++) g.addBot(); // 5 játékos: védőügyvéd is van
   return { g, warnings };
@@ -158,7 +158,7 @@ function playOneRound(g, mode, label) {
     check('SAJÁT vád: indul', ok !== false);
     check('SAJÁT vád: isCustomAccusation=true', g.roundData.isCustomAccusation === true);
     check('SAJÁT vád: publicState isCustom=true', g.publicState('h1').isCustom === true);
-    check('SAJÁT vád: a [vádlott] helyettesítve', g.roundData.accusationText.includes('Ember'));
+    check('SAJÁT vád: a [vádlott] helyettesítve', g.roundData.accusationText.includes(g.players.get(g.roundData.defendantId).name) && !g.roundData.accusationText.includes('[vádlott]'));
     g.clearTimers();
   }
 

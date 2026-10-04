@@ -1,2 +1,31 @@
-# TEST
+# Ellenőrzések
 
+```bash
+npm test
+npm run test:auth
+npm run test:rules
+npm run test:rooms
+npm run test:bots
+node test/deploy-check.js
+```
+
+Az alapteszt és a hálózati bot-teszt statisztikát írhat, ezért egymás után fusson. A `test:rules` a játékszabályokat, titkos kártyák címzettjeit, bírórotációt, tiltakozást, kihívást, szerepátadást és automatikát ellenőrzi. A stresszteszt a valódi BotManager hívásait futtatja virtuális órával, hat teljes, háromkörös játékban, 3–8 fővel.
+
+A böngészős ellenőrzés opcionális Playwrightot és Chromiumot igényel:
+
+A fiókteszt 31 HTTP-alapú esetet ellenőriz elkülönített, utána törölt fióktárban. A Google/Discord és a levélküldés teszt-transportot használ; éles bejelentkezéshez a saját beállítások szükségesek. A böngészőteszt belépési/regisztrációs utakat, tíz belépőoldali nézetet, a tárgyalási HUD-t és 25 képernyőképet is ellenőriz. A `QA_SCREENSHOTS` és `CHROMIUM_PATH` változók továbbra is használhatók.
+
+```bash
+npm install --no-save playwright
+npx playwright install chromium
+npm run test:browser
+```
+
+Ez a 12 névkártya, vendég/módválasztás/kilépés és 15 fázis × 5 képernyőméret ellenőrzésére szolgál: 1366×768, 1643×600, 1920×1080, 390×844 és 360×640. A 4. fázis végén a parancsot újra elindítottuk, de a Chromium futtatható fájlja hiányzott. A másik böngésző a helyi oldalt `ERR_BLOCKED_BY_CLIENT` hibával blokkolta. A méretek tényleges mérése ezért nem futott le; a teszt forrása nem jelent sikeres vizuális eredményt. `QA_SCREENSHOTS` megadásával képeket is menthet.
+
+A korábban készített, opcionális képfeldolgozó teszt szintetikus bemenetet használ. A csatolt v3 képeket változtatás nélkül használjuk; a játék futtatásához vagy a kész grafikák beépítéséhez ez a Python-teszt nem szükséges:
+
+```bash
+python -m pip install -r scripts/graphics-requirements.txt
+python test/assets-pipeline.py
+```

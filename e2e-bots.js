@@ -212,7 +212,7 @@ async function main() {
     check('bot profilja van a plakáthoz', st0.players.filter((p) => p.isBot).every((p) => p.profile !== undefined));
 
     await emit(me, 'update_settings', {
-      settings: { modes: ['minecraft'], rounds: 2, speechSeconds: 15, defenderSeconds: 15, prepSeconds: 10, witnessSeconds: 10, closingSeconds: 10, witnessEnabled: true, challengesEnabled: true, challengeMode: 'jury' }
+      settings: { modes: ['minecraft'], rounds: 2, speechSeconds: 15, defenderSeconds: 15, prepSeconds: 10, witnessSeconds: 10, closingSeconds: 10, witnessEnabled: true, challengesEnabled: true, challengeMode: 'jury', autoNextRound:false, autoNewGame:false }
     });
 
     await emit(me, 'start_game');
@@ -268,7 +268,7 @@ async function main() {
     check('csak emberi nevek íródtak újként: ' + JSON.stringify(added), added.every((n) => n === '2CORE'));
 
     await fire(me, 'new_game');
-    await waitState(me, (s) => s.phase === 'lobby', 8000);
+    await waitState(me, (s) => s.phase === 'accusation', 8000);
     await emit(me, 'remove_bot');
     check('bot eltávolítva', me.lastState.players.filter((p) => p.isBot).length === 3);
 

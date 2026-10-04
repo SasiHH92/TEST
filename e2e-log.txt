@@ -17,8 +17,8 @@ Szerver elindult :3123
   OK  marci belépett
   OK  a vádlott előre megadott játékos (2CORE, Szipuska vagy marci)
   OK  ítélet megérkezett
-  OK  a nyilvántartásba bekerült a vádlott ("2CORE")
-  OK  a vádlott száma nőtt: vadlott=1
+  OK  a nyilvántartásba bekerült a vádlott ("Szipuska")
+  OK  a vádlott száma nőtt: vadlott=3
   OK  bűnös vagy ártatlan számláló nőtt
 
 ==============================

@@ -87,7 +87,7 @@ function killChild(child) {
   await new Promise((r) => b.on('connect', r));
   const rejoined = await emit(b, 'join_room', {
     code: created.code, name: 'DeployTeszt', avatar: 'paróka',
-    playerId: 'p1', profile: { titulus: 't', priusz: 'p', jelveny: '' }
+    playerId: 'p1', sessionToken: created.sessionToken, profile: { titulus: 't', priusz: 'p', jelveny: '' }
   });
   ok(rejoined && !rejoined.error, 'újracsatlakozás elfogadva (nincs hiba)');
   ok(rejoined && rejoined.state && rejoined.state.players.some((p) => p.id === 'p1'),

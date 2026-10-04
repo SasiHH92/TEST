@@ -1,7 +1,7 @@
 'use strict';
 
 // Játékmód-teszt: mind a 6 mód külön-külön, a Vegyes és az
-// "egyik sincs kijelölve" eset is elindul hiba nélkül.
+// "egyik sincs kijelölve" eset érthető elutasítást kap.
 // Futtatás: node test/modes.js
 
 const { Game } = require('../game');
@@ -10,10 +10,10 @@ const MODES = ['repo', 'cs', 'pubg', 'minecraft', 'roblox', 'buli'];
 
 function makeGame() {
   const warnings = [];
-  const g = new Game('MODES', { to: () => ({ emit: () => {} }) });
-  g.io.emit = (evt, payload) => {
+  const emit = (evt, payload) => {
     if (evt === 'host_warning') warnings.push(payload && payload.message);
   };
+  const g = new Game('MODES', { to: () => ({ emit }) });
   g.addPlayer('h1', 'Ember', 'paróka', true);
   for (let k = 0; k < 3; k++) g.addBot();
   return { g, warnings };
