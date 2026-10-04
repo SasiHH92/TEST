@@ -86,8 +86,16 @@ class Deck {
     if (this.pile.length === 0) this.pile = shuffle(this.original); // újrakeverés
     return this.pile.pop() || FALLBACK_CARD; // üres pakli esetén sem crashelem a játékot
   }
+  // Egy kézben nincs két egyforma kártya (újrakeveredéskor sem), ha a pakli elég nagy.
   drawN(n) {
-    return Array.from({ length: n }, () => this.draw());
+    const out = [];
+    let guard = 0;
+    while (out.length < n) {
+      const card = this.draw();
+      if (out.includes(card) && this.original.length > out.length && guard++ < 50) continue;
+      out.push(card);
+    }
+    return out;
   }
 }
 
@@ -324,13 +332,15 @@ class Game {
     const iAmProsecutor = !!(me && me.id === d.prosecutorId);
     const iAmDefender = !!(me && me.id === d.defenderId);
     const iAmDefendant = !!(me && me.id === d.defendantId);
+    // Az ügyész bizonyítékai nem titkosak a védő előtt: ő is látja őket; a trükk csak a védőé.
     if ((iAmProsecutor || iAmDefender) && cardsVisible) base.evidence = d.evidence;
     if (iAmDefender && cardsVisible && d.tricks) base.tricks = d.tricks;
-    if (iAmDefendant && this.phase === PHASES.PREP) base.alibi = d.alibi;
+    // A vádlott alibije és a saját kihívás a felkészüléstől az ítéletig látszik (segítség a beszédhez).
+    if (iAmDefendant && cardsVisible) base.alibi = d.alibi;
     if (d.witnessId) base.witnessId = d.witnessId;
     if (me && me.id === d.witnessId && this.phase === PHASES.PREP) base.witnessCard = d.witnessCard;
     const myCh = me && d.challenges.find((c) => c.id === me.id);
-    if (myCh && this.phase === PHASES.PREP) {
+    if (myCh && cardsVisible) {
       base.myChallenge = myCh.text;
       base.myChallengeDifficulty = myCh.difficulty;
     }

@@ -3,8 +3,8 @@
 // KAMU BÍRÓSÁG – kártyák láthatósága (8. pont): logikateszt
 // 1) FELKÉSZÜLÉS: mindenki látja a saját kártyáit (kihívással együtt)
 // 2) Ügyész: bizonyíték + kihívás a felkészüléstől az ÍTÉLETIG
-// 3) Védőügyvéd: az ügyész bizonyítékai + trükkjei + kihívása folyamatosan
-// 4) Vádlott: alibi + kihívás CSAK a felkészülés alatt
+// 3) Védőügyvéd: az ügyész bizonyítékai + a saját trükkjei + kihívása folyamatosan
+// 4) Vádlott: alibi + kihívás a felkészüléstől az ítéletig (végig látja)
 // 5) Tanúkártya csak a TANÚ fázisban
 // 6) Bíró: judgeWatch (kihívások) változatlan
 // 7) Nincs védőügyvéd (4 játékos): bizonyíték csak az ügyésznek
@@ -55,20 +55,20 @@ console.log('1-4) 6 játékos: ügyész/védőügyvéd folyamatosan, vádlott cs
   // --- VÁDBESZÉD (ügyész beszél) ---
   g.phase = 'prosecution';
   const ps2 = g.publicState(d.prosecutorId);
-  ok(Array.isArray(ps2.evidence) && ps2.myChallenge === undefined, 'vádbeszéd: ügyész folyamatosan látja (bizonyíték, kihívás rejtve)');
+  ok(Array.isArray(ps2.evidence) && !!ps2.myChallenge, 'vádbeszéd: ügyész folyamatosan látja (bizonyíték + kihívás)');
   const dv2 = g.publicState(d.defenderId);
-  ok(Array.isArray(dv2.evidence) && Array.isArray(dv2.tricks) && dv2.myChallenge === undefined,
-    'vádbeszéd: védőügyvéd folyamatosan látja (ügyész bizonyítékai + trükkök, kihívás rejtve)');
+  ok(Array.isArray(dv2.evidence) && Array.isArray(dv2.tricks) && !!dv2.myChallenge,
+    'vádbeszéd: védőügyvéd folyamatosan látja (ügyész bizonyítékai + trükkök + kihívás)');
   const df2 = g.publicState(d.defendantId);
-  ok(df2.alibi === undefined && df2.myChallenge === undefined,
-    'vádbeszéd: vádlott kártyái ELREJTŐDTEK (nincs alibi, nincs kihívás)');
+  ok(!!df2.alibi && !!df2.myChallenge,
+    'vádbeszéd: vádlott továbbra is látja az alibijét és a kihívását');
   const ju2 = g.publicState(jurorId);
   ok(ju2.evidence === undefined && ju2.myChallenge === undefined, 'vádbeszéd: esküdt nem kap kártyát');
 
   // --- VÉDEKEZÉS (vádlott beszél) ---
   g.phase = 'defense';
   const df3 = g.publicState(d.defendantId);
-  ok(df3.alibi === undefined && df3.myChallenge === undefined, 'védekezés: vádlott semmit nem lát a kártyáiból');
+  ok(!!df3.alibi && !!df3.myChallenge, 'védekezés: vádlott végig látja az alibijét és a kihívását (segítség)');
   ok(Array.isArray(g.publicState(d.prosecutorId).evidence), 'védekezés: ügyész továbbra is látja a bizonyítékát');
 
   // --- TANÚ fázis ---
@@ -85,15 +85,15 @@ console.log('1-4) 6 játékos: ügyész/védőügyvéd folyamatosan, vádlott cs
   // --- ÍTÉLET ---
   g.phase = 'verdict';
   ok(Array.isArray(g.publicState(d.prosecutorId).evidence), 'ítélet: ügyész az ítéletig látja a bizonyítékát');
-  ok(g.publicState(d.defendantId).alibi === undefined, 'ítélet: vádlott kártyái rejtve');
+  ok(!!g.publicState(d.defendantId).alibi, 'ítélet: vádlott az ítéletig látja az alibijét');
   ok(Array.isArray(g.publicState(d.defenderId).evidence) && Array.isArray(g.publicState(d.defenderId).tricks),
     'ítélet: védőügyvéd az ítéletig látja a kártyáit');
 
   // --- KIHÍVÁS-ELLENŐRZÉS (a felfedés nyilvános, kártyaadat nem megy) ---
   g.phase = 'challenge_review';
   const ps3 = g.publicState(d.prosecutorId);
-  ok(Array.isArray(ps3.evidence) && ps3.myChallenge === undefined,
-    'ellenőrzés: bizonyíték továbbra is látható, kihívás rejtve');
+  ok(Array.isArray(ps3.evidence) && !!ps3.myChallenge,
+    'ellenőrzés: bizonyíték és kihívás továbbra is látható');
   ok(Array.isArray(g.publicState(d.currentJudgeId).judgeWatch), 'ellenőrzés: a bíró továbbra is látja a kihívásokat');
 }
 
@@ -120,7 +120,7 @@ console.log('6) Reconnect: a szerephez tartozó, éppen látható kártyák jön
   g.handleReconnect(d.defenderId); // visszacsatlakozás (ugyanaz a playerId)
   g.phase = 'defense';
   const st = g.publicState(d.defenderId);
-  ok(Array.isArray(st.evidence) && Array.isArray(st.tricks) && st.myChallenge === undefined,
+  ok(Array.isArray(st.evidence) && Array.isArray(st.tricks) && !!st.myChallenge,
     'visszacsatlakozó védőügyvéd visszakapja az éppen látható kártyáit');
   g.phase = 'prep';
   const st2 = g.publicState(d.defendantId);

@@ -625,15 +625,30 @@ function scenePosition(role,index,g) {
   let x=Math.max(margin,Math.min(g.usable-margin,q.x));
   let y=q.y, h=p.h;
   let plate=projectScenePoint(p.x,p.plate,g).y;
-  if(role==='juror') {
-    x=g.usable*(.81+index*.045);
-    y=g.height*(.63-index*.035);
+  if(role==='defender' && !g.mobile) {
+    // A védő és a tanú ne csússzon egymásra, ha a háttér vágása miatt kevés a hely: a védő balra tolódik.
+    const w=STAGE_POS.witness, wq=projectScenePoint(w.x,w.y,g);
+    const wm=Math.max(42,g.height*w.h/100*.4)+12, wx=Math.max(wm,Math.min(g.usable-wm,wq.x));
+    const gap=(g.height*(p.h+w.h)*.72/100*2/3)/2+10;
+    x=Math.max(margin,Math.min(x,wx-gap));
+  }
+  if(role==='juror' && !g.mobile) {
+    // Hátsó sor: az esküdtek a tanú feje fölött állnak (balra sorakozva), így sosem esnek a védő/tanú mögé.
+    // (Széles képernyőn a háttér vágása miatt a régi, a szélességhez viszonyított hely ütközött velük.)
+    const w=scenePosition('witness',0,g);
+    const jh=g.height*p.h/100, jw=jh*2/3;
+    x=Math.max(margin,Math.min(g.usable-margin,w.x/100*g.width-index*(jw+10)));
+    y=g.height*(1-(w.b+w.h)/100)-6;
+    plate=y+5;
+  } else if(role==='juror') {
     plate=y+5;
   }
   if(g.mobile) {
-    const m={judge:[.49,.46,16,.425],prosecutor:[.10,.54,18,.54],
-      defendant:[.37,.59,23,.55],defender:[.60,.53,18,.53],
-      witness:[.77,.515,17,.51],juror:[.89+index*.065,.56-index*.125,11,.39+index*.045]};
+    // Telefonon az avatár-keretek szélesek: a négy fő szereplő egymás mellett, kisebben,
+    // az esküdtek hátul, a tanú feje fölött (így nem takarják a védőt és a tanút).
+    const m={judge:[.49,.46,16,.425],prosecutor:[.115,.54,16,.545],
+      defendant:[.395,.60,21,.575],defender:[.655,.545,15.5,.54],
+      witness:[.865,.52,14,.50],juror:[.905-index*.125,.365-index*.03,9,.375-index*.03]};
     const v=m[role]; x=g.usable*v[0];y=g.height*v[1];h=v[2];plate=g.height*v[3];
     const edge=h/100*g.height*.4+8;
     x=Math.max(edge,Math.min(g.usable-edge,x));
@@ -1494,14 +1509,15 @@ $('#btnRemoveBot').addEventListener('click', () => {
 // ============================================================
 
 // ============================================================
-// KÁRTYÁIM – állandó kompakt sáv (ügyész + védőügyvéd)
-  // Az ügyész a saját bizonyítékait, a védőügyvéd az ügyész
-// bizonyítékait ("AZ ÜGYÉSZ BIZONYÍTÉKAI") + a trükkjeit + kihívását látja
-// folyamatosan, a felkészüléstől az ítéletig. Nem tolja ki a visszaszámlálót
+// KÁRTYÁIM – állandó kompakt sáv (ügyész, vádlott, védőügyvéd)
+// Az ügyész a bizonyítékait, a vádlott az alibijét, a védőügyvéd az ügyész bizonyítékait ("AZ ÜGYÉSZ BIZONYÍTÉKAI")
+// és a trükkjeit, mindenki a saját kihívását látja, a felkészüléstől az ítéletig. Nem tolja ki a visszaszámlálót
 // és a gombokat: külön, alacsony sáv a tartalom fölött (mobilon összecsukható).
 // ============================================================
 
-let myCardsCollapsed = true;
+// Asztali gépen alapból nyitva (végig látszanak a kártyák), telefonon összecsukva (kevés a hely).
+const cardsDefaultCollapsed = () => matchMedia('(max-width:700px)').matches;
+let myCardsCollapsed = cardsDefaultCollapsed();
 const CARD_VISIBLE_PHASES = ['prep', 'prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'verdict_vote', 'verdict', 'objection', 'challenge_review'];
 
 function renderMyCardsBar() {
@@ -1524,14 +1540,19 @@ function renderMyCardsBar() {
       '<span class="mcb-card" style="--role:' + ROLE_COLOR.defender + '">' +
       '<span class="mcb-type">TRÜKK</span><span class="mcb-text">' + escapeHtml(t) + '</span></span>'));
   }
-  if (inPhase && S.myChallenge && (role === 'prosecutor' || role === 'defender')) {
+  if (inPhase && S.alibi && role === 'defendant') {
+    chips.push('<span class="mcb-head" style="--role:' + ROLE_COLOR.defendant + '">A TITKOS ALIBID</span>');
+    chips.push('<span class="mcb-card" style="--role:' + ROLE_COLOR.defendant + '">' +
+      '<span class="mcb-type">ALIBI</span><span class="mcb-text">' + escapeHtml(S.alibi) + '</span></span>');
+  }
+  if (inPhase && S.myChallenge && (role === 'prosecutor' || role === 'defender' || role === 'defendant')) {
     chips.push('<span class="mcb-card" style="--role:' + roleColorOf(role) + '">' +
       '<span class="mcb-type">🎬 KIHÍVÁS</span><span class="mcb-text">' + escapeHtml(S.myChallenge) + '</span></span>');
   }
 
   const prepHtml=S.phase==='prep'?(role==='defender'?chips.join(''):secretCardsHtml()+challengeHtmlIfMine()):'';
   if(prepHtml && renderMyCardsBar.lastPhase!=='prep') myCardsCollapsed=false;
-  if(S.phase!=='prep' && renderMyCardsBar.lastPhase==='prep') myCardsCollapsed=true;
+  if(S.phase!=='prep' && renderMyCardsBar.lastPhase==='prep') myCardsCollapsed=cardsDefaultCollapsed();
   renderMyCardsBar.lastPhase=S.phase;
   if ((!prepHtml && chips.length === 0) || S.phase === 'lobby' || S.phase === 'game_over') {
     bar.classList.add('hidden');
@@ -1642,6 +1663,9 @@ function renderStage() {
   push('defender', scene.defenderId);
   if (scene.witnessId) push('witness', scene.witnessId);
   const mobile=g.mobile;
+  // Az avatár-keretek kisebbek a régi alakoknál; a vádlott alapmérete a legnagyobb, ezért ő kapja a legkisebb arányt.
+  const AV_SCALE=mobile?{defendant:.72,prosecutor:.85,defender:.85,witness:.85,juror:.95}:{defendant:.58,prosecutor:.72,defender:.72,witness:.72,juror:.8};
+  const avH=(h,isAv,role)=>h*(isAv?(AV_SCALE[role]||.75):1);
   const juryPositions=mobile ? [89,95] : JUROR_X;
   // A bíró a saját pulpitusánál áll; nem jelenik meg másodszor esküdtként.
   const jurors = S.players.filter((p) => p.connected &&
@@ -1659,7 +1683,7 @@ function renderStage() {
     let html = entries.map((e) => {
       const pos=scenePosition(e.role,e.ji||0,g);
       const avSlot=AVATAR_ID_RE.test(playerById(e.pid)?.avatar||'');
-      return '<div class="stage-slot'+(avSlot?' av-slot':'')+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'" style="--x:'+pos.x+'%;--b:'+pos.b+'%;--h:'+pos.h+'%;--z:'+pos.z+';--glow:'+ROLE_COLOR[e.role]+'">'+characterFigure(e.role,e.pid,e.ji||0)+'</div>';
+      return '<div class="stage-slot'+(avSlot?' av-slot':'')+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'" style="--x:'+pos.x+'%;--b:'+pos.b+'%;--h:'+avH(pos.h,avSlot,e.role)+'%;--z:'+pos.z+';--glow:'+ROLE_COLOR[e.role]+'">'+characterFigure(e.role,e.pid,e.ji||0)+'</div>';
     }).join('');
     if (juryMore > 0) {
       html += '<div class="stage-jury-more" style="--x:95%;--b:38%">+' + juryMore + '</div>';
@@ -1671,12 +1695,12 @@ function renderStage() {
   $$('#stageSlots .stage-slot').forEach((el,i)=>{
     const entry=entries[i]; if(!entry) return;
     const p=scenePosition(entry.role,entry.ji||0,g);
-    el.style.setProperty('--x',p.x+'%');el.style.setProperty('--b',p.b+'%');el.style.setProperty('--h',p.h+'%');
+    el.style.setProperty('--x',p.x+'%');el.style.setProperty('--b',p.b+'%');el.style.setProperty('--h',avH(p.h,el.classList.contains('av-slot'),entry.role)+'%');
   });
   const jp=scenePosition('judge',0,g),judgeSlot=$('#judge');
   // Avatáros bírónál a kép nagyobb (a teteje marad, lefelé nő), a pulpitus elé kerül, a névtábla az aljára.
   const jAv=AVATAR_ID_RE.test(playerById(scene.currentJudgeId)?.avatar||'');
-  const jh=jp.h*(jAv?1.35:1), jb=jp.b-(jAv?jp.h*.35:0), jPlate=jAv?100-jb-5:jp.plate;
+  const jh=jp.h*(jAv?1.1:1), jb=jp.b-(jAv?jp.h*.1:0), jPlate=jAv?100-jb-5:jp.plate;
   judgeSlot.classList.toggle('av-judge',jAv);
   judgeSlot.style.setProperty('--x',jp.x+'%');judgeSlot.style.setProperty('--b',jb+'%');judgeSlot.style.setProperty('--h',jh+'%');
   $('#accusationTicker').style.left=g.mobile?'50%':jp.x+'%';
@@ -2406,9 +2430,9 @@ function renderPhaseContent() {
       html = '<p>…</p>';
   }
   html += autoCountdownHtml();
-  // "A kártyáid elrejtve" – a vádlott a 30 mp-es felkészülés után nem látja
-  // többé a kártyáit (alibi + kihívás); a helyén ez a kis jelzés marad.
-  if (S.phase!=='prep' && ['defendant', 'witness'].includes(myRole()) && CARD_VISIBLE_PHASES.includes(S.phase)) {
+  // "A kártyáid elrejtve" – a tanú a felkészülés után nem látja többé a kártyáját;
+  // a vádlott az alibijét és a kihívását végig látja (KÁRTYÁIM sáv).
+  if (S.phase!=='prep' && ['witness'].includes(myRole()) && CARD_VISIBLE_PHASES.includes(S.phase)) {
     html += '<div class="cards-hidden-note">🔒 A kártyáid elrejtve</div>';
   }
   el.dataset.phase = S.phase;

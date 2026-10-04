@@ -46,7 +46,8 @@ try {
       g.phase=phase;
       for(const id of g.players.keys()) {
         const st=g.publicState(id);
-        assert.equal(st.alibi,undefined);assert.equal(st.witnessCard,undefined);assert.equal(st.myChallenge,undefined);
+        assert.equal(!!st.alibi,id===d.defendantId);assert.equal(st.witnessCard,undefined);
+        assert.equal(!!st.myChallenge,d.challenges.some(c=>c.id===id));
         assert.equal(!!st.evidence,id===d.prosecutorId||id===d.defenderId);
         assert.equal(!!st.tricks,id===d.defenderId);
         assert.equal(!!st.judgeWatch,id===d.currentJudgeId);
