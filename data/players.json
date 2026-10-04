@@ -1,0 +1,86 @@
+{
+  "players": [
+    {
+      "nev": "2CORE",
+      "jelveny": "",
+      "titulus": "A Cukor-rang egyetlen túlélője",
+      "priusz": "Délután hatkor CAPS LOCK-kal üvölt a chatbe. Hivatalos státusza: Someone ruin my life."
+    },
+    {
+      "nev": "Izsván",
+      "jelveny": "DÖG",
+      "titulus": "A Kriszmoszman",
+      "priusz": "Azt mondja, 'pill', aztán eltűnik. Két cigi között szokott megjelenni."
+    },
+    {
+      "nev": "Dubble_Gii",
+      "jelveny": "FS",
+      "titulus": "A titokzatos",
+      "priusz": "Senki nem tudja, mit jelent az FS. Ő sem."
+    },
+    {
+      "nev": "H3roMarci",
+      "jelveny": "",
+      "titulus": "Az örök diák",
+      "priusz": "Azt mondja, tanul. A 'stu' néma. Gyanúsan néma."
+    },
+    {
+      "nev": "Kyrashi",
+      "jelveny": "Rogue",
+      "titulus": "A szörny",
+      "priusz": "Saját bevallása szerint ő a szörny. RAWR. A bíróság ezt beismerő vallomásnak tekinti."
+    },
+    {
+      "nev": "Sanyi/Sasi",
+      "jelveny": "",
+      "titulus": "A Bíróság alapítója",
+      "priusz": "Ő építette ezt a tárgyalótermet. Ettől még ő sem ártatlan."
+    },
+    {
+      "nev": "Alexhh",
+      "jelveny": "WOW",
+      "titulus": "A csaló álszerény",
+      "priusz": "'Jelzem nem vagyok jó benne' — mondta, mielőtt mindenkit lealázott."
+    },
+    {
+      "nev": "Collie",
+      "jelveny": "ABOO",
+      "titulus": "Az ismeretlen tényező",
+      "priusz": "Ritkán látják. Talán ezért gyanús."
+    },
+    {
+      "nev": "marci",
+      "jelveny": "",
+      "titulus": "Az örök 'majd'",
+      "priusz": "Belép a hívásba, aztán magában játszik. Kétszer is regisztrált, hogy duplán ne jöjjön."
+    },
+    {
+      "nev": "Marci",
+      "jelveny": "",
+      "titulus": "A másik Marci",
+      "priusz": "A nyomozók máig nem tudják, melyik Marci melyik."
+    },
+    {
+      "nev": "Szipuska",
+      "jelveny": "",
+      "titulus": "A toborzó",
+      "priusz": "'Akinek van kedve, az jöjjön.' Senkinek nincs, de ő jön."
+    },
+    {
+      "nev": "UltraGoku996",
+      "jelveny": "ICE",
+      "titulus": "A jéghideg",
+      "priusz": "996-os szintű Goku. Az előző 995 eltűnt."
+    }
+  ],
+  "vendeg_priuszok": [
+    "Előélete tiszta. Túl tiszta.",
+    "Kétszer látották egyszerre két helyen. Mindkétszer tagadta.",
+    "A szomszédok szerint éjszaka halkan nevetegedik.",
+    "Gyanúsan jól ismeri a bírósági kávégépet.",
+    "Több tanú is látta már lángost enni. Indok nélkül.",
+    "A neve szerepel egy régi, sosem tisztázott pogácsa-ügyben.",
+    "Soha nem késik. Ezt senki normális ember nem tudja végigcsinálni.",
+    "Állítólag van egy ikertestvére. Nincs rá bizonyíték, de nincs ellen sem."
+  ]
+}
