@@ -2676,3 +2676,102 @@ input[type="range"]:focus { box-shadow: none; }
 
 /* A TILTAKOZOM! felirat sosem blokkolhatja a kattintásokat */
 .objection-overlay { pointer-events: none; }
+
+/* ============================================================
+   NÉVKÁRTYÁK v2 – sötét fa + arany, a játék többi felületéhez illő "nyilvántartási lap"
+   ============================================================ */
+
+.mug-grid {
+  grid-template-columns: repeat(auto-fill, minmax(224px, 1fr));
+  gap: 26px 22px; max-width: 1180px;
+}
+
+.mug-card {
+  position: relative; min-height: 0;
+  padding: 16px 16px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  text-align: center; cursor: pointer; color: #f3e7c9;
+  border-radius: 16px; border: 2px solid #8a6420;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(242, 193, 78, 0.17), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.025) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, #2d1f13 0%, #1a110b 100%);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(242, 193, 78, 0.22), inset 0 0 44px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+/* belső díszkeret (a régi magasságmérő csík helyett) */
+.mug-card::before {
+  content: ''; position: absolute; inset: 6px; width: auto; height: auto; margin: 0;
+  border: 1px solid rgba(242, 193, 78, 0.2); border-radius: 11px;
+  background: none; opacity: 1; pointer-events: none;
+}
+.mug-card:hover:not(.taken), .mug-card:focus-visible:not(.taken) {
+  transform: translateY(-6px);
+  border-color: var(--gold);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.6), 0 0 26px rgba(242, 193, 78, 0.38), inset 0 0 0 1px rgba(242, 193, 78, 0.45), inset 0 0 44px rgba(0, 0, 0, 0.35);
+}
+.mug-card:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+.mug-label {
+  font-family: var(--font-disp); font-size: 10px; letter-spacing: 3.5px;
+  color: #d9b25a; padding: 0 8px 4px; border-bottom: 1px solid rgba(242, 193, 78, 0.35);
+}
+
+.mug-mono {
+  width: 96px; height: 96px; margin: 4px 0 2px;
+  border: 3px solid var(--gold); border-radius: 50%;
+  font-size: 46px; color: #fff; text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 4px #1a110b, 0 0 0 6px rgba(242, 193, 78, 0.55), 0 10px 20px rgba(0, 0, 0, 0.55);
+}
+
+.mug-name {
+  font-family: var(--font-disp); font-size: 22px; letter-spacing: 1px; line-height: 1.15;
+  color: #fff3d0; min-width: 72%; max-width: 100%; overflow-wrap: anywhere;
+  padding: 5px 14px;
+  background: linear-gradient(180deg, #5e4020, #3a2612);
+  border: 1px solid #c9973a; border-radius: 7px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 4px 9px rgba(0, 0, 0, 0.45);
+}
+.mug-badge {
+  font-size: 11px; font-weight: 800; letter-spacing: 1.6px; color: #fff;
+  background: linear-gradient(180deg, #f0655f, #c23a3a);
+  border: 1px solid rgba(255, 190, 185, 0.5); border-radius: 999px; padding: 3px 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.mug-title { font-size: 13px; font-style: italic; color: #cdbd96; line-height: 1.35; min-height: 1.35em; }
+
+.mug-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: auto; padding-top: 4px; font-size: 11.5px; letter-spacing: 0.2px; }
+.mug-stats .ms { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.mug-stats .ms i { font-style: normal; font-size: 12px; }
+.mug-stats .ms b { color: #fff; font-weight: 800; }
+.mug-stats .ms-bad { color: #ffbdb8; background: rgba(229, 72, 77, 0.16); border-color: rgba(229, 72, 77, 0.5); }
+.mug-stats .ms-good { color: #aef2c0; background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.45); }
+
+.mug-pick {
+  font-family: var(--font-disp); font-size: 13px; letter-spacing: 2.2px; color: #241a06;
+  background: linear-gradient(180deg, #f8d672, #d99a2b);
+  border: 1px solid #8a6420; border-radius: 999px; padding: 6px 18px; margin-top: 2px;
+  box-shadow: 0 3px 0 #8a6420, 0 6px 12px rgba(0, 0, 0, 0.4);
+  opacity: 0.88; transition: opacity 0.15s, transform 0.15s;
+}
+.mug-pick i { font-style: normal; }
+.mug-card:hover:not(.taken) .mug-pick, .mug-card:focus-visible .mug-pick { opacity: 1; transform: translateY(-1px); }
+
+.mug-card.taken { filter: grayscale(0.85) brightness(0.68); cursor: not-allowed; }
+.mug-card.chosen {
+  border-color: var(--gold); transform: translateY(-4px);
+  box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.55), 0 0 30px rgba(242, 193, 78, 0.55), 0 12px 26px rgba(0, 0, 0, 0.55);
+}
+
+@media (max-width: 560px) {
+  /* Telefonon két oszlop: fele annyi görgetés */
+  .mug-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; max-width: 420px; }
+  .mug-card { padding: 12px 8px 10px; gap: 7px; border-radius: 13px; }
+  .mug-label { font-size: 9px; letter-spacing: 2.5px; }
+  .mug-mono { width: 70px; height: 70px; font-size: 34px; box-shadow: 0 0 0 3px #1a110b, 0 0 0 5px rgba(242, 193, 78, 0.55), 0 8px 16px rgba(0, 0, 0, 0.5); }
+  .mug-name { font-size: 17px; padding: 4px 8px; min-width: 80%; }
+  .mug-title { font-size: 11.5px; }
+  .mug-stats { flex-direction: column; align-items: center; gap: 4px; }
+  .mug-stats .ms { font-size: 10.5px; padding: 2px 8px; }
+  .mug-pick { font-size: 12px; padding: 5px 12px; letter-spacing: 1.5px; }
+}

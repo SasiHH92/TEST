@@ -1002,14 +1002,27 @@ function renderMugGrid() {
     const mono = AVATARS.includes(r.avatar)
       ? '<span class="mug-mono mug-avatar"><img src="' + avatarSrc(r.avatar) + '" alt=""></span>'
       : '<span class="mug-mono" style="background:hsl(' + hue + ',62%,44%)">' + escapeHtml(initial) + '</span>';
+    // Billentyűzettel is választható (Enter / szóköz), a foglalt kártya nem.
+    card.setAttribute('role', 'button');
+    card.tabIndex = taken ? -1 : 0;
+    if (taken) card.setAttribute('aria-disabled', 'true');
+    card.setAttribute('aria-label', cleanName + (taken ? ' – őrizetben' : ' kiválasztása'));
     card.innerHTML =
+      '<span class="mug-label">NYILVÁNTARTÁS</span>' +
       mono +
       '<span class="mug-name">' + escapeHtml(cleanName) + '</span>' +
       (badge ? '<span class="mug-badge">' + escapeHtml(badge) + '</span>' : '') +
       '<span class="mug-title">' + escapeHtml(r.titulus) + '</span>' +
-      (st ? '<span class="mug-stats">Elítélve: ' + st.bunos + 'x | Felmentve: ' + st.artatlan + 'x</span>' : '') +
+      '<span class="mug-stats">' +
+        '<span class="ms ms-bad" title="Elítélve"><i aria-hidden="true">🔨</i>Elítélve <b>' + (st ? st.bunos : 0) + '×</b></span>' +
+        '<span class="ms ms-good" title="Felmentve"><i aria-hidden="true">🕊️</i>Felmentve <b>' + (st ? st.artatlan : 0) + '×</b></span>' +
+      '</span>' +
+      (taken ? '' : '<span class="mug-pick">VÁLASZTOM <i aria-hidden="true">▸</i></span>') +
       (taken ? '<div class="mug-taken"><span>ŐRIZETBEN</span></div>' : '');
     if (!taken) {
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+      });
       card.addEventListener('click', () => {
         if (card.classList.contains('chosen')) return;
         card.classList.add('chosen'); // piros keret + címke, amíg az avatárválasztó nyitva van
