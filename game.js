@@ -53,6 +53,10 @@ const DEFAULT_SETTINGS = {
 // AFK-VÉDELEM: a "gombnyomásra váró" fázisoknak is van maximális ideje.
 // Lejáratkor a hiányzó akciók alapértelmezett kimenettel teljesülnek, így egy
 // AFK / kiesett játékos nem állítja le az egész estét.
+// TILTAKOZOM! – a bíró 15 mp-en belül dönt. Jogos: a tiltakozó mindig +30 mp-et kap a következő saját
+// beszédéhez; nem jogos (vagy időtúllépés): a következő saját beszédének 30%-át elveszíti.
+const OBJECTION_BONUS_MS = 30000;
+const OBJECTION_PENALTY_PCT = 0.3;
 const ACCUSATION_AUTO_MS = 2 * 60 * 1000;     // VÁDEMELÉS: senki nyomta meg a "Felolvastam!"-t → megy tovább
 const VERDICT_VOTE_AUTO_MS = 3 * 60 * 1000;   // SZAVAZÁS: hiányzó esküdt-szavazatok → a leadott szavazatok döntenek
 const CHALLENGE_VOTE_AUTO_MS = 2 * 60 * 1000; // KIHÍVÁS-SZAVAZÁS (esküdtek mód): hiányzó szavazatok → nem teljesített
@@ -1321,22 +1325,26 @@ class Game {
     const speakerFor = (kind) => kind === 'prosecution' || kind === 'final_prosecution'
       ? d.prosecutorId : kind === 'defender' ? d.defenderId : d.defendantId;
     const nextOwnSpeech = sequence.slice(sequence.indexOf(od.kind) + 1).find((kind) => speakerFor(kind) === od.objectorId);
-    let deduction = 0;
-    if (od.accepted) {
-      const remaining = Math.max(5000, od.remaining - 20000);
-      deduction = Math.max(0, od.remaining - remaining);
-      od.remaining = remaining;
-    } else if (nextOwnSpeech) {
-      d.speechPenalties[nextOwnSpeech] = (d.speechPenalties[nextOwnSpeech] || 0) + 20000;
-      deduction = 20000;
+    let deduction = 0, bonus = 0;
+    if (nextOwnSpeech) {
+      if (od.accepted) {
+        // A speechPenalties előjeles: a negatív érték hozzáadott idő a következő beszédhez.
+        bonus = OBJECTION_BONUS_MS;
+        d.speechPenalties[nextOwnSpeech] = (d.speechPenalties[nextOwnSpeech] || 0) - bonus;
+      } else {
+        const base = this.speechSecondsFor(nextOwnSpeech) * 1000;
+        deduction = Math.round(base * OBJECTION_PENALTY_PCT / 1000) * 1000;
+        d.speechPenalties[nextOwnSpeech] = (d.speechPenalties[nextOwnSpeech] || 0) + deduction;
+      }
     }
     const entry = {
       objectorId: od.objectorId, objectorName: od.objectorName,
       speakerId: od.speakerId, speakerName: this.players.get(od.speakerId)?.name || '?',
       judgeId: d.currentJudgeId, judgeName: this.players.get(d.currentJudgeId)?.name || '?',
       accepted: !!od.accepted, timedOut: !!od.timedOut,
-      deductionMs: deduction, deductionFrom: od.accepted ? od.speakerId : (nextOwnSpeech ? od.objectorId : null),
-      nextSpeechKind: !od.accepted ? nextOwnSpeech || null : null
+      deductionMs: deduction, deductionFrom: deduction ? od.objectorId : null,
+      bonusMs: bonus, bonusTo: bonus ? od.objectorId : null,
+      nextSpeechKind: nextOwnSpeech || null
     };
     d.objectionLog.push(entry);
     this.broadcastAll('objection_ruling', {...entry, ruling: od.accepted ? 'JOGOS!' : 'NEM JOGOS!'});

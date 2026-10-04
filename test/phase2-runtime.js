@@ -70,8 +70,8 @@ try {
     assert(g.objectionJudgeDecision(d.currentJudgeId,false));
     check(()=>assert.equal(g.phase,'prosecution'),'beszéd azonnali folytatása');
     g.afterSpeech('prosecution');
-    check(()=>assert.equal(g.phaseEndsAt-now,40000),'elutasított tiltakozás: következő beszédből 20 mp levonás');
-    check(()=>assert.equal(d.objectionLog[0].deductionMs,20000),'jegyzőkönyvi levonás');
+    check(()=>assert.equal(g.phaseEndsAt-now,42000),'elutasított tiltakozás: a következő beszédből 30% (18 mp) levonás');
+    check(()=>assert.equal(d.objectionLog[0].deductionMs,18000),'jegyzőkönyvi levonás (30%)');
     g.dispose();
   }
   {
@@ -79,7 +79,11 @@ try {
     assert(g.tryObjection(d.prosecutorId));advance(20000);
     check(()=>assert.equal(g.objectionData.phase,'judge'),'20 mp után bírói döntési szakasz');
     assert(g.objectionJudgeDecision(d.currentJudgeId,true));
-    check(()=>assert.equal(g.phaseEndsAt-now,5000),'jogos tiltakozás után legalább 5 mp marad');
+    check(()=>assert.equal(g.phaseEndsAt-now,22000),'jogos tiltakozás: a megszakított beszélő ideje nem változik');
+    check(()=>assert.equal(d.speechPenalties.final_prosecution,-30000),'jogos tiltakozás: +30 mp a tiltakozó következő beszédéhez');
+    check(()=>assert.equal(d.objectionLog[0].bonusMs,30000),'jegyzőkönyvi jutalom (+30 mp)');
+    g.startSpeech('final_prosecution');
+    check(()=>assert.equal(g.phaseEndsAt-now,g.settings.closingSeconds*1000+30000),'a tiltakozó zárószava +30 mp-cel indul');
     g.dispose();
   }
   {

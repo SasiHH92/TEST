@@ -35,7 +35,7 @@ A szerver név szerint megjegyzi az előre megadott játékosokra: **hányiszor 
 
 ## Extrák
 
-- **TILTAKOZOM!** – az ellenfél a beszéd alatt tiltakozhat a másik beszéde közben: nagy animáció + hang, a beszédóra megáll, a beszélő 20 mp-ig védekezik, majd a kör bírója 15 mp-en belül dönt. Jogos: −20 mp a beszélőtől (legalább 5 mp marad). Nem jogos/időtúllépés: −20 mp a tiltakozó következő beszédéből, ha van még. Játékosonként beszédfázisonként 1, körönként legfeljebb 2 tiltakozás.
+- **TILTAKOZOM!** – az ellenfél a beszéd alatt tiltakozhat a másik beszéde közben: nagy animáció + hang, a beszédóra megáll, a beszélő 20 mp-ig védekezik, majd a kör bírója fixen 15 mp-en belül dönt. Jogos: a tiltakozó mindig +30 mp-et kap a következő saját beszédéhez. Nem jogos (vagy a bíró nem dönt időben): a tiltakozó a következő saját beszédének 30%-át elveszíti. Ha a tiltakozónak nincs több beszéde, nincs hatása; a megszakított beszélő ideje nem változik. Játékosonként beszédfázisonként 1, körönként legfeljebb 2 tiltakozás.
 - **Reakciógombok** az esküdteknek (😂 💀 🤡 🔥 👏) – az emoji átrepül mindenki képernyőjén. A legtöbb 😂-t kapó beszélő **Közönségkedvenc** bónuszt kap.
 - **Kihíváskártyák** – ügyész és vádlott titkos beszéd-kihívást kap („Suttogva beszélj", „Használd a 'pogácsa' szót háromszor"…). Alapból a kör bírója dönt, kihívásonként 20 mp alatt; időtúllépés = nem sikerült. Teljesítés +2, nehezítés +4 pont. Az esküdtek szavazása a lobbyban választható.
 - **„Rendet a teremben!"** – csak a kör bírója használhatja, kalapácsütéssel.

@@ -2666,3 +2666,6 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
 /* Beszélő avatár-figura: csak enyhe kiemelés (a régi alakoknál 20% nagyítás volt, az avatár keretnél ez óriási lenne) */
 .stage-slot.speaking .st-art.av-figure,
 #screen-game .stage-slot.speaking .st-art.av-figure { transform: scale(1.05); }
+
+/* Tiltakozás: a bíró panelén a döntés következményei */
+.objection-rule { font-size: 12px; color: #d9c58a; text-align: center; max-width: 420px; line-height: 1.35; }

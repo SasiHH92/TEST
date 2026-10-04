@@ -56,7 +56,7 @@
     {
       "heading": "GOMBOK",
       "list": [
-        "TILTAKOZOM!: az ügyész a vádlott/védő, a vádlott és a védő az ügyész beszéde közben használhatja; játékosonként beszédfázisonként egyszer, körönként legfeljebb kétszer. A beszédóra megáll. A megtámadott beszélő 20 másodpercig védekezhet, majd a bíró 15 másodpercen belül dönt. JOGOS: a beszélő hátralévő idejéből 20 másodperc levonás, legalább 5 másodperc marad. NEM JOGOS vagy döntési időtúllépés: a tiltakozó következő beszédéből 20 másodperc levonás, ha van még beszéde.",
+        "TILTAKOZOM!: az ügyész a vádlott/védő, a vádlott és a védő az ügyész beszéde közben használhatja; játékosonként beszédfázisonként egyszer, körönként legfeljebb kétszer. A beszédóra megáll. A megtámadott beszélő 20 másodpercig védekezhet, majd a bíró 15 másodpercen belül dönt. A bíró fixen 15 másodperc alatt dönt. JOGOS: a tiltakozó mindig +30 másodpercet kap a következő saját beszédéhez. NEM JOGOS vagy döntési időtúllépés: a tiltakozó a következő saját beszédének 30%-át elveszíti. Ha a tiltakozónak nincs több beszéde, nincs hatása; a megszakított beszélő ideje nem változik.",
         "Reakciók (😂 💀 🤡 🔥 👏): bárki dobhat, a legtöbb 😂-t kapó beszélő bónuszt kap.",
         "Rendet a teremben!: kizárólag az adott kör bírójának, ha túl nagy a káosz."
       ]

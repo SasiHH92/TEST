@@ -2257,6 +2257,7 @@ function renderPhaseContent() {
         const iAmJudge = S.currentJudgeId === MY.playerId;
         html = '<div class="objection-phase">' +
           '<div class="objection-phase-sub">A bíró döntsön: jogos volt-e ' + objectorName + '-nak tiltakozni?</div>' +
+          '<div class="objection-rule">JOGOS: +30 mp a tiltakozónak a következő beszédéhez · NEM JOGOS: −30% a tiltakozó következő beszédéből</div>' +
           '<div class="objection-timer">' + timerRingHtml(remaining, 15000, '#f2c14e') + '</div>';
         if (iAmJudge) {
           html += '<div class="objection-buttons">' +
@@ -2273,8 +2274,8 @@ function renderPhaseContent() {
         html = '<div class="objection-phase">' +
           '<div class="objection-result' + (accepted ? ' accepted' : ' rejected') + '">' + (accepted ? 'JOGOS!' : 'NEM JOGOS!') + '</div>' +
           '<div class="objection-phase-sub">' + (accepted
-            ? speakerName + ' 20 mp-öt veszít a hátralévő beszédidőből'
-            : objectorName + ' további 20 mp-öt veszít a következő beszédedből') + '</div>' +
+            ? objectorName + ' +30 mp-et kap a következő beszédéhez'
+            : objectorName + ' elveszíti a következő beszédének 30%-át') + '</div>' +
           '</div>';
       }
       break;
@@ -2565,11 +2566,20 @@ function showObjection(name, byPid) {
   }
 }
 
-function showRuling(accepted, ruling, objectorName, speakerName, judgeName) {
+// A tiltakozás következménye emberi nyelven (a szerver jegyzőkönyvi bejegyzéséből).
+function objectionConsequence(x) {
+  if (!x) return '';
+  const o = escapeHtml(x.objectorName || '');
+  if (x.accepted) return x.bonusMs ? '+' + (x.bonusMs / 1000) + ' mp ' + o + ' következő beszédéhez' : o + '-nak nincs több beszéde, nincs jutalom';
+  return x.deductionMs ? '−30% (' + (x.deductionMs / 1000) + ' mp) ' + o + ' következő beszédéből' : o + '-nak nincs több beszéde, nincs levonás';
+}
+
+function showRuling(accepted, ruling, objectorName, speakerName, judgeName, data) {
   const bubble = $('#judgeBubble');
   if (bubble) {
     const detail = objectorName && speakerName
-      ? '<div style="font-size:12px;margin-top:4px">' + escapeHtml(objectorName) + ' tiltakozott ' + escapeHtml(speakerName) + '-on – ' + (judgeName ? 'bíró: ' + escapeHtml(judgeName) : '') + '</div>'
+      ? '<div style="font-size:12px;margin-top:4px">' + escapeHtml(objectorName) + ' tiltakozott ' + escapeHtml(speakerName) + '-on – ' + (judgeName ? 'bíró: ' + escapeHtml(judgeName) : '') + '</div>' +
+        '<div style="font-size:12px;margin-top:2px">' + objectionConsequence(data) + '</div>'
       : '';
     bubble.innerHTML = (accepted
       ? '⚖️ <b class="rb-ok">JOGOS!</b>„'
@@ -2636,7 +2646,7 @@ function downloadRecord() {
   const r = S.roundResults || {};
   const extra = ['Bíró: ' + (S.judgeName || '?')];
   (v.challengeResults || []).forEach(x=>extra.push('Kihívás: ' + x.name + ' – ' + x.text + ' – ' + (x.done ? 'sikerült' : 'nem sikerült') + ', bíró: ' + (x.judgeName || S.judgeName)));
-  (S.objectionLog || []).forEach(x=>extra.push('Tiltakozás: ' + x.objectorName + ' → ' + x.speakerName + ', ' + (x.accepted ? 'JOGOS' : 'NEM JOGOS') + ', bíró: ' + x.judgeName + ', levonás: ' + x.deductionMs / 1000 + ' mp' + (x.timedOut ? ' (időtúllépés)' : '')));
+  (S.objectionLog || []).forEach(x=>extra.push('Tiltakozás: ' + x.objectorName + ' → ' + x.speakerName + ', ' + (x.accepted ? 'JOGOS' : 'NEM JOGOS') + ', bíró: ' + x.judgeName + ', ' + (x.bonusMs ? 'jutalom: +' + x.bonusMs / 1000 + ' mp' : 'levonás: ' + x.deductionMs / 1000 + ' mp (30%)') + (x.timedOut ? ' (időtúllépés)' : '')));
   if (S.revealedCards) {
     const c=S.revealedCards;
     extra.push('ALIBI: ' + c.alibi, ...c.evidence.map(x=>'BIZONYÍTÉK: '+x), ...c.tricks.map(x=>'TRÜKK: '+x));
@@ -2882,7 +2892,7 @@ socket.on('objection_started', (data) => {
 });
 
 socket.on('objection_ruling', (data) => {
-  showRuling(data.accepted, data.ruling, data.objectorName, data.speakerName, data.judgeName);
+  showRuling(data.accepted, data.ruling, data.objectorName, data.speakerName, data.judgeName, data);
   // A bíró kihirdeti a döntést: szövegbuborék és bólogatás (2-3 mp),
   // majd a kalapácsütés megrázkódik.
   charAnim.judgeSpeak(2500);
