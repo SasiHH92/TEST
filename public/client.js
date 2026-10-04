@@ -629,7 +629,7 @@ function scenePosition(role,index,g) {
     // A védő és a tanú ne csússzon egymásra, ha a háttér vágása miatt kevés a hely: a védő balra tolódik.
     const w=STAGE_POS.witness, wq=projectScenePoint(w.x,w.y,g);
     const wm=Math.max(42,g.height*w.h/100*.4)+12, wx=Math.max(wm,Math.min(g.usable-wm,wq.x));
-    const gap=(g.height*(p.h+w.h)*.72/100*2/3)/2+10;
+    const gap=(g.height*(p.h+w.h)*.56/100*2/3)/2+10;
     x=Math.max(margin,Math.min(x,wx-gap));
   }
   if(role==='juror' && !g.mobile) {
@@ -1660,7 +1660,7 @@ function renderStage() {
   if (scene.witnessId) push('witness', scene.witnessId);
   const mobile=g.mobile;
   // Az avatár-keretek kisebbek a régi alakoknál; a vádlott alapmérete a legnagyobb, ezért ő kapja a legkisebb arányt.
-  const AV_SCALE=mobile?{defendant:.72,prosecutor:.85,defender:.85,witness:.85,juror:.95}:{defendant:.58,prosecutor:.72,defender:.72,witness:.72,juror:.8};
+  const AV_SCALE=mobile?{defendant:.6,prosecutor:.7,defender:.7,witness:.7,juror:.8}:{defendant:.46,prosecutor:.56,defender:.56,witness:.56,juror:.66};
   const avH=(h,isAv,role)=>h*(isAv?(AV_SCALE[role]||.75):1);
   const juryPositions=mobile ? [89,95] : JUROR_X;
   // A bíró a saját pulpitusánál áll; nem jelenik meg másodszor esküdtként.
@@ -1696,7 +1696,8 @@ function renderStage() {
   const jp=scenePosition('judge',0,g),judgeSlot=$('#judge');
   // Avatáros bírónál a kép nagyobb (a teteje marad, lefelé nő), a pulpitus elé kerül, a névtábla az aljára.
   const jAv=AVATAR_ID_RE.test(playerById(scene.currentJudgeId)?.avatar||'');
-  const jh=jp.h*(jAv?1.1:1), jb=jp.b-(jAv?jp.h*.1:0), jPlate=jAv?100-jb-5:jp.plate;
+  const jf=jAv?.95:1; // az avatáros bíró képe kicsit kisebb, a teteje marad
+  const jh=jp.h*jf, jb=jp.b-jp.h*(jf-1), jPlate=jAv?100-jb-5:jp.plate;
   judgeSlot.classList.toggle('av-judge',jAv);
   judgeSlot.style.setProperty('--x',jp.x+'%');judgeSlot.style.setProperty('--b',jb+'%');judgeSlot.style.setProperty('--h',jh+'%');
   $('#accusationTicker').style.left=g.mobile?'50%':jp.x+'%';
@@ -2243,6 +2244,7 @@ function renderPhaseContent() {
           '<button class="btn big green" id="iaDone">VÉGEZTEM ✓</button>' +
           '</div>';
       } else if (od.phase === 'judge') {
+        hideObjectionOverlay(); // a döntési szakaszban semmi nem takarhatja a gombokat
         // C) Döntés: a bíró dönt
         const remaining = Math.max(0, od.judgeEndsAt - (Date.now() + serverOffset));
         const iAmJudge = S.currentJudgeId === MY.playerId;
@@ -2546,9 +2548,18 @@ function judgeSmash() {
   charAnim.judgeShake();
 }
 
+let objectionOverlayTimer = null;
+function hideObjectionOverlay() {
+  clearTimeout(objectionOverlayTimer);
+  $('#objectionOverlay').classList.add('hidden');
+}
+
 function showObjection(name, byPid) {
   $('#objectionName').textContent = '— ' + name + ' —';
   $('#objectionOverlay').classList.remove('hidden');
+  // A felirat 5 mp után eltűnik, hogy a bíró lássa és használhassa a döntési gombokat.
+  clearTimeout(objectionOverlayTimer);
+  objectionOverlayTimer = setTimeout(hideObjectionOverlay, 5000);
   SFX.objection();
   SFX.whisper();
   // Karakteranimáció: a tiltakozó röviden felpattan.
