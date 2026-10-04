@@ -338,7 +338,7 @@ class Game {
     // A vádlott alibije és a saját kihívás a felkészüléstől az ítéletig látszik (segítség a beszédhez).
     if (iAmDefendant && cardsVisible) base.alibi = d.alibi;
     if (d.witnessId) base.witnessId = d.witnessId;
-    if (me && me.id === d.witnessId && this.phase === PHASES.PREP) base.witnessCard = d.witnessCard;
+    if (me && me.id === d.witnessId && cardsVisible) base.witnessCard = d.witnessCard; // a tanú is végig látja a kártyáját
     const myCh = me && d.challenges.find((c) => c.id === me.id);
     if (myCh && cardsVisible) {
       base.myChallenge = myCh.text;

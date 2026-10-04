@@ -1545,6 +1545,11 @@ function renderMyCardsBar() {
     chips.push('<span class="mcb-card" style="--role:' + ROLE_COLOR.defendant + '">' +
       '<span class="mcb-type">ALIBI</span><span class="mcb-text">' + escapeHtml(S.alibi) + '</span></span>');
   }
+  if (inPhase && S.witnessCard && role === 'witness') {
+    chips.push('<span class="mcb-head" style="--role:' + ROLE_COLOR.witness + '">A TITKOS TANÚKÁRTYÁD</span>');
+    chips.push('<span class="mcb-card" style="--role:' + ROLE_COLOR.witness + '">' +
+      '<span class="mcb-type">TANÚ</span><span class="mcb-text">' + escapeHtml(S.witnessCard) + '</span></span>');
+  }
   if (inPhase && S.myChallenge && (role === 'prosecutor' || role === 'defender' || role === 'defendant')) {
     chips.push('<span class="mcb-card" style="--role:' + roleColorOf(role) + '">' +
       '<span class="mcb-type">🎬 KIHÍVÁS</span><span class="mcb-text">' + escapeHtml(S.myChallenge) + '</span></span>');
@@ -2123,7 +2128,7 @@ function challengeHtmlIfMine() {
   const role = myRole();
   // A kihívás a FELKÉSZÜLÉS alatt mindenkinek megjelenik; a beszédfázisokban
   // az ügyész és a védőügyvéd folyamatosan látja (a vádlotténál a szerver
-  // a felkészülés után nem küldi el – ott az "elrejtve" jelzés marad).
+  // a felkészülés után is elküldi – a KÁRTYÁIM sávban marad).
   const phasesOk = S.phase === 'prep';
   if (S.myChallenge && phasesOk) {
     const lbl = roleLabel(role);
@@ -2430,11 +2435,7 @@ function renderPhaseContent() {
       html = '<p>…</p>';
   }
   html += autoCountdownHtml();
-  // "A kártyáid elrejtve" – a tanú a felkészülés után nem látja többé a kártyáját;
-  // a vádlott az alibijét és a kihívását végig látja (KÁRTYÁIM sáv).
-  if (S.phase!=='prep' && ['witness'].includes(myRole()) && CARD_VISIBLE_PHASES.includes(S.phase)) {
-    html += '<div class="cards-hidden-note">🔒 A kártyáid elrejtve</div>';
-  }
+  // A kártyák (alibi, bizonyíték, trükk, tanúkártya, kihívás) a KÁRTYÁIM sávban végig látszanak.
   el.dataset.phase = S.phase;
   el.innerHTML = html;
   el.classList.toggle('enter', S.phase !== lastRenderedPhase);

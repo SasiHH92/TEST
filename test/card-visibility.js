@@ -76,11 +76,12 @@ console.log('1-4) 6 játékos: ügyész/védőügyvéd folyamatosan, vádlott cs
   d.witnessCard = 'TANÚ-KÁRTYA-X';
   g.phase = 'witness';
   const w = g.publicState(jurorId);
-  ok(w.witnessCard === undefined, 'tanú fázis: a felkészülés után a tanúkártya rejtve');
+  ok(w.witnessCard === 'TANÚ-KÁRTYA-X', 'tanú fázis: a tanú végig látja a kártyáját');
   ok(w.evidence === undefined && w.tricks === undefined, 'tanú fázis: a tanú csak a sajátját látja');
   ok(Array.isArray(g.publicState(d.defenderId).evidence), 'tanú fázis: védőügyvéd továbbra is látja a bizonyítékokat');
   g.phase = 'final_prosecution';
-  ok(g.publicState(jurorId).witnessCard === undefined, 'zárószó: a tanúkártya elrejtődik');
+  ok(g.publicState(jurorId).witnessCard === 'TANÚ-KÁRTYA-X', 'zárószó: a tanú továbbra is látja a kártyáját');
+  ok(g.publicState(d.prosecutorId).witnessCard === undefined, 'zárószó: más nem kapja meg a tanúkártyát');
 
   // --- ÍTÉLET ---
   g.phase = 'verdict';
@@ -127,7 +128,7 @@ console.log('6) Reconnect: a szerephez tartozó, éppen látható kártyák jön
   ok(!!st2.alibi, 'visszacsatlakozó vádlott a prep alatt látja az alibijét');
 }
 
-console.log('7) Kliens statikus: KÁRTYÁIM sáv + elrejtve-jelzés');
+console.log('7) Kliens statikus: KÁRTYÁIM sáv');
 {
   const client = fs.readFileSync(path.join(__dirname, '..', 'public', 'client.js'), 'utf8');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
@@ -135,7 +136,8 @@ console.log('7) Kliens statikus: KÁRTYÁIM sáv + elrejtve-jelzés');
   ok(html.includes('id="myCardsBar"'), 'index.html: #myCardsBar sáv megvan');
   ok(client.includes('AZ ÜGYÉSZ BIZONYÍTÉKAI'), 'kliens: "AZ ÜGYÉSZ BIZONYÍTÉKAI" címke');
   ok(client.includes('CSAK TE LÁTOD') && client.includes('mcb-toggle'), 'sáv: CSAK TE LÁTOD + összecsukó ikon');
-  ok(client.includes('A kártyáid elrejtve'), 'kliens: "A kártyáid elrejtve" jelzés');
+  ok(!client.includes('A kártyáid elrejtve'), 'kliens: nincs többé "A kártyáid elrejtve" jelzés');
+  ok(client.includes('A TITKOS TANÚKÁRTYÁD'), 'kliens: tanúkártya a KÁRTYÁIM sávban');
   ok(css.includes('.my-cards-bar'), 'stílus: .my-cards-bar');
   ok(game_judgeUnchanged(), 'bíró judgeWatch szabálya változatlan (publicState)');
 }
