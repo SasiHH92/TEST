@@ -2,9 +2,12 @@
 const assert=require('assert/strict');
 const {spawn}=require('child_process');
 const path=require('path');
+const os=require('os');
+const fs=require('fs');
 const io=require('socket.io-client');
 const PORT=3183, URL='http://127.0.0.1:'+PORT;
 const sockets=[];
+const AVATAR_TMP=path.join(os.tmpdir(),'kb-avatars-'+process.pid+'.json'); // a teszt nem írhatja a valódi data/avatars.json-t
 let checks=0;
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 function emit(s,event,payload={}) {
@@ -21,7 +24,7 @@ async function connect() {
 }
 function pass(label) {checks++;console.log('PASS '+label);}
 (async()=>{
-  const child=spawn(process.execPath,['server.js'],{cwd:path.resolve(__dirname,'..'),env:{...process.env,PORT:String(PORT)},stdio:['ignore','ignore','pipe']});
+  const child=spawn(process.execPath,['server.js'],{cwd:path.resolve(__dirname,'..'),env:{...process.env,PORT:String(PORT),KB_AVATARS_FILE:AVATAR_TMP},stdio:['ignore','ignore','pipe']});
   let errors='';child.stderr.on('data',d=>{errors+=d;});
   try {
     let ready=false;
@@ -80,10 +83,24 @@ function pass(label) {checks++;console.log('PASS '+label);}
     await emit(host,'leave_room');host.on('state',()=>{statesAfterLeave++;});await pause(80);
     assert.equal(statesAfterLeave,0);assert(!replacement.lastState.players.some(p=>p.id==='host'));
     assert.equal(replacement.lastState.hostId,nextHost);pass('explicit host kilépés: törlés, socket.leave és hostátadás');
+    // Avatár mentése: szabad névre igen, játékban lévő névre nem.
+    {
+      const a=await connect(), b=await connect();
+      const reg=(await emit(a,'get_registry')).registry.map(r=>r.nev);
+      const freeName=reg[0], busyName=reg[1];
+      a.emit('set_avatar',{name:freeName,avatar:'av07'});a.emit('set_avatar',{name:freeName,avatar:'nem-avatar'});await pause(80);
+      const after=(await emit(a,'get_registry')).registry.find(r=>r.nev===freeName);
+      assert.equal(after.avatar,'av07');pass('avatár mentése szabad névre, érvénytelen azonosító elutasítva');
+      const room=await emit(b,'create_room',{name:busyName,playerId:'busy'});assert(room.code);
+      a.emit('set_avatar',{name:busyName,avatar:'av09'});await pause(80);
+      const busy=(await emit(a,'get_registry')).registry.find(r=>r.nev===busyName);
+      assert.ok(!busy.avatar);pass('játékban lévő név avatárját más nem írhatja át');
+    }
     assert.equal(errors,'',errors);
     console.log(checks+' Socket.io ellenőrzés sikeres.');
   } finally {
     sockets.forEach(s=>s.disconnect());child.kill();
     await new Promise(r=>child.once('exit',r));
+    try{fs.unlinkSync(AVATAR_TMP);}catch(e){}
   }
 })().catch(e=>{console.error(e);process.exitCode=1;});

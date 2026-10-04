@@ -257,13 +257,13 @@ const AVATAR_EMOJI = {
   'bírói kalap': '🧑‍⚖️', 'paróka': '👱', 'rabruha': '🧑‍🦱', 'napszemüveg': '🕶️',
   'feltűnő csokornyakkendő': '🎀', 'birkajelmez': '🐑', 'pókaszapityó': '🎩', 'ünnepi kalap': '🎉'
 };
-// Képes avatárok: "av01" … "av50" -> /assets/avatars/avatar_01.png
+// Képes avatárok: "av01" … "av50" -> /assets/avatars/avatar_01.webp
 const AVATAR_COUNT = 50;
 const AVATARS = Array.from({ length: AVATAR_COUNT }, (_, i) => 'av' + String(i + 1).padStart(2, '0'));
 const AVATAR_ID_RE = /^av\d\d$/;
 
 function avatarSrc(a) {
-  return '/assets/avatars/avatar_' + a.slice(2) + '.png';
+  return '/assets/avatars/avatar_' + a.slice(2) + '.webp';
 }
 
 function avatarEmoji(a) {
@@ -919,7 +919,7 @@ function buildAvatarGrid(grid, onPick) {
     cell.className = 'avatar-cell' + (MY.avatar === a ? ' selected' : '');
     cell.dataset.avatar = a;
     cell.setAttribute('aria-label', 'Avatár ' + a.slice(2));
-    cell.innerHTML = '<img src="' + avatarSrc(a) + '" alt="" loading="lazy">';
+    cell.innerHTML = '<img src="' + avatarSrc(a) + '" alt="" loading="lazy" decoding="async" width="72" height="72">';
     cell.addEventListener('click', () => {
       grid.querySelectorAll('.avatar-cell').forEach((c) => c.classList.remove('selected'));
       cell.classList.add('selected');

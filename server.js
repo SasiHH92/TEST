@@ -157,7 +157,7 @@ const REGISTRY = PLAYER_DB.players.map((p) => ({
 
 // A nyilvántartott játékosok utoljára választott avatárja (név -> "av01"…"av50"),
 // hogy a névválasztó kártyákon mindenkinél látsszon. Hibatűrő mentés, mint a statisztikánál.
-const AVATARS_FILE = path.join(__dirname, 'data', 'avatars.json');
+const AVATARS_FILE = process.env.KB_AVATARS_FILE || path.join(__dirname, 'data', 'avatars.json'); // (a KB_AVATARS_FILE csak a teszteknek kell)
 const AVATAR_ID_RE = /^av(0[1-9]|[1-4]\d|50)$/;
 let PROFILE_AVATARS = {};
 try {
@@ -316,6 +316,10 @@ io.on('connection', (socket) => {
   safeOn('set_avatar', ({ name, avatar } = {}) => {
     if (typeof name !== 'string' || !REGISTRY.some((r) => r.nev === name)) return;
     if (typeof avatar !== 'string' || !AVATAR_ID_RE.test(avatar)) return;
+    // Aki épp játékban van (ŐRIZETBEN), annak az avatárját más nem írhatja át.
+    for (const game of rooms.values()) {
+      for (const p of game.players.values()) if (p.connected && p.name === name) return;
+    }
     PROFILE_AVATARS[name] = avatar;
     saveProfileAvatars();
   });

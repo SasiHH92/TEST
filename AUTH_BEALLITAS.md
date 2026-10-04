@@ -2,7 +2,7 @@
 
 A csatolt kép alapján elkészült belépőoldal a valódi e-mail/jelszavas fiókokat, a Google- és Discord-belépést, az „Emlékezz rám” funkciót, a kijelentkezést és a jelszó-visszaállítást kezeli. A tárgyalási HUD előző változtatásai is benne vannak a projektben.
 
-A háttér a kapott `assets/belepes-terem.png`; a két figura a meglévő `biro.png` és `ugyesz.png`. A mezők, gombok és feliratok HTML-elemek. Telefonon fülekkel váltható a belépés és a regisztráció, a hosszabb űrlap függőlegesen görgethető.
+A háttér a kapott `assets/terem-hatter.webp`; a két figura a meglévő `biro.png` és `ugyesz.png`. A mezők, gombok és feliratok HTML-elemek. Telefonon fülekkel váltható a belépés és a regisztráció, a hosszabb űrlap függőlegesen görgethető.
 
 ## Indítás helyben
 
