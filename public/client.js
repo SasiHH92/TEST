@@ -131,6 +131,13 @@ const SFX = {
 // és a játék általános némítását / hangerejét is követi. A böngésző csak az első érintés után enged hangot.
 SFX.chat = () => { tone(880, 0.09, 'sine', 0, 0.26); tone(1175, 0.12, 'sine', 0.08, 0.2); };
 SFX.dm = () => { tone(660, 0.1, 'triangle', 0, 0.34); tone(990, 0.18, 'triangle', 0.1, 0.3); };
+// Ítélet-hangok: a kalapácsütés után a BŰNÖS lehangoló, lefelé lépő akkordot, a FELMENTÉS felfelé futó, csillogó dúr futamot kap.
+SFX.guilty = () => { tone(196, 0.55, 'sawtooth', 0, 0.28, 130); tone(185, 0.65, 'sawtooth', 0.12, 0.24, 110); tone(65, 0.8, 'sine', 0.05, 0.7, 40); };
+SFX.acquit = () => {
+  [523, 659, 784, 1047, 1319].forEach((n, i) => tone(n, 0.34, 'triangle', i * 0.09, 0.34));
+  tone(2093, 0.5, 'sine', 0.45, 0.16); tone(2637, 0.5, 'sine', 0.58, 0.11);
+};
+SFX.vote = () => { tone(520, 0.07, 'square', 0, 0.16); tone(780, 0.11, 'square', 0.07, 0.14); };
 let chatSound = LS.getItem('kb_chat_sound') !== '0';
 window.kbSound = {
   ping() { if (chatSound) { ensureAudio(); SFX.dm(); } },
@@ -595,6 +602,14 @@ function updateReduceMotionBtn() {
   b.textContent = on ? '🐢 Mozgás: CSÖKKENT' : '🏃 Mozgás: TELJES';
   b.classList.toggle('active', on);
   b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  const d = document.getElementById('btnMotionDock');
+  if (d) {
+    d.textContent = on ? '🐢' : '🏃';
+    d.classList.toggle('active', on);
+    d.setAttribute('aria-pressed', on ? 'true' : 'false');
+    d.title = on ? 'Kevesebb mozgás: BE (kattints a teljes mozgáshoz)' : 'Kevesebb mozgás: KI (kattints a csökkentéshez)';
+    d.setAttribute('aria-label', d.title);
+  }
 }
 // TELJES szerepnevek: ponttábla, színpad, fázis-sáv, jegyzőkönyv – kiérthető címkék.
 const ROLE_LABEL = {
@@ -2742,9 +2757,9 @@ function renderPhaseContent() {
 
   // gomb-kötések
   const voteG = $('#voteGuilty');
-  if (voteG) voteG.addEventListener('click', () => socket.emit('vote_verdict', { verdict: 'guilty' }));
+  if (voteG) voteG.addEventListener('click', () => { SFX.vote(); socket.emit('vote_verdict', { verdict: 'guilty' }); });
   const voteNG = $('#voteNotGuilty');
-  if (voteNG) voteNG.addEventListener('click', () => socket.emit('vote_verdict', { verdict: 'not_guilty' }));
+  if (voteNG) voteNG.addEventListener('click', () => { SFX.vote(); socket.emit('vote_verdict', { verdict: 'not_guilty' }); });
   const accRead = $('#iaAccRead');
   if (accRead) accRead.addEventListener('click', () => socket.emit('accusation_read'));
   const iaDone = $('#iaDone');
@@ -2901,10 +2916,20 @@ function showRuling(accepted, ruling, objectorName, speakerName, judgeName, data
   }, 1500);
 }
 
-function confettiBurst(n) {
-  if (charAnim.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+const CONFETTI_COLORS = {
+  default: ['#e5484d', '#ec5f64', '#f5a524', '#e8e8ea', '#8b90a0'],
+  guilty: ['#e5484d', '#b3353a', '#6e1616', '#8b90a0', '#2a2d38'],
+  acquit: ['#22c55e', '#6bfa8f', '#f2c14e', '#fff3d0', '#e8e8ea']
+};
+
+function motionReduced() {
+  return charAnim.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function confettiBurst(n, theme) {
+  if (motionReduced()) return;
   const layer = $('#confettiLayer');
-  const colors = ['#e5484d', '#ec5f64', '#f5a524', '#e8e8ea', '#8b90a0'];
+  const colors = CONFETTI_COLORS[theme] || CONFETTI_COLORS.default;
   for (let i = 0; i < (n || 120); i++) {
     const c = document.createElement('div');
     c.className = 'confetti';
@@ -2918,11 +2943,50 @@ function confettiBurst(n) {
   }
 }
 
-function showUnanimous() {
+function showUnanimous(theme) {
   $('#unanimousOverlay').classList.remove('hidden');
-  confettiBurst(80);
-  SFX.fanfare();
+  confettiBurst(80, theme);
+  setTimeout(() => SFX.fanfare(), 950); // az ítélet-hang után szól
   setTimeout(() => $('#unanimousOverlay').classList.add('hidden'), 2200);
+}
+
+// Békegalambok: a felmentést jelző, felfelé szálló madarak (csökkentett mozgásnál elmaradnak).
+function releaseDoves(n) {
+  if (motionReduced()) return;
+  const layer = $('#reactionLayer');
+  if (!layer) return;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('div');
+    el.className = 'flying-emoji dove';
+    el.textContent = '🕊️';
+    el.style.left = (8 + Math.random() * 78) + 'vw';
+    el.style.top = (78 + Math.random() * 14) + 'vh';
+    el.style.fontSize = (34 + Math.random() * 22) + 'px';
+    el.style.setProperty('--dx', ((Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 18)) + 'vw');
+    el.style.setProperty('--dy', -(55 + Math.random() * 30) + 'vh');
+    el.style.setProperty('--rot', (Math.random() * 30 - 15) + 'deg');
+    el.style.animationDelay = (i * 0.12) + 's';
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), 2200 + i * 120);
+  }
+}
+
+// Az ítélethirdetés hang- és képi visszajelzése: a kalapács (judgeSmash) után a döntés jellege szerint.
+function verdictCue(v) {
+  const theme = v.guilty ? 'guilty' : 'acquit';
+  setTimeout(() => { if (S && S.phase === 'verdict') (v.guilty ? SFX.guilty : SFX.acquit)(); }, 450);
+  if (v.unanimous) showUnanimous(theme);
+  else confettiBurst(v.guilty ? 30 : 60, theme);
+  if (motionReduced()) return;
+  if (v.guilty) {
+    const panel = $('#scenePanel');
+    panel.classList.remove('verdict-shake');
+    void panel.offsetWidth;
+    panel.classList.add('verdict-shake');
+    setTimeout(() => panel.classList.remove('verdict-shake'), 700);
+  } else {
+    releaseDoves(v.unanimous ? 8 : 5);
+  }
 }
 
 // ============================================================
@@ -3209,8 +3273,7 @@ socket.on('state', (state) => {
   if (state.phase !== lastPhase) {
     if (state.phase === 'verdict' && S.verdict) {
       judgeSmash();
-      if (S.verdict.unanimous) showUnanimous();
-      else confettiBurst(50);
+      verdictCue(S.verdict);
     }
     if (state.phase === 'game_over') {
       confettiBurst(200);
@@ -3258,11 +3321,30 @@ socket.on('order_in_court', () => {
 // Hangerő
 // ============================================================
 
-$('#btnMute').addEventListener('click', () => {
+// A némítás és a mozgás-csökkentés a játékban (info-sáv) és a lobbiban / menüben (sarok-kapcsolók) ugyanazt az állapotot állítja.
+function updateMuteBtns() {
+  $('#btnMute').textContent = muted ? '🔇' : '🔊';
+  const d = document.getElementById('btnMuteDock');
+  if (d) {
+    d.textContent = muted ? '🔇' : '🔊';
+    d.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    d.title = muted ? 'Hang bekapcsolása' : 'Hang némítása';
+    d.setAttribute('aria-label', d.title);
+  }
+}
+function toggleMute() {
+  ensureAudio();
   muted = !muted;
   LS.setItem('kb_muted', muted ? '1' : '0');
-  $('#btnMute').textContent = muted ? '🔇' : '🔊';
-});
+  updateMuteBtns();
+  if (!muted) SFX.ding(); // hallható visszajelzés a bekapcsoláskor
+}
+$('#btnMute').addEventListener('click', toggleMute);
+const muteDock = document.getElementById('btnMuteDock');
+if (muteDock) muteDock.addEventListener('click', toggleMute);
+const motionDock = document.getElementById('btnMotionDock');
+if (motionDock) motionDock.addEventListener('click', () => charAnim.setReducedMotion(!charAnim.reducedMotion));
+updateMuteBtns();
 $('#volume').addEventListener('input', (e) => {
   volume = +e.target.value;
   LS.setItem('kb_volume', String(volume));

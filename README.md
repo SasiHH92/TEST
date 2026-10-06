@@ -39,6 +39,7 @@ A szerver név szerint megjegyzi az előre megadott játékosokra: **hányiszor 
 - **Reakciógombok** az esküdteknek (😂 💀 🤡 🔥 👏) – az emoji átrepül mindenki képernyőjén. A legtöbb 😂-t kapó beszélő **Közönségkedvenc** bónuszt kap.
 - **Kihíváskártyák** – ügyész és vádlott titkos beszéd-kihívást kap („Suttogva beszélj", „Használd a 'pogácsa' szót háromszor"…). Alapból a kör bírója dönt, kihívásonként 20 mp alatt; időtúllépés = nem sikerült. Teljesítés +2, nehezítés +4 pont. Az esküdtek szavazása a lobbyban választható.
 - **„Rendet a teremben!"** – csak a kör bírója használhatja, kalapácsütéssel.
+- **Hang- és képi visszajelzés az ítéletnél** – a kalapácsütés után a BŰNÖS lehangoló akkordot, vörös villanást és rázkódást, a FELMENTÉS csillogó dúr futamot, zöld villanást és szálló békegalambokat kap (egyhangú ítéletnél fanfár is); a szavazógomb kattintásra visszajelez. A **hang-némítás** és a **„kevesebb mozgás"** kapcsoló a játékban az info-sávban, a névválasztón/menün/lobbin a bal felső sarokban érhető el, közös állapotot (`kb_muted`, `kb_reducedMotion`) használnak; kevesebb mozgásnál a rázkódás, galambok és konfetti elmaradnak, a hang marad.
 - **Vicces ítéletek** – bűnösség esetén 60-féle büntetés („3 hónap közösségi munka egy kacsaúsztatóban"), felmentés esetén gyanakvó felmentő szövegek.
 - **Bírósági jegyzőkönyv** – minden tárgyalás után letölthető PNG-kép, amit be lehet dobni a Discordra.
 - **Játék vége** – ranglista, konfetti és díjak: A legjobb ügyvéd, A legnagyobb bűnöző, Közönségkedvenc, Kihívás bajnok. + „Új tárgyalás" gomb.
