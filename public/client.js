@@ -144,7 +144,23 @@ function show(screen) {
   $('#screen-' + screen).classList.add('active');
   document.body.classList.toggle('in-game', screen === 'game');
   document.body.dataset.screen = screen;
+  if (screen === 'menu') renderMenuWho();
   document.dispatchEvent(new CustomEvent('kb:screen', {detail:screen}));
+}
+
+// "Belépsz mint" sáv a menüben: a választott karakter avatárja, neve és címe.
+function renderMenuWho() {
+  const box = $('#menuWho');
+  if (!box) return;
+  if (!MY.name) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const reg = REGISTRY.find((r) => r.nev === MY.name);
+  const title = (CHOSEN && CHOSEN.titulus) || (reg && reg.titulus) || 'Ismeretlen tettes';
+  const name = MY.name.replace(/\s*\[[^\]]+\]\s*/, '').trim();
+  const mono = AVATARS.includes(MY.avatar)
+    ? '<span class="mug-mono mug-avatar mw-av"><img src="' + avatarSrc(MY.avatar) + '" alt=""></span>'
+    : '<span class="mug-mono mw-av" style="background:hsl(' + nameHue(name) + ',62%,44%)">' + escapeHtml((name[0] || '?').toUpperCase()) + '</span>';
+  box.innerHTML = mono + '<span class="mw-text"><small>BELÉPSZ MINT</small><b>' + escapeHtml(name) + '</b><i>' + escapeHtml(title) + '</i></span>';
+  box.classList.remove('hidden');
 }
 
 // ============================================================
@@ -902,6 +918,7 @@ function drawPinThreads() {
 }
 
 function initNameScreen() {
+  PERSONAL_STATS = { name: '', stats: null };
   // avatar-választó a vendégűrlaphoz
   if (!AVATARS.includes(MY.avatar)) MY.avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
   buildAvatarGrid($('#avatarGrid'), (a) => { MY.avatar = a; LS.setItem('kb_avatar', a); });
@@ -985,47 +1002,116 @@ $('#btnLeaveGame').addEventListener('click', async () => {
   if (await confirmDialog('Biztosan kilépsz a szobából?')) leaveToMenu();
 });
 
+// ---- Névkártyák: közös építő a fix kártyákhoz, a saját kártyához és a profil-előnézethez ----
+let PERSONAL_STATS = { name: '', stats: null };
+
+// Egy kártya belső HTML-je. o: { label, name, badge, title, stats, avatar, taken, pick, edit }
+function mugCardHtml(o) {
+  const name = o.name || '';
+  const initial = (name.replace(/[^\p{L}\p{N}]/gu, '')[0] || '?').toUpperCase();
+  const mono = AVATARS.includes(o.avatar)
+    ? '<span class="mug-mono mug-avatar"><img src="' + avatarSrc(o.avatar) + '" alt=""></span>'
+    : '<span class="mug-mono" style="background:hsl(' + nameHue(name) + ',62%,44%)">' + escapeHtml(initial) + '</span>';
+  const st = o.stats;
+  return '<span class="mug-label">' + escapeHtml(o.label || 'NYILVÁNTARTÁS') + '</span>' +
+    mono +
+    '<span class="mug-name">' + escapeHtml(name) + '</span>' +
+    (o.badge ? '<span class="mug-badge">' + escapeHtml(o.badge) + '</span>' : '') +
+    '<span class="mug-title">' + escapeHtml(o.title || '') + '</span>' +
+    '<span class="mug-stats">' +
+      '<span class="ms ms-bad" title="Elítélve"><i aria-hidden="true">🔨</i>Elítélve <b>' + (st ? st.bunos : 0) + '×</b></span>' +
+      '<span class="ms ms-good" title="Felmentve"><i aria-hidden="true">🕊️</i>Felmentve <b>' + (st ? st.artatlan : 0) + '×</b></span>' +
+    '</span>' +
+    (o.pick && !o.taken ? '<span class="mug-pick">VÁLASZTOM <i aria-hidden="true">▸</i></span>' : '') +
+    (o.edit && !o.taken ? '<button type="button" class="mug-edit" aria-label="Saját kártya szerkesztése">✎ SZERKESZTÉS</button>' : '') +
+    (o.taken ? '<div class="mug-taken"><span>ŐRIZETBEN</span></div>' : '');
+}
+
+// A bejelentkezett fiók saját kártyájának adatai (a profilból).
+function personalCard() {
+  const acc = window.kbAccount;
+  if (!acc) return null;
+  const pr = acc.profile || {};
+  return {
+    nev: acc.username,
+    titulus: pr.titulus || 'Új gyanúsított',
+    priusz: pr.priusz || '',
+    jelveny: pr.jelveny || '',
+    avatar: AVATARS.includes(pr.avatar) ? pr.avatar : ''
+  };
+}
+
+// Közös kártya-váz: szerep, felirat, billentyűzet (Enter / szóköz).
+function mugCardShell(name, taken, chosen, extraClass) {
+  const card = document.createElement('div');
+  card.className = 'mug-card' + (extraClass ? ' ' + extraClass : '') + (taken ? ' taken' : '') + (chosen ? ' chosen' : '');
+  card.setAttribute('role', 'button');
+  card.tabIndex = taken ? -1 : 0;
+  if (taken) card.setAttribute('aria-disabled', 'true');
+  card.setAttribute('aria-label', name + (taken ? ' – őrizetben' : ' kiválasztása'));
+  if (!taken) {
+    card.addEventListener('keydown', (e) => {
+      if (e.target === card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); card.click(); }
+    });
+  }
+  return card;
+}
+
 function renderMugGrid() {
   const grid = $('#mugGrid');
   grid.innerHTML = '';
+
+  // A TE KÁRTYÁD: csak bejelentkezett fióknál, elől.
+  const me = personalCard();
+  if (me) {
+    if (PERSONAL_STATS.name !== me.nev) {
+      PERSONAL_STATS = { name: me.nev, stats: null };
+      socket.emit('get_stats', { name: me.nev }, (res) => {
+        if (PERSONAL_STATS.name !== me.nev) return;
+        PERSONAL_STATS.stats = res && res.stats ? res.stats : null;
+        renderMugGrid();
+      });
+    }
+    const taken = TAKEN_NAMES.includes(me.nev);
+    const card = mugCardShell(me.nev, taken, CHOSEN && CHOSEN.nev === me.nev, 'mug-me');
+    card.innerHTML = mugCardHtml({
+      label: 'A TE KÁRTYÁD', name: me.nev, badge: me.jelveny, title: me.titulus,
+      stats: PERSONAL_STATS.name === me.nev ? PERSONAL_STATS.stats : null,
+      avatar: me.avatar, taken, pick: true, edit: true
+    });
+    const edit = card.querySelector('.mug-edit');
+    if (edit) {
+      edit.addEventListener('click', (e) => { e.stopPropagation(); if (window.kbEditProfile) window.kbEditProfile(); });
+      edit.addEventListener('keydown', (e) => e.stopPropagation());
+    }
+    if (!taken) {
+      card.addEventListener('click', () => {
+        if (card.classList.contains('chosen')) return;
+        card.classList.add('chosen');
+        if (me.avatar) MY.avatar = me.avatar;
+        openAvatarPicker(me.nev, () => {
+          if (window.kbSaveAvatar) window.kbSaveAvatar(MY.avatar);
+          choosePersonal(me);
+        }, () => card.classList.remove('chosen'));
+      });
+    }
+    grid.appendChild(card);
+  }
+
   REGISTRY.forEach((r) => {
     const taken = TAKEN_NAMES.includes(r.nev);
-    const card = document.createElement('div');
-    card.className = 'mug-card' + (taken ? ' taken' : '') + (CHOSEN && CHOSEN.nev === r.nev ? ' chosen' : '');
-    const st = r.stats;
     // A [TAG] a jelvény: a névtábláról a jelvény-címkére kerül.
     const tagMatch = r.nev.match(/\[([^\]]+)\]/);
     const badge = r.jelveny || (tagMatch ? tagMatch[1] : '');
     const cleanName = r.nev.replace(/\s*\[[^\]]+\]\s*/, '').trim();
-    const initial = (cleanName.replace(/[^\p{L}\p{N}]/gu, '')[0] || '?').toUpperCase();
-    const hue = nameHue(cleanName);
-    const mono = AVATARS.includes(r.avatar)
-      ? '<span class="mug-mono mug-avatar"><img src="' + avatarSrc(r.avatar) + '" alt=""></span>'
-      : '<span class="mug-mono" style="background:hsl(' + hue + ',62%,44%)">' + escapeHtml(initial) + '</span>';
-    // Billentyűzettel is választható (Enter / szóköz), a foglalt kártya nem.
-    card.setAttribute('role', 'button');
-    card.tabIndex = taken ? -1 : 0;
-    if (taken) card.setAttribute('aria-disabled', 'true');
-    card.setAttribute('aria-label', cleanName + (taken ? ' – őrizetben' : ' kiválasztása'));
-    card.innerHTML =
-      '<span class="mug-label">NYILVÁNTARTÁS</span>' +
-      mono +
-      '<span class="mug-name">' + escapeHtml(cleanName) + '</span>' +
-      (badge ? '<span class="mug-badge">' + escapeHtml(badge) + '</span>' : '') +
-      '<span class="mug-title">' + escapeHtml(r.titulus) + '</span>' +
-      '<span class="mug-stats">' +
-        '<span class="ms ms-bad" title="Elítélve"><i aria-hidden="true">🔨</i>Elítélve <b>' + (st ? st.bunos : 0) + '×</b></span>' +
-        '<span class="ms ms-good" title="Felmentve"><i aria-hidden="true">🕊️</i>Felmentve <b>' + (st ? st.artatlan : 0) + '×</b></span>' +
-      '</span>' +
-      (taken ? '' : '<span class="mug-pick">VÁLASZTOM <i aria-hidden="true">▸</i></span>') +
-      (taken ? '<div class="mug-taken"><span>ŐRIZETBEN</span></div>' : '');
+    const card = mugCardShell(cleanName, taken, CHOSEN && CHOSEN.nev === r.nev);
+    card.innerHTML = mugCardHtml({
+      name: cleanName, badge, title: r.titulus, stats: r.stats, avatar: r.avatar, taken, pick: true
+    });
     if (!taken) {
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
-      });
       card.addEventListener('click', () => {
         if (card.classList.contains('chosen')) return;
-        card.classList.add('chosen'); // piros keret + címke, amíg az avatárválasztó nyitva van
+        card.classList.add('chosen'); // arany keret, amíg az avatárválasztó nyitva van
         if (AVATARS.includes(r.avatar)) MY.avatar = r.avatar; // a kártya korábbi avatárja előre kijelölve
         openAvatarPicker(r.nev, () => {
           r.avatar = MY.avatar;
@@ -1036,6 +1122,20 @@ function renderMugGrid() {
     }
     grid.appendChild(card);
   });
+}
+
+// A saját (fiókhoz tartozó) kártyával lépünk be: a szobában a profil szövegei látszanak.
+function choosePersonal(me) {
+  CHOSEN = {
+    nev: me.nev, profile: false, personal: true,
+    titulus: me.titulus,
+    priusz: me.priusz || (GUEST_PRIORS.length ? GUEST_PRIORS[Math.floor(Math.random() * GUEST_PRIORS.length)] : 'Előélete tiszta. Túl tiszta.'),
+    jelveny: me.jelveny
+  };
+  MY.name = me.nev;
+  LS.setItem('kb_name', me.nev);
+  show('menu');
+  autoConnectAfterName();
 }
 
 function chooseSuspect(name, isProfile) {
@@ -1104,7 +1204,7 @@ function myProfilePayload() {
     const r = REGISTRY.find((x) => x.nev === CHOSEN.nev);
     return r ? { titulus: r.titulus, priusz: r.priusz, jelveny: r.jelveny } : null;
   }
-  return { titulus: CHOSEN.titulus, priusz: CHOSEN.priusz, jelveny: '' };
+  return { titulus: CHOSEN.titulus, priusz: CHOSEN.priusz, jelveny: CHOSEN.jelveny || '' };
 }
 
 $('#btnCreate').addEventListener('click', () => {
@@ -1323,8 +1423,12 @@ function posterHtml(p, idx) {
     ? '<button class="poster-kick" data-kickpid="' + p.id + '" data-kickname="' + escapeHtml(p.name) + '">KIRÚG</button>'
     : '';
   const tilt = tiltFor(p.id || p.name);
+  const pname = String(p.name || '').replace(/\s*\[[^\]]+\]\s*/, '').trim();
+  const portrait = !isBot && AVATAR_ID_RE.test(p.avatar || '')
+    ? '<img class="p-avatar" src="' + avatarSrc(p.avatar) + '" alt="">'
+    : '<span class="p-avatar p-mono" style="background:hsl(' + nameHue(pname) + ',62%,44%)">' + (isBot ? '🤖' : escapeHtml((pname.replace(/[^\p{L}\p{N}]/gu, '')[0] || '?').toUpperCase())) + '</span>';
   return '<div class="poster" style="--tilt:' + tilt + 'deg">' +
-    (!isBot && AVATAR_ID_RE.test(p.avatar || '') ? '<img class="p-avatar" src="' + avatarSrc(p.avatar) + '" alt="">' : '') +
+    portrait +
     '<span class="p-wanted">' + (isBot ? 'HIVATALOS SZEMÉLYZET' : 'KÖRÖZÉS') + '</span>' +
     '<span class="p-name">' + escapeHtml(p.name) + '</span>' +
     '<div class="p-badge-row">' + (prof.jelveny && !isBot ? '<span class="p-badge">' + escapeHtml(prof.jelveny) + '</span>' : '') + '</div>' +

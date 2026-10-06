@@ -157,11 +157,49 @@
     </div>
   </div>
 
+  <!-- Saját kártya (profil) szerkesztése -->
+  <div id="profileModal" class="avatar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <form id="profileForm" class="avatar-panel profile-panel" autocomplete="off">
+      <div class="avatar-panel-head">
+        <div>
+          <h2 id="profileTitle">Saját kártyám</h2>
+          <p>Ez a kártyád a karakterválasztón: ezzel a névvel és szöveggel jelensz meg a teremben.</p>
+        </div>
+      </div>
+      <div class="profile-body">
+        <div class="profile-fields">
+          <label for="pfName">Név <small>(3–20 karakter)</small></label>
+          <input id="pfName" maxlength="20" minlength="3" required placeholder="Így szólítsanak a teremben">
+          <label for="pfTitle">Vicces cím <small>(legfeljebb 60)</small></label>
+          <input id="pfTitle" maxlength="60" placeholder="pl. A Kriszmoszman">
+          <label for="pfPrior">Priusz-szöveg <small>(legfeljebb 140)</small></label>
+          <textarea id="pfPrior" maxlength="140" rows="3" placeholder="pl. Azt mondja, 'pill', aztán eltűnik."></textarea>
+          <label for="pfBadge">Jelvény <small>(legfeljebb 8 karakter, pl. DÖG)</small></label>
+          <input id="pfBadge" maxlength="8" placeholder="pl. DÖG">
+        </div>
+        <div class="profile-preview">
+          <span class="profile-preview-label">ELŐNÉZET</span>
+          <div id="pfPreview" class="mug-card mug-me profile-card" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="profile-avatar">
+        <span class="profile-avatar-label">Avatár</span>
+        <div id="pfAvatarGrid" class="avatar-grid profile-avatar-grid"></div>
+      </div>
+      <p id="pfMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+      <div class="avatar-panel-foot">
+        <button id="pfCancel" type="button" class="btn small ghost">MÉGSEM</button>
+        <button id="pfSave" type="submit" class="btn big">MENTÉS</button>
+      </div>
+    </form>
+  </div>
+
   <div id="accountDock" class="account-dock hidden">
     <details id="accountDetails">
       <summary id="accountLabel">FIÓKOM</summary>
       <div class="account-content">
         <p id="accountEmail"></p>
+        <button id="accountProfile" type="button" class="btn small">✎ SAJÁT KÁRTYÁM SZERKESZTÉSE</button>
         <div id="accountConnections" class="account-connections"></div>
         <p id="accountMessage" role="status" aria-live="polite"></p>
         <button id="accountLogout" type="button" class="btn small ghost">KIJELENTKEZÉS</button>
@@ -175,6 +213,7 @@
     <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
     <div class="wood-panel">
       <h1 class="logo small">KAMU BÍRÓSÁG</h1>
+      <div id="menuWho" class="menu-who hidden" aria-live="polite"></div>
       <button id="btnCreate" class="btn big full">ÚJ TÁRGYALÁS INDÍTÁSA<br><small>(új szoba)</small></button>
       <div class="divider">vagy</div>
       <label for="codeInput">Csatlakozás meghívó kóddal:</label>

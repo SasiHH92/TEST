@@ -2,6 +2,7 @@
 // A fiók HttpOnly sütiben él; a játék meglévő szobaazonosítója ettől független.
 (() => {
   let account=null, availability=null, busy=false, resetToken='', initializing=false;
+  Object.defineProperty(window,'kbAccount',{get:()=>account,configurable:true});
   const forms=document.querySelector('.auth-forms');
   const mobile=matchMedia('(max-width: 700px)');
   const recovery=$('#authRecovery');
@@ -94,6 +95,7 @@
     if(account) sessionStorage.removeItem('kb_guest');else sessionStorage.setItem('kb_guest','1');
     IDENTITY_READY=true;
     $('#btnNewSuspect').textContent=account?'SAJÁT NÉVVEL JÁTSZOM':'ÚJ GYANÚSÍTOTT (vendég vagyok)';
+    document.querySelector('.new-suspect-box').classList.toggle('hidden',!!account);
     $('#guestName').value=account?.username||'';
     $('#guestForm').classList.add('hidden');
     closeHelp();
@@ -104,14 +106,85 @@
       MY.name='';MY.code=null;CHOSEN=null;S=null;LS.removeItem('kb_name');LS.removeItem('kb_code');
     }
     if(MY.name) {
+      const mine=account&&account.username===MY.name?account.profile||{}:null;
       CHOSEN=REGISTRY.some(profile=>profile.nev===MY.name)?{nev:MY.name,profile:true}:
-        {nev:MY.name,profile:false,titulus:'Ismeretlen tettes',priusz:'Előélete tiszta. Túl tiszta.'};
+        {nev:MY.name,profile:false,personal:!!mine,titulus:mine?.titulus||'Ismeretlen tettes',
+          priusz:mine?.priusz||'Előélete tiszta. Túl tiszta.',jelveny:mine?.jelveny||''};
       show('menu');autoConnectAfterName();
     } else {show('name');requestRegistry();}
     renderAccount();
     // A belépés után nincs szükség a beírt jelszavak megőrzésére a DOM-ban.
     for(const input of $$('.auth-password input')) input.value='';
   }
+  // ---- Saját kártya (profil) szerkesztése ----
+  const pf={avatar:''};
+  function profileDraft() {
+    return {username:$('#pfName').value.trim(),titulus:$('#pfTitle').value.trim(),priusz:$('#pfPrior').value.trim(),
+      jelveny:$('#pfBadge').value.trim().toUpperCase(),avatar:pf.avatar};
+  }
+  function profilePreview() {
+    const d=profileDraft(),box=$('#pfPreview');
+    box.innerHTML=mugCardHtml({label:'A TE KÁRTYÁD',name:d.username||'Neved',badge:d.jelveny,title:d.titulus||'Új gyanúsított',
+      stats:PERSONAL_STATS.name===account?.username?PERSONAL_STATS.stats:null,avatar:d.avatar,pick:false});
+  }
+  function profileAvatarGrid() {
+    const grid=$('#pfAvatarGrid');grid.innerHTML='';
+    for(const id of AVATARS) {
+      const cell=document.createElement('button');cell.type='button';
+      cell.className='avatar-cell'+(pf.avatar===id?' selected':'');cell.dataset.avatar=id;
+      cell.setAttribute('aria-label','Avatár '+id.slice(2));
+      cell.innerHTML='<img src="'+avatarSrc(id)+'" alt="" loading="lazy" decoding="async" width="56" height="56">';
+      cell.addEventListener('click',()=>{
+        pf.avatar=id;for(const c of grid.querySelectorAll('.avatar-cell')) c.classList.toggle('selected',c===cell);
+        profilePreview();
+      });
+      grid.appendChild(cell);
+    }
+  }
+  function openProfile() {
+    if(!account) return;
+    const p=account.profile||{};
+    $('#pfName').value=account.username;$('#pfTitle').value=p.titulus||'';$('#pfPrior').value=p.priusz||'';
+    $('#pfBadge').value=p.jelveny||'';pf.avatar=AVATARS.includes(p.avatar)?p.avatar:'';
+    message('#pfMessage','');
+    profileAvatarGrid();profilePreview();
+    $('#profileModal').classList.remove('hidden');$('#pfName').focus();
+  }
+  function closeProfile() {$('#profileModal').classList.add('hidden');}
+  async function saveProfile(extra) {
+    const data=await api('profile',{...profileDraft(),...extra});
+    account=data.user;renderAccount();
+    if(typeof renderMugGrid==='function'&&document.body.dataset.screen==='name') renderMugGrid();
+    return data.user;
+  }
+  for(const id of ['#pfName','#pfTitle','#pfPrior','#pfBadge']) $(id).addEventListener('input',profilePreview);
+  $('#pfCancel').addEventListener('click',closeProfile);
+  $('#profileModal').addEventListener('click',event=>{if(event.target===$('#profileModal')) closeProfile();});
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&!$('#profileModal').classList.contains('hidden')) closeProfile();
+  });
+  $('#profileForm').addEventListener('submit',event=>{
+    event.preventDefault();
+    submit(event.currentTarget,'#pfMessage',async()=>{
+      await saveProfile();
+      closeProfile();
+      showToast('✅ A kártyád mentve!');
+    });
+  });
+  $('#accountProfile').addEventListener('click',()=>{$('#accountDetails').open=false;openProfile();});
+  // A játék többi része ezen keresztül éri el.
+  window.kbEditProfile=openProfile;
+  // Avatár-választás a saját kártyánál: a profilba is elmentjük (csendben).
+  window.kbSaveAvatar=async avatar=>{
+    if(!account||!AVATARS.includes(avatar)||account.profile?.avatar===avatar) return;
+    try {
+      const p=account.profile||{};
+      const data=await api('profile',{username:account.username,titulus:p.titulus||'',priusz:p.priusz||'',
+        jelveny:p.jelveny||'',avatar});
+      account=data.user;
+    } catch(_) { /* az avatár a játékhoz így is érvényes, csak a profilba nem kerül be */ }
+  };
+
   function renderAccount() {
     const dock=$('#accountDock'),screen=document.body.dataset.screen;
     const target=screen==='name'?document.querySelector('.station-header'):

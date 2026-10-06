@@ -39,6 +39,20 @@ function username(value) {
   }
   return name;
 }
+// A saját kártya szövegei: vezérlőkarakterek nélkül, egy sorba rendezve, hosszkorláttal.
+function profileText(value,max,label) {
+  if(value===undefined || value===null) return '';
+  if(typeof value!=='string') fail(400,label+' érvénytelen.');
+  const text=value.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim();
+  if(text.length>max) fail(400,label+' legfeljebb '+max+' karakter lehet.');
+  return text;
+}
+function cleanProfile(body) {
+  const avatar=body.avatar===undefined||body.avatar===null||body.avatar===''?'':String(body.avatar);
+  if(avatar && !/^av(0[1-9]|[1-4]\d|50)$/.test(avatar)) fail(400,'Érvénytelen avatár.');
+  return {titulus:profileText(body.titulus,60,'A vicces cím'),priusz:profileText(body.priusz,140,'A priusz-szöveg'),
+    jelveny:profileText(body.jelveny,8,'A jelvény').toUpperCase(),avatar};
+}
 function newPassword(body) {
   if(typeof body.password!=='string' || body.password.length<12 || body.password.length>128) {
     fail(400,'A jelszó legyen 12–128 karakter hosszú.');
@@ -116,8 +130,11 @@ function createAuth(options={}) {
   const enabled=provider=>!!(origin && configs[provider]?.clientId && configs[provider]?.secret && !storageError);
   const mailEnabled=!!(origin && (options.sendMail || (env.AUTH_MAIL_API_KEY && env.AUTH_MAIL_FROM)));
   const router=express.Router();
+  // A fix (alapító) kártyák nevei nem foglalhatók le fiókkal.
+  const reserved=name=>(options.reservedNames?options.reservedNames():[]).some(r=>normalize(r)===normalize(name));
   const publicUser=user=>user?{id:user.id,username:user.username,email:user.email,
-    hasPassword:!!user.password,providers:Object.keys(user.providers||{})}:null;
+    hasPassword:!!user.password,providers:Object.keys(user.providers||{}),
+    profile:{titulus:'',priusz:'',jelveny:'',avatar:'',...(user.profile||{})}}:null;
   const session=req=>{
     if(!store) return null;
     const token=cookies(req)[COOKIE];
@@ -201,7 +218,7 @@ function createAuth(options={}) {
     const record=await hash(password);
     const user=store.commit(data=>{
       if(data.users.some(u=>u.email===address)) fail(409,'Ezzel az e-mail címmel már van fiók.');
-      if(data.users.some(u=>normalize(u.username)===normalize(name))) fail(409,'Ez a felhasználónév már foglalt.');
+      if(data.users.some(u=>normalize(u.username)===normalize(name)) || reserved(name)) fail(409,'Ez a felhasználónév már foglalt.');
       const user={id:crypto.randomUUID(),username:name,email:address,password:record,providers:{},createdAt:now()};
       data.users.push(user);return user;
     });
@@ -214,6 +231,25 @@ function createAuth(options={}) {
     const user=store.state.users.find(u=>u.email===address);
     if(!(await verify(req.body.password,user?.password))) fail(401,'Hibás e-mail cím vagy jelszó.');
     createSession(user,req,res,remember(req));res.json({user:publicUser(user)});
+  }));
+  // Saját kártya szerkesztése: név, vicces cím, priusz-szöveg, jelvény, avatár (csak bejelentkezve).
+  router.post('/profile',rate,wrap((req,res)=>{
+    const current=session(req);
+    if(!current) fail(401,'Előbb jelentkezz be.');
+    const body=req.body||{};
+    const name=body.username===undefined?current.username:username(body.username);
+    const profile=cleanProfile(body);
+    const saved=store.commit(data=>{
+      const user=data.users.find(u=>u.id===current.id);
+      if(!user) fail(401,'Előbb jelentkezz be.');
+      if(normalize(name)!==normalize(user.username)) {
+        if(reserved(name)) fail(409,'Ez a név az alapító karakterekhez tartozik, válassz másikat.');
+        if(data.users.some(u=>u.id!==user.id && normalize(u.username)===normalize(name))) fail(409,'Ez a felhasználónév már foglalt.');
+      }
+      user.username=name;user.profile=profile;
+      return user;
+    });
+    res.json({user:publicUser(saved)});
   }));
   router.post('/logout',wrap((req,res)=>{
     const token=cookies(req)[COOKIE];
@@ -327,7 +363,7 @@ function createAuth(options={}) {
           .normalize('NFKC').replace(/[^\p{L}\p{N} _.-]/gu,'').trim().slice(0,16)||'Játékos';
         user=store.commit(data=>{
           let name=raw.length>=3?raw:'Játékos',suffix=1;
-          while(data.users.some(u=>normalize(u.username)===normalize(name))) name=raw.slice(0,14)+'-'+suffix++;
+          while(data.users.some(u=>normalize(u.username)===normalize(name)) || reserved(name)) name=raw.slice(0,14)+'-'+suffix++;
           const user={id:crypto.randomUUID(),username:name,email:address,password:null,
             providers:{[provider]:providerId},createdAt:now()};
           data.users.push(user);return user;

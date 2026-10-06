@@ -56,7 +56,7 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 
 // Reverse proxy (Render) mögött a kliens IP-je a proxy fejlécéből jön.
 app.set('trust proxy', 1);
-app.use('/api/auth',createAuth({persist:()=>storage.push('accounts')}).router);
+app.use('/api/auth',createAuth({persist:()=>storage.push('accounts'),reservedNames:()=>REGISTRY.map((r)=>r.nev)}).router);
 
 // Statikus fájlok: a html/js/css ETag/Last-Modified fejléccel (nem cache-el hosszan),
 // a rajzok (assets/) hosszan cache-elhetők, mert ritkán változnak.
@@ -323,6 +323,12 @@ io.on('connection', (socket) => {
       vendegPriuszok: GUEST_PRIORS,
       takenNames: Array.from(taken)
     });
+  });
+
+  // ---- Egy név bűnügyi számai (a bejelentkezett játékos saját kártyájához) ----
+  safeOn('get_stats', ({ name } = {}, ack) => {
+    if (typeof ack !== 'function') return;
+    ack({ stats: typeof name === 'string' ? statsForName(name.slice(0, 40)) : null });
   });
 
   // ---- Egy nyilvántartott játékos avatárjának mentése (kártyára kattintás után) ----

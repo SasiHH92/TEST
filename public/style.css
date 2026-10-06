@@ -2775,3 +2775,185 @@ input[type="range"]:focus { box-shadow: none; }
   .mug-stats .ms { font-size: 10.5px; padding: 2px 8px; }
   .mug-pick { font-size: 12px; padding: 5px 12px; letter-spacing: 1.5px; }
 }
+
+/* ============================================================
+   SAJÁT KÁRTYA + PROFIL-SZERKESZTŐ
+   ============================================================ */
+
+.mug-card.mug-me {
+  border-color: var(--gold);
+  background:
+    radial-gradient(120% 75% at 50% 0%, rgba(242, 193, 78, 0.3), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.03) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, #34230f 0%, #1d130a 100%);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.55), 0 0 22px rgba(242, 193, 78, 0.25), inset 0 0 0 1px rgba(242, 193, 78, 0.4), inset 0 0 44px rgba(0, 0, 0, 0.35);
+}
+.mug-me .mug-label { color: #ffe08a; border-bottom-color: rgba(242, 193, 78, 0.75); }
+.mug-me .mug-label::before, .mug-me .mug-label::after { content: ' ★ '; color: var(--gold); letter-spacing: 0; }
+
+.mug-edit {
+  font-family: var(--font-disp); font-size: 11px; letter-spacing: 1.8px; cursor: pointer;
+  color: var(--gold); background: rgba(10, 6, 3, 0.7);
+  border: 1px solid rgba(242, 193, 78, 0.6); border-radius: 999px; padding: 4px 14px;
+}
+.mug-edit:hover, .mug-edit:focus-visible { background: var(--gold); color: #241a06; outline: none; }
+
+.profile-panel { width: min(880px, 100%); max-height: min(92dvh, 840px); overflow-y: auto; scrollbar-width: thin; }
+.profile-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 20px; align-items: start; }
+.profile-fields { display: flex; flex-direction: column; gap: 6px; }
+.profile-fields label { font-size: 13px; color: #d8cdb2; margin-top: 6px; }
+.profile-fields small { color: #a89877; }
+.profile-fields input, .profile-fields textarea { width: 100%; font-size: 15px; letter-spacing: 0; text-align: left; }
+.profile-fields textarea { resize: vertical; min-height: 70px; }
+.profile-preview { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.profile-preview-label, .profile-avatar-label {
+  font-family: var(--font-disp); font-size: 11px; letter-spacing: 3px; color: #d9b25a;
+}
+.profile-card { width: min(240px, 100%); pointer-events: none; cursor: default; }
+.profile-card:hover { transform: none; }
+.profile-avatar { display: flex; flex-direction: column; gap: 6px; }
+.profile-avatar-grid { max-height: 168px; overflow-y: auto; padding: 4px; gap: 6px; scrollbar-width: thin; }
+.profile-avatar-grid .avatar-cell img { width: 56px; height: 56px; }
+#pfMessage { min-height: 18px; margin: 0; }
+#accountProfile { width: 100%; margin-bottom: 6px; }
+
+@media (max-width: 640px) {
+  .profile-body { grid-template-columns: 1fr; }
+  .profile-preview { order: -1; }
+  .profile-card { width: min(220px, 100%); }
+}
+
+/* Hosszú, szóköz nélküli szöveg se lógjon ki a kártyából */
+.mug-title, .mug-card .mug-name { overflow-wrap: anywhere; max-width: 100%; }
+.mug-badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mug-title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ============================================================
+   ARCULAT v2 – menü + lobbi: sötét fa + arany, mint a névkártyák
+   ============================================================ */
+
+/* --- menü --- */
+.wood-panel {
+  position: relative;
+  border: 2px solid #8a6420; border-radius: 18px;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(242, 193, 78, 0.17), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.025) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, #2d1f13 0%, #1a110b 100%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(242, 193, 78, 0.22), inset 0 0 50px rgba(0, 0, 0, 0.4);
+}
+.wood-panel::before {
+  content: ''; position: absolute; inset: 6px; border: 1px solid rgba(242, 193, 78, 0.2);
+  border-radius: 13px; pointer-events: none;
+}
+.wood-panel > * { position: relative; }
+.wood-panel .logo.small { color: var(--gold); text-shadow: 0 2px 0 #6e4a14, 0 4px 14px rgba(0, 0, 0, 0.6); }
+.wood-panel input { border-color: #8a6420; }
+.divider { color: #cdb27a; }
+
+.menu-who {
+  display: flex; align-items: center; gap: 12px; text-align: left;
+  padding: 10px 14px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(94, 64, 32, 0.55), rgba(40, 26, 12, 0.7));
+  border: 1px solid rgba(242, 193, 78, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.menu-who .mw-av { width: 54px; height: 54px; flex: none; margin: 0; font-size: 26px; border-width: 2px;
+  box-shadow: 0 0 0 3px #1a110b, 0 0 0 4px rgba(242, 193, 78, 0.55); }
+.menu-who .mw-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.menu-who small { font-family: var(--font-disp); font-size: 10px; letter-spacing: 2.5px; color: #d9b25a; }
+.menu-who b { font-family: var(--font-disp); font-size: 20px; letter-spacing: 1px; color: #fff3d0; overflow-wrap: anywhere; }
+.menu-who i { font-size: 12px; color: #cdbd96; overflow-wrap: anywhere; }
+
+/* --- lobbi: fejléc, faliújság --- */
+.casefile-box {
+  background: linear-gradient(180deg, #3d2a18, #1f150c);
+  border: 2px solid #8a6420; border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(242, 193, 78, 0.25), 0 6px 14px rgba(0, 0, 0, 0.45);
+}
+.casefile-label { color: #d9b25a; }
+
+.board {
+  background:
+    radial-gradient(110% 35% at 50% 0%, rgba(242, 193, 78, 0.13), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.02) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, #2a1c10 0%, #150e08 100%);
+  border: 2px solid #8a6420; outline: none; border-radius: 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(242, 193, 78, 0.22), inset 0 0 70px rgba(0, 0, 0, 0.5);
+}
+.board-title { text-shadow: 0 2px 0 #6e4a14; }
+svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
+
+/* --- lobbi: körözési plakát = névkártya stílusban --- */
+.poster {
+  border: 2px solid #8a6420; border-radius: 14px; color: #f3e7c9;
+  padding: 36px 14px 14px; gap: 7px;
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(242, 193, 78, 0.18), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.025) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, #2d1f13 0%, #1a110b 100%);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(242, 193, 78, 0.22), inset 0 0 40px rgba(0, 0, 0, 0.4);
+}
+.poster:hover { box-shadow: 0 16px 30px rgba(0, 0, 0, 0.6), 0 0 22px rgba(242, 193, 78, 0.3), inset 0 0 0 1px rgba(242, 193, 78, 0.4); }
+.p-avatar {
+  position: static; width: 72px; height: 72px; margin: 2px 0 0; flex: none;
+  border: 3px solid var(--gold); border-radius: 50%; object-fit: cover; object-position: 50% 30%;
+  background: #1a110b;
+  box-shadow: 0 0 0 3px #1a110b, 0 0 0 5px rgba(242, 193, 78, 0.5), 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+.p-avatar.p-mono {
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-disp); font-size: 34px; color: #fff; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.p-wanted { color: #ffe08a; border-bottom-color: rgba(242, 193, 78, 0.6); font-size: 12px; letter-spacing: 3.5px; margin-top: 6px; }
+.p-name {
+  color: #fff3d0; font-size: 23px; padding: 4px 14px; margin-top: 2px;
+  background: linear-gradient(180deg, #5e4020, #3a2612);
+  border: 1px solid #c9973a; border-radius: 7px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 4px 9px rgba(0, 0, 0, 0.45);
+}
+.p-badge { background: linear-gradient(180deg, #f0655f, #c23a3a); border: 1px solid rgba(255, 190, 185, 0.5); }
+.p-title { color: #cdbd96; overflow-wrap: anywhere; }
+.p-priors { color: #b9ab88; overflow-wrap: anywhere; }
+.p-reward { color: var(--gold); }
+.p-record { color: #cdbd96; }
+.p-stamp.host, .p-stamp.bot { top: 10px; }
+.p-stamp.bot { left: 10px; }
+
+/* --- lobbi: ügyiratmappa (játékmódok + beállítások) --- */
+.folder {
+  color: #f3e7c9; border: 2px solid #8a6420; border-radius: 16px;
+  background:
+    radial-gradient(100% 45% at 50% 0%, rgba(242, 193, 78, 0.13), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.02) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, #2b1d11 0%, #170f09 100%);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(242, 193, 78, 0.2), inset 0 0 60px rgba(0, 0, 0, 0.4);
+}
+.folder-tab {
+  color: #241a06; background: linear-gradient(180deg, #f8d672, #d99a2b);
+  border: 2px solid #8a6420; border-bottom: none; box-shadow: 0 -2px 10px rgba(242, 193, 78, 0.25);
+}
+.folder-heading { color: var(--gold); }
+.case-tab {
+  color: #f3e7c9; border: 2px solid #8a6420; border-radius: 10px;
+  background: linear-gradient(180deg, #3d2a18, #251a0e);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.case-tab:hover { border-color: var(--gold); }
+.case-tab.active-case {
+  color: #fff3d0; border-color: var(--gold);
+  background: linear-gradient(180deg, #5e4020, #3a2612);
+  box-shadow: 0 0 0 2px rgba(242, 193, 78, 0.45), 0 0 22px rgba(242, 193, 78, 0.35), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+.settings-grid label { color: #d8cdb2; }
+.settings-grid input[type='number'], #customAccusations {
+  color: #fff3d0; background: rgba(8, 12, 22, 0.75); border-color: #8a6420;
+}
+.settings-grid input[type='checkbox'], .folder input[type='radio'] { accent-color: var(--gold); }
+.folder .check { color: #d8cdb2; }
+.folder .hint { color: #b6a780; }
+.folder .btn.ghost { color: #d7c9a8; border-color: #5a5140; }
+.waiting-note { border-color: #8a6420; background: linear-gradient(180deg, rgba(61, 42, 24, 0.85), rgba(31, 21, 12, 0.9)); }
+
+/* A KIRÚG gomb ne takarja a számokat: a plakát alja kap helyet */
+.poster:has(.poster-kick) { padding-bottom: 52px; }
