@@ -2986,7 +2986,19 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
     linear-gradient(180deg, rgba(42, 28, 16, 0.94) 0%, rgba(21, 14, 8, 0.96) 100%);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(242, 193, 78, 0.22), inset 0 0 60px rgba(0, 0, 0, 0.45);
 }
-.profile-card-slot { display: flex; align-items: flex-start; justify-content: center; }
+.profile-card-slot { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0; }
+
+/* kártya alatt: mivel van összekapcsolva a fiók */
+.card-links { width: 100%; max-width: 270px; margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.cl-title { font-family: var(--font-disp); font-size: 11px; letter-spacing: 2.5px; color: #c9a85c; }
+.card-links .account-connections { justify-content: center; margin: 0; gap: 6px; }
+.card-links .account-connected {
+  padding: 5px 11px; border-radius: 999px; color: #bfe6a8;
+  border: 1px solid rgba(182, 220, 160, 0.45); background: rgba(40, 62, 30, 0.35);
+}
+.card-links .account-connections button { border-radius: 999px; padding: 5px 11px; min-height: 0; }
+.card-links .account-connections button:hover { border-color: var(--gold); color: #ffe08a; }
+.ps-logout { margin-left: auto; }
 .profile-card-slot .mug-card { width: 100%; max-width: 270px; }
 
 .profile-stats { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -3020,6 +3032,8 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 @media (max-width: 760px) {
   .profile-dash { grid-template-columns: 1fr; padding: 14px; }
   .profile-card-slot .mug-card { max-width: 300px; }
+  .card-links { max-width: 300px; }
+  .ps-logout { margin-left: 0; }
   .st-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .section-title { letter-spacing: 2px; gap: 10px; }
 }

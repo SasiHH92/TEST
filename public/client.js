@@ -1122,6 +1122,12 @@ function renderMugGrid() {
     const slot = $('#profileCardSlot');
     slot.innerHTML = '';
     slot.appendChild(card);
+    // Mivel van összekapcsolva a fiók (az auth.js tölti ki, a fiók adataiból)
+    const links = document.createElement('div');
+    links.className = 'card-links hidden';
+    links.innerHTML = '<span class="cl-title">ÖSSZEKAPCSOLVA</span><div id="cardLinks" class="account-connections"></div>';
+    slot.appendChild(links);
+    if (window.kbRenderLinks) window.kbRenderLinks(links.querySelector('#cardLinks'));
     renderProfileStats(me);
     section.classList.remove('hidden');
   }
@@ -1195,7 +1201,10 @@ function renderProfileStats(me) {
       '<button type="button" id="btnProfileEdit" class="btn">✎ PROFIL MÓDOSÍTÁSA</button>' +
       '<button type="button" id="btnShopOpen" class="btn">🛒 BOLT</button>' +
       '<button type="button" id="btnQuestsOpen" class="btn">📜 NAPI KÜLDETÉSEK' + (ready ? ' <i class="shop-badge">' + ready + '</i>' : '') + '</button>' +
+      '<button type="button" id="btnLogout" class="btn ghost ps-logout">⎋ KIJELENTKEZÉS</button>' +
     '</div>';
+  const logoutBtn = $('#btnLogout');
+  if (logoutBtn) logoutBtn.addEventListener('click', () => { if (window.kbLogout) window.kbLogout(); });
   const edit = $('#btnProfileEdit');
   if (edit) edit.addEventListener('click', () => { if (window.kbEditProfile) window.kbEditProfile(); });
   const shopBtn = $('#btnShopOpen'), questBtn = $('#btnQuestsOpen');

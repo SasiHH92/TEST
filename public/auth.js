@@ -185,47 +185,63 @@
     } catch(_) { /* az avatár a játékhoz így is érvényes, csak a profilba nem kerül be */ }
   };
 
+  // Az összekapcsolt belépési módok (e-mail+jelszó, Google, Discord): a profil-ablakban és a kártya alatt.
+  function renderLinks(box) {
+    if(!box) return;
+    box.replaceChildren();
+    if(account) {
+      const connected=text=>{
+        const chip=document.createElement('span');chip.className='account-connected';
+        chip.textContent=text;box.appendChild(chip);
+      };
+      if(account.hasPassword) connected('✓ E-mail és jelszó');
+      for(const provider of ['google','discord']) {
+        const title=provider==='google'?'Google':'Discord';
+        if(account.providers.includes(provider)) connected('✓ '+title);
+        else if(availability?.providers[provider]) {
+          const button=document.createElement('button');button.type='button';
+          button.textContent='＋ '+title+' összekapcsolása';button.addEventListener('click',()=>oauth(provider,true));
+          box.appendChild(button);
+        }
+      }
+    }
+    const wrap=box.closest('.card-links');
+    if(wrap) wrap.classList.toggle('hidden',!box.children.length);
+  }
+  window.kbRenderLinks=renderLinks;
+
   function renderAccount() {
     const dock=$('#accountDock'),screen=document.body.dataset.screen;
     const target=screen==='name'?document.querySelector('.station-header'):
       screen==='menu'?document.querySelector('#screen-menu .wood-panel'):null;
-    dock.classList.toggle('hidden',!target);
-    if(!target) return;
-    if(dock.parentNode!==target) target.appendChild(dock);
-    $('#accountChip').classList.toggle('hidden',!account);
-    $('#accountLogout').classList.toggle('hidden',!account);
+    // A sáv csak a vendégnek kell (Bejelentkezés); a fiókos játékos a profiljánál találja a Kijelentkezést.
+    dock.classList.toggle('hidden',!target||!!account);
+    if(target&&dock.parentNode!==target) target.appendChild(dock);
     $('#accountSignIn').classList.toggle('hidden',!!account);
     if(!account) return;
-    $('#accountName').textContent=account.username;
     $('#accountEmail').textContent=account.email;
-    const connections=$('#accountConnections');connections.replaceChildren();
-    for(const provider of ['google','discord']) {
-      const title=provider==='google'?'Google':'Discord';
-      if(account.providers.includes(provider)) {
-        const connected=document.createElement('span');connected.className='account-connected';
-        connected.textContent='✓ '+title;connections.appendChild(connected);
-      } else if(availability?.providers[provider]) {
-        const button=document.createElement('button');button.type='button';
-        button.textContent=title+' összekapcsolása';button.addEventListener('click',()=>oauth(provider,true));
-        connections.appendChild(button);
-      }
-    }
+    renderLinks($('#accountConnections'));
+    renderLinks(document.getElementById('cardLinks'));
   }
   document.addEventListener('kb:screen',renderAccount);
   $('#authGuest').addEventListener('click',()=>enter(null,true));
   $('#accountSignIn').addEventListener('click',()=>{
     IDENTITY_READY=false;sessionStorage.removeItem('kb_guest');show('auth');tab('login');
   });
-  $('#accountLogout').addEventListener('click',async()=>{
-    const button=$('#accountLogout');button.disabled=true;message('#accountMessage','');
+  // Kijelentkezés (a profil gombsorából hívja a client.js).
+  let leaving=false;
+  window.kbLogout=async()=>{
+    if(leaving) return;
+    leaving=true;message('#accountMessage','');
     try {
       await api('logout',{});
       clearRoomIdentity();account=null;IDENTITY_READY=false;
       LS.removeItem('kb_accountId');sessionStorage.removeItem('kb_guest');
+      if(window.kbShop) window.kbShop.forget();
       show('auth');tab('login');message('#authStatus','Sikeresen kijelentkeztél.');
-    } catch(error) {message('#accountMessage',error.message);}
-    finally {button.disabled=false;}
-  });
+    } catch(error) {message('#accountMessage',error.message);openProfile();}
+    finally {leaving=false;}
+  };
   $('#authLoginForm').addEventListener('submit',event=>{
     event.preventDefault();
     const body={email:$('#authLoginEmail').value,password:$('#authLoginPassword').value,remember:$('#authRemember').checked};
