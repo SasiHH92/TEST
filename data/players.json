@@ -4,73 +4,85 @@
       "nev": "2CORE",
       "jelveny": "",
       "titulus": "A Cukor-rang egyetlen túlélője",
-      "priusz": "Délután hatkor CAPS LOCK-kal üvölt a chatbe. Hivatalos státusza: Someone ruin my life."
+      "priusz": "Délután hatkor CAPS LOCK-kal üvölt a chatbe. Hivatalos státusza: Someone ruin my life.",
+      "keret": "frame_glitch"
     },
     {
       "nev": "Izsván",
       "jelveny": "DÖG",
       "titulus": "A Kriszmoszman",
-      "priusz": "Azt mondja, 'pill', aztán eltűnik. Két cigi között szokott megjelenni."
+      "priusz": "Azt mondja, 'pill', aztán eltűnik. Két cigi között szokott megjelenni.",
+      "keret": "frame_pill"
     },
     {
       "nev": "Dubble_Gii",
       "jelveny": "FS",
       "titulus": "A titokzatos",
-      "priusz": "Senki nem tudja, mit jelent az FS. Ő sem."
+      "priusz": "Senki nem tudja, mit jelent az FS. Ő sem.",
+      "keret": "frame_mystic"
     },
     {
       "nev": "H3roMarci",
       "jelveny": "",
       "titulus": "Az örök diák",
-      "priusz": "Azt mondja, tanul. A 'stu' néma. Gyanúsan néma."
+      "priusz": "Azt mondja, tanul. A 'stu' néma. Gyanúsan néma.",
+      "keret": "frame_hero"
     },
     {
       "nev": "Kyrashi",
       "jelveny": "Rogue",
       "titulus": "A szörny",
-      "priusz": "Saját bevallása szerint ő a szörny. RAWR. A bíróság ezt beismerő vallomásnak tekinti."
+      "priusz": "Saját bevallása szerint ő a szörny. RAWR. A bíróság ezt beismerő vallomásnak tekinti.",
+      "keret": "frame_monster"
     },
     {
       "nev": "Sanyi/Sasi",
       "jelveny": "",
       "titulus": "A Bíróság alapítója",
-      "priusz": "Ő építette ezt a tárgyalótermet. Ettől még ő sem ártatlan."
+      "priusz": "Ő építette ezt a tárgyalótermet. Ettől még ő sem ártatlan.",
+      "keret": "frame_founder"
     },
     {
       "nev": "Alexhh",
       "jelveny": "WOW",
       "titulus": "A csaló álszerény",
-      "priusz": "'Jelzem nem vagyok jó benne' — mondta, mielőtt mindenkit lealázott."
+      "priusz": "'Jelzem nem vagyok jó benne' — mondta, mielőtt mindenkit lealázott.",
+      "keret": "frame_wow"
     },
     {
       "nev": "Collie",
       "jelveny": "ABOO",
       "titulus": "Az ismeretlen tényező",
-      "priusz": "Ritkán látják. Talán ezért gyanús."
+      "priusz": "Ritkán látják. Talán ezért gyanús.",
+      "keret": "frame_ghost"
     },
     {
       "nev": "marci",
       "jelveny": "",
       "titulus": "Az örök 'majd'",
-      "priusz": "Belép a hívásba, aztán magában játszik. Kétszer is regisztrált, hogy duplán ne jöjjön."
+      "priusz": "Belép a hívásba, aztán magában játszik. Kétszer is regisztrált, hogy duplán ne jöjjön.",
+      "keret": "frame_lazy"
     },
     {
       "nev": "Marci",
       "jelveny": "",
       "titulus": "A másik Marci",
-      "priusz": "A nyomozók máig nem tudják, melyik Marci melyik."
+      "priusz": "A nyomozók máig nem tudják, melyik Marci melyik.",
+      "keret": "frame_twin"
     },
     {
       "nev": "Szipuska",
       "jelveny": "",
       "titulus": "A toborzó",
-      "priusz": "'Akinek van kedve, az jöjjön.' Senkinek nincs, de ő jön."
+      "priusz": "'Akinek van kedve, az jöjjön.' Senkinek nincs, de ő jön.",
+      "keret": "frame_recruit"
     },
     {
       "nev": "UltraGoku996",
       "jelveny": "ICE",
       "titulus": "A jéghideg",
-      "priusz": "996-os szintű Goku. Az előző 999 eltűnt."
+      "priusz": "996-os szintű Goku. Az előző 999 eltűnt.",
+      "keret": "frame_ultra"
     }
   ],
   "vendeg_priuszok": [

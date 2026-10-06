@@ -3159,7 +3159,8 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 
 .mug-card[class*='cos-frame-'], .poster[class*='cos-frame-'] { --fw: 4px; --frame-base: 0 10px 22px rgba(0, 0, 0, 0.55); }
 .stage-plate[class*='cos-frame-'] { --fw: 2px; --frame-base: 0 3px 12px rgba(0, 0, 0, 0.45); }
-.mug-card[class*='cos-frame-'], .poster[class*='cos-frame-'], .stage-plate[class*='cos-frame-'] {
+.sb-row[class*='cos-frame-'] { --fw: 2px; --frame-base: 0 2px 8px rgba(0, 0, 0, 0.4); }
+.mug-card[class*='cos-frame-'], .poster[class*='cos-frame-'], .stage-plate[class*='cos-frame-'], .sb-row[class*='cos-frame-'] {
   border-color: var(--frame-c) !important;
   /* A ragyogást a --frame-anim animáció adja (az animáció felülírja ezt az alap értéket). */
   box-shadow: var(--frame-base), 0 0 14px var(--frame-g), inset 0 0 0 1px var(--frame-c);
@@ -3167,14 +3168,16 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 /* A keret és a (mozgó) háttér animációja egy listában fut, hogy ne írják felül egymást;
    a lobbi-plakát belépő animációja is megmarad. */
 .mug-card[class*='cos-frame-'], .mug-card[class*='cos-bg-'], .stage-plate[class*='cos-frame-'] { animation: var(--frame-anim, none), var(--bg-anim, none); }
+.sb-row[class*='cos-frame-'] { animation: var(--frame-anim, none); }
+.sb-row.flash[class*='cos-frame-'] { animation: row-flash 1s ease-out, var(--frame-anim, none); } /* a pontszerzés felvillanása megmarad */
 .poster[class*='cos-frame-'], .poster[class*='cos-bg-'] { animation: poster-pin 0.5s cubic-bezier(0.18, 1.4, 0.4, 1), var(--frame-anim, none), var(--bg-anim, none); }
 
-.mug-card[class*='cos-frame-']::after, .poster[class*='cos-frame-']::after, .stage-plate[class*='cos-frame-']::after {
+.mug-card[class*='cos-frame-']::after, .poster[class*='cos-frame-']::after, .stage-plate[class*='cos-frame-']::after, .sb-row[class*='cos-frame-']::after {
   content: ''; position: absolute; inset: calc(var(--fw) * -1); border-radius: inherit; padding: var(--fw);
   pointer-events: none; z-index: 2;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask-composite: exclude;
-  animation: cos-spin var(--spin, 3.4s) linear infinite;
+  animation: var(--after-anim, cos-spin var(--spin, 3.4s) linear infinite);
 }
 @keyframes cos-spin { to { --ang: 360deg; } }
 
@@ -3230,11 +3233,83 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 .cos-frame-rainbow { --frame-c: #ff5fa8; --frame-g: rgba(255, 95, 168, 0.6); --frame-anim: cos-rainbow-glow 5s linear infinite; --spin: 4.5s; }
 .cos-frame-rainbow::after { background: conic-gradient(from var(--ang), #ff4d4d, #ffd24d, #4dff88, #4dc3ff, #b04dff, #ff4dc3, #ff4d4d); }
 
+/* ------------------------------------------------------------
+   LEGENDÁS TESZTELŐK: 12 egyedi, a boltban nem kapható keret (a data/players.json "keret" mezője hivatkozik rájuk).
+   Mindegyik más színű, mintájú és mozgású.
+   ------------------------------------------------------------ */
+/* 2CORE – glitch: cián és magenta üstökös, az RGB-szétcsúszás akadozva villan */
+.cos-frame-glitch { --frame-c: #19e6ff; --frame-g: rgba(25, 230, 255, 0.6); --frame-anim: cos-glitch 2.4s steps(1, end) infinite; --spin: 2.4s; }
+.cos-frame-glitch::after { background: conic-gradient(from var(--ang), transparent 0 20deg, rgba(25, 230, 255, 0.5) 90deg, #b3f9ff 150deg, transparent 160deg 200deg, rgba(255, 43, 214, 0.5) 270deg, #ffb8f3 330deg, transparent 345deg); }
+/* Izsván – pill: fél piros, fél kék gyűrű, a ragyogás rendőrlámpa-szerűen vált */
+.cos-frame-pill { --frame-c: #ff4d4d; --frame-g: rgba(255, 77, 77, 0.55); --frame-anim: cos-pill 1.6s ease-in-out infinite; --spin: 3s; }
+.cos-frame-pill::after { background: conic-gradient(from var(--ang), #ff3b3b 0 180deg, #3b8bff 180deg 360deg); }
+/* Dubble_Gii – titokzatos: három lila szikra kering a sötét gyűrűn */
+.cos-frame-mystic { --frame-c: #6f4fe0; --frame-g: rgba(124, 92, 255, 0.6); --frame-anim: cos-glow 2.8s ease-in-out infinite alternate; --spin: 6s; }
+.cos-frame-mystic::after { background: conic-gradient(from var(--ang), transparent 0 30deg, #d9ceff 45deg, transparent 60deg 150deg, #b7a4ff 165deg, transparent 180deg 270deg, #fff 285deg, transparent 300deg); }
+/* H3roMarci – hős: gyors arany-kék csóva, erős power-up ragyogás */
+.cos-frame-hero { --frame-c: #ffc83d; --frame-g: rgba(255, 200, 61, 0.6); --frame-anim: cos-glow 1s ease-in-out infinite alternate; --spin: 1.9s; }
+.cos-frame-hero::after { background: conic-gradient(from var(--ang), transparent 0 120deg, rgba(76, 201, 255, 0.55) 230deg, #ffc83d 300deg, #fff3b0 345deg, transparent 360deg); }
+/* Kyrashi – szörny: fekete-vérvörös fogsor forog, dühös szívverés */
+.cos-frame-monster { --frame-c: #c4001f; --frame-g: rgba(196, 0, 31, 0.65); --frame-anim: cos-heart 1.1s ease-in-out infinite; --spin: 7s; }
+.cos-frame-monster::after { background: repeating-conic-gradient(from var(--ang), #c4001f 0 12deg, #1a0006 12deg 24deg); }
+/* Sanyi/Sasi – alapító: vastag, csillogó arany gyűrű, méltóságteljes lassú ragyogás */
+.cos-frame-founder { --frame-c: #ffd75e; --frame-g: rgba(255, 215, 94, 0.75); --frame-anim: cos-glow 3s ease-in-out infinite alternate; --spin: 5s; }
+.mug-card.cos-frame-founder, .poster.cos-frame-founder { --fw: 5px; }
+.cos-frame-founder::after { background: conic-gradient(from var(--ang), #ffd75e, #fff6c2, #ffb800, #fff6c2, #ffd75e, #fff6c2, #ffb800, #ffd75e); }
+/* Alexhh – WOW: magenta-sárga csíkok, villogó pop-ragyogás */
+.cos-frame-wow { --frame-c: #ff2bd6; --frame-g: rgba(255, 43, 214, 0.6); --frame-anim: cos-wow 1.2s steps(1, end) infinite; --spin: 2.6s; }
+.cos-frame-wow::after { background: repeating-conic-gradient(from var(--ang), #ff2bd6 0 20deg, #ffe600 20deg 40deg); }
+/* Collie – ismeretlen tényező: halvány, szellemszerűen halványuló-erősödő fehér gyűrű */
+.cos-frame-ghost { --frame-c: #e8f4ff; --frame-g: rgba(232, 244, 255, 0.5); --frame-anim: cos-glow 3.6s ease-in-out infinite alternate; --after-anim: cos-spin 8s linear infinite, cos-fade 2.4s ease-in-out infinite alternate; }
+.cos-frame-ghost::after { background: conic-gradient(from var(--ang), rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.95) 90deg, rgba(255, 255, 255, 0.15) 180deg, rgba(255, 255, 255, 0.95) 270deg, rgba(255, 255, 255, 0.15)); }
+/* marci – az örök "majd": álmos türkiz ív, nagyon lassú lélegzés */
+.cos-frame-lazy { --frame-c: #2fe3c2; --frame-g: rgba(47, 227, 194, 0.45); --frame-anim: cos-glow 6s ease-in-out infinite alternate; --spin: 11s; }
+.cos-frame-lazy::after { background: conic-gradient(from var(--ang), transparent 0 90deg, rgba(47, 227, 194, 0.4) 200deg, #b3fff0 270deg, transparent 300deg); }
+/* Marci – a másik Marci: narancs és türkiz csóva ELLENKEZŐ irányba forog, a ragyogás színt vált */
+.cos-frame-twin { --frame-c: #ff8a3d; --frame-g: rgba(255, 138, 61, 0.55); --frame-anim: cos-twin 3s ease-in-out infinite; --after-anim: cos-spin 3.3s linear infinite reverse; }
+.cos-frame-twin::after { background: conic-gradient(from var(--ang), transparent 0 10deg, rgba(255, 138, 61, 0.5) 80deg, #ffd3b0 160deg, transparent 175deg 190deg, rgba(47, 208, 197, 0.5) 260deg, #b3fff9 340deg, transparent 355deg); }
+/* Szipuska – a toborzó: zöld "menetelő" szaggatott vonal */
+.cos-frame-recruit { --frame-c: #7bd04a; --frame-g: rgba(123, 208, 74, 0.5); --frame-anim: cos-glow 2.2s ease-in-out infinite alternate; --spin: 9s; }
+.cos-frame-recruit::after { background: repeating-conic-gradient(from var(--ang), #7bd04a 0 8deg, transparent 8deg 18deg); }
+/* UltraGoku996 – elektromos sárga-kék aura, gyors villámok */
+.cos-frame-ultra { --frame-c: #ffe600; --frame-g: rgba(255, 230, 0, 0.65); --frame-anim: cos-ultra 1.6s linear infinite; --spin: 1.1s; }
+.cos-frame-ultra::after { background: conic-gradient(from var(--ang), transparent 0 100deg, #3ab4ff 180deg, #ffe600 250deg, #fff 300deg, #ffe600 330deg, transparent 360deg); }
+
+@keyframes cos-fade { from { opacity: 0.25; } to { opacity: 1; } }
+@keyframes cos-glitch {
+  0%, 100% { box-shadow: var(--frame-base), -4px 0 14px rgba(25, 230, 255, 0.75), 4px 0 14px rgba(255, 43, 214, 0.65), inset 0 0 0 1px var(--frame-c); }
+  7% { box-shadow: var(--frame-base), 6px 0 12px rgba(25, 230, 255, 0.8), -6px 0 12px rgba(255, 43, 214, 0.7), inset 0 0 0 1px var(--frame-c); }
+  9% { box-shadow: var(--frame-base), -2px 0 6px rgba(25, 230, 255, 0.4), 2px 0 6px rgba(255, 43, 214, 0.4), inset 0 0 0 1px var(--frame-c); }
+  41% { box-shadow: var(--frame-base), 4px 0 18px rgba(25, 230, 255, 0.8), -4px 0 18px rgba(255, 43, 214, 0.7), inset 0 0 0 1px var(--frame-c); }
+  44% { box-shadow: var(--frame-base), -7px 0 10px rgba(25, 230, 255, 0.8), 7px 0 10px rgba(255, 43, 214, 0.7), inset 0 0 0 1px var(--frame-c); }
+  46% { box-shadow: var(--frame-base), -4px 0 14px rgba(25, 230, 255, 0.75), 4px 0 14px rgba(255, 43, 214, 0.65), inset 0 0 0 1px var(--frame-c); }
+}
+@keyframes cos-pill {
+  0%, 100% { box-shadow: var(--frame-base), 0 0 26px rgba(255, 59, 59, 0.75), inset 0 0 0 1px var(--frame-c); }
+  50% { box-shadow: var(--frame-base), 0 0 26px rgba(59, 139, 255, 0.75), inset 0 0 0 1px var(--frame-c); }
+}
+@keyframes cos-wow {
+  0%, 100% { box-shadow: var(--frame-base), 0 0 22px rgba(255, 43, 214, 0.75), inset 0 0 0 1px var(--frame-c); }
+  50% { box-shadow: var(--frame-base), 0 0 22px rgba(255, 230, 0, 0.75), inset 0 0 0 1px var(--frame-c); }
+}
+@keyframes cos-twin {
+  0%, 100% { box-shadow: var(--frame-base), 0 0 24px rgba(255, 138, 61, 0.7), inset 0 0 0 1px var(--frame-c); }
+  50% { box-shadow: var(--frame-base), 0 0 24px rgba(47, 208, 197, 0.7), inset 0 0 0 1px var(--frame-c); }
+}
+@keyframes cos-ultra {
+  0%, 100% { box-shadow: var(--frame-base), 0 0 22px rgba(255, 230, 0, 0.75), inset 0 0 0 1px var(--frame-c); }
+  8% { box-shadow: var(--frame-base), 0 0 30px rgba(58, 180, 255, 0.85), inset 0 0 0 1px var(--frame-c); }
+  12% { box-shadow: var(--frame-base), 0 0 10px rgba(255, 230, 0, 0.5), inset 0 0 0 1px var(--frame-c); }
+  45% { box-shadow: var(--frame-base), 0 0 24px rgba(255, 230, 0, 0.8), inset 0 0 0 1px var(--frame-c); }
+  48% { box-shadow: var(--frame-base), 0 0 32px rgba(58, 180, 255, 0.9), inset 0 0 0 1px var(--frame-c); }
+  52% { box-shadow: var(--frame-base), 0 0 22px rgba(255, 230, 0, 0.75), inset 0 0 0 1px var(--frame-c); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .mug-card[class*='cos-frame-'], .poster[class*='cos-frame-'], .stage-plate[class*='cos-frame-'] {
+  .mug-card[class*='cos-frame-'], .poster[class*='cos-frame-'], .stage-plate[class*='cos-frame-'], .sb-row[class*='cos-frame-'] {
     animation: none !important; box-shadow: var(--frame-base), 0 0 14px var(--frame-g), inset 0 0 0 1px var(--frame-c) !important;
   }
-  .mug-card[class*='cos-frame-']::after, .poster[class*='cos-frame-']::after, .stage-plate[class*='cos-frame-']::after { animation: none !important; }
+  .mug-card[class*='cos-frame-']::after, .poster[class*='cos-frame-']::after, .stage-plate[class*='cos-frame-']::after, .sb-row[class*='cos-frame-']::after { animation: none !important; }
 }
 
 /* kártyahátterek */
@@ -3368,10 +3443,10 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 @keyframes cos-crown { from { transform: translateX(-50%) translateY(1px) rotate(-6deg); } to { transform: translateX(-50%) translateY(-3px) rotate(6deg); } }
 
 /* színpadi névtábla: csak a betűk kapják a hatást (a tábla kicsi és vágott) */
-.stage-plate.cos-name-gold .plate-person b { color: #ffe08a; animation: cos-gold-text 2.4s ease-in-out infinite alternate; }
-.stage-plate.cos-name-fire .plate-person b { color: #ffd9a0; animation: cos-flicker 0.9s ease-in-out infinite alternate; }
-.stage-plate.cos-name-ice .plate-person b { color: #dff6ff; animation: cos-ice-text 2.2s ease-in-out infinite alternate; }
-.stage-plate.cos-name-royal .plate-person b { color: #f0d0ff; animation: cos-royal-text 2.6s ease-in-out infinite alternate; }
+.stage-plate.cos-name-gold .plate-person b, .sb-row.cos-name-gold .sb-name { color: #ffe08a; animation: cos-gold-text 2.4s ease-in-out infinite alternate; }
+.stage-plate.cos-name-fire .plate-person b, .sb-row.cos-name-fire .sb-name { color: #ffd9a0; animation: cos-flicker 0.9s ease-in-out infinite alternate; }
+.stage-plate.cos-name-ice .plate-person b, .sb-row.cos-name-ice .sb-name { color: #dff6ff; animation: cos-ice-text 2.2s ease-in-out infinite alternate; }
+.stage-plate.cos-name-royal .plate-person b, .sb-row.cos-name-royal .sb-name { color: #f0d0ff; animation: cos-royal-text 2.6s ease-in-out infinite alternate; }
 @keyframes cos-gold-text { from { text-shadow: 0 0 4px rgba(255, 200, 60, 0.6); } to { text-shadow: 0 0 10px #ffd75e, 0 0 16px rgba(255, 190, 40, 0.7); } }
 @keyframes cos-flicker { from { text-shadow: 0 0 4px #ff5a00, 0 0 8px #ff2a00; } to { text-shadow: 0 0 8px #ff7a18, 0 0 14px #ff3b00; } }
 @keyframes cos-ice-text { from { text-shadow: 0 0 4px #7fd8ff; } to { text-shadow: 0 0 9px #bff0ff, 0 0 14px #4fc3ff; } }
@@ -3384,7 +3459,7 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
   .cos-name-ice .mug-name::before, .cos-name-ice .mug-name::after, .cos-name-royal .mug-name::before, .cos-name-royal .mug-name::after,
   .cos-name-gold .p-name::before, .cos-name-gold .p-name::after, .cos-name-fire .p-name::before, .cos-name-fire .p-name::after,
   .cos-name-ice .p-name::before, .cos-name-ice .p-name::after, .cos-name-royal .p-name::before, .cos-name-royal .p-name::after,
-  .stage-plate[class*='cos-name-'] .plate-person b { animation: none !important; }
+  .stage-plate[class*='cos-name-'] .plate-person b, .sb-row[class*='cos-name-'] .sb-name { animation: none !important; }
   .cos-name-fire .mug-name::before, .cos-name-fire .mug-name::after, .cos-name-fire .p-name::before, .cos-name-fire .p-name::after { display: none; }
 }
 

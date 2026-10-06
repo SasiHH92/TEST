@@ -1138,9 +1138,11 @@ function renderMugGrid() {
     const tagMatch = r.nev.match(/\[([^\]]+)\]/);
     const badge = r.jelveny || (tagMatch ? tagMatch[1] : '');
     const cleanName = r.nev.replace(/\s*\[[^\]]+\]\s*/, '').trim();
-    const card = mugCardShell(cleanName, taken, CHOSEN && CHOSEN.nev === r.nev);
+    // A legendás tesztelők egyedi kerettel és LEGENDA felirattal jelennek meg (nem a sima NYILVÁNTARTÁS).
+    const legend = r.keret ? { frame: r.keret, labelText: 'LEGENDA' } : null;
+    const card = mugCardShell(cleanName, taken, CHOSEN && CHOSEN.nev === r.nev, cosmeticClasses(legend).trim());
     card.innerHTML = mugCardHtml({
-      name: cleanName, badge, title: r.titulus, stats: r.stats, avatar: r.avatar, taken, pick: true
+      name: cleanName, badge, title: r.titulus, stats: r.stats, avatar: r.avatar, taken, pick: true, cosm: legend
     });
     if (!taken) {
       card.addEventListener('click', () => {
@@ -2132,8 +2134,10 @@ function renderSidebar() {
     const kickBtn = (isHostView && p.id !== MY.playerId)
       ? '<button class="sb-kick' + (p.connected ? '' : ' urgent') + '" data-kickpid="' + p.id + '" data-kickname="' + escapeHtml(p.name) + '" title="Kirúgás a szobából">KIRÚG</button>'
       : '';
+    // A bolt-tárgyak / legenda-keret a ponttáblán is látszanak: keret a soron, névhatás a néven.
+    const cos = !p.isBot && p.profile ? p.profile.cosm : null;
     return '<div class="sb-row' + (p.id === MY.playerId ? ' me' : '') + (delta > 0 ? ' flash' : '') + (isJudge ? ' is-judge' : '') +
-      (p.connected ? '' : ' is-off') + '" data-pid="' + p.id + '">' +
+      (p.connected ? '' : ' is-off') + cosmeticClasses(cos && { frame: cos.frame, nameFx: cos.nameFx }) + '" data-pid="' + p.id + '">' +
       '<span class="sb-rank">' + (i + 1) + '</span>' +
       '<span class="sb-av">' + avatarEmoji(p.avatar) + '</span>' +
       '<span class="sb-mid">' +

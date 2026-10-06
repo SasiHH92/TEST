@@ -222,8 +222,11 @@ const REGISTRY = PLAYER_DB.players.map((p) => ({
   jelveny: p.jelveny || '',
   titulus: p.titulus || '',
   priusz: p.priusz || '',
+  // A legendás tesztelők egyedi, a boltban nem kapható kerete (frame_<név>); a stíluslapban él a hozzá tartozó animáció.
+  keret: /^frame_[a-z]+$/.test(p.keret || '') ? p.keret : '',
   stats: statsForName(p.nev)
 }));
+const LEGEND_LABEL = 'LEGENDA';
 
 // A nyilvántartott játékosok utoljára választott avatárja (név -> "av01"…"av50"),
 // hogy a névválasztó kártyákon mindenkinél látsszon. Hibatűrő mentés, mint a statisztikánál.
@@ -285,6 +288,13 @@ function profileFor(socket, name, rawProfile) {
       profile.acct = true;
       const cosm = shopApi.cosmeticsFor(user);
       if (cosm) profile.cosm = cosm;
+    }
+    // A legendás tesztelők nyilvántartási nevén mindenkinek ott az egyedi keret és a LEGENDA felirat
+    // (a név foglalt: fiókkal nem regisztrálható, a kliens nem adhat hozzá saját kozmetikumot).
+    const legend = REGISTRY.find((r) => r.nev === name);
+    if (legend && legend.keret) {
+      profile = profile || { titulus: '', priusz: '', jelveny: '' };
+      profile.cosm = { frame: legend.keret, labelText: LEGEND_LABEL };
     }
   } catch (e) { /* a profil a kozmetikum nélkül is érvényes */ }
   return profile;
