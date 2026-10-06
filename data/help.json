@@ -79,6 +79,13 @@
       ]
     },
     {
+      "heading": "CSEVEGŐ ÉS NEVEK",
+      "list": [
+        "A lobbiban és a játék közben a bal alsó 💬 CSEVEGŐ gombbal nyitható a szoba csevegője: mindenki ír mindenkinek a szobában. Az utolsó üzenetek megmaradnak, a későn belépő vagy újracsatlakozó is látja őket. Ha a csevegő be van csukva, a gombon az olvasatlan üzenetek száma látszik. Aki letiltott valakit a barátlistán, annak az üzeneteit nem látja.",
+        "Foglalt név nem használható: a regisztrált játékosok nevét csak ők maguk használhatják (bejelentkezve), a legendás tesztelők nevét pedig csak a saját kártyájukkal lehet választani. A kis- és nagybetűs másolat (például „kyrashi”) sem megy át. Egy szobában két játékosnak sem lehet ugyanaz a neve."
+      ]
+    },
+    {
       "heading": "KILÉPÉS ÉS KÖVETKEZŐ JÁTÉK",
       "body": [
         "Véletlen kapcsolatvesztésnél 20 másodpercig megtartod a szereped. Utána egy nem szereplő esküdt veszi át ugyanazokkal a kártyákkal és a hátralévő idővel, legalább 15 másodperccel. Késői visszatéréskor esküdtként folytatod. A házigazda joga 30 másodperces kiesés után a legrégebben bent lévő játékosé. A szándékos kilépés és kirúgás azonnali; három fő alatt a játék visszatér a lobbyba.",

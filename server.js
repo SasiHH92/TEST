@@ -303,6 +303,47 @@ function profileFor(socket, name, rawProfile) {
 function cleanAvatar(avatar) {
   return typeof avatar === 'string' ? avatar.slice(0, 40) : '';
 }
+// ---- Szobai csevegő: mindenki ír mindenkinek a szobában (lobbi + játék) ----
+// Az üzenetek a szoba memóriájában élnek (utolsó CHAT_KEEP db); belépéskor/visszacsatlakozáskor megkapja a belépő.
+// Szűrés: hossz, vezérlőkarakterek, sebességkorlát; a bejelentkezett játékos letiltottjának üzenete nem látszik neki.
+const CHAT_MAX_LEN = 280, CHAT_KEEP = 80, CHAT_WINDOW_MS = 6000, CHAT_BURST = 4, CHAT_DUP_MS = 4000;
+const chatTimes = new Map(); // socketId -> utolsó küldések időbélyegei
+// Tiltott karakterek: vezérlőkarakterek, zéró-szélességű és irány-átíró (bidi) jelek, sor-elválasztók.
+// (A tartományokat futásidőben építjük, így a forrásfájlban nincs kódolási csapda.)
+const CHAT_BAD = new RegExp('[' + [[0, 31], [127, 127], [0x200b, 0x200f], [0x2028, 0x2029], [0x202a, 0x202e], [0x2066, 0x2069]]
+  .map(([a, b]) => String.fromCharCode(a) + '-' + String.fromCharCode(b)).join('') + ']+', 'g');
+const cleanChatText = (v) => String(v == null ? '' : v).replace(CHAT_BAD, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_LEN);
+function chatVisible(viewerSocketId, entry) {
+  const viewer = socialApi.userOf(viewerSocketId);
+  return !(viewer && entry.uid && socialApi.hides(viewer, entry.uid));
+}
+const chatPublic = ({ id, pid, name, text, ts }) => ({ id, pid, name, text, ts });
+function chatFor(socketId, game) {
+  return (game.chatLog || []).filter((m) => chatVisible(socketId, m)).slice(-50).map(chatPublic);
+}
+
+// ---- Névszabály: foglalt név nem használható ----
+// A nyilvántartott (legendás) nevek csak a saját kártyájukkal, a regisztrált játékosok nevei csak a bejelentkezett
+// gazdájuknak járnak; ezek kis/nagybetűs, ékezetes változata sem (megszemélyesítés ellen). Szobán belül a nevek
+// úgyis egyediek (kis/nagybetű nélkül). A hibaüzenet üres, ha a név használható.
+const normName = (v) => String(v == null ? '' : v).normalize('NFKC').trim().toLocaleLowerCase('hu-HU');
+function nameProblem(socket, rawName) {
+  const name = String(rawName == null ? '' : rawName).trim();
+  if (!name) return 'Adj meg egy nevet.';
+  const n = normName(name);
+  // a nyilvántartott nevek pontosan (pl. "marci" és "Marci" két külön legenda) használhatók a kártyájukkal
+  if (!REGISTRY.some((r) => r.nev === name)) {
+    const twin = REGISTRY.find((r) => normName(r.nev) === n);
+    if (twin) return 'Ez a név a nyilvántartott „' + twin.nev + '” játékosé. Válassz másik nevet, vagy játssz az ő kártyájával.';
+  }
+  const owner = authApi.directory.byName(name);
+  if (owner) {
+    const userId = socialApi.userOf(socket.id);
+    if (userId !== owner.id) return 'Ez a név egy regisztrált játékosé. Válassz másik nevet, vagy jelentkezz be vele.';
+  }
+  return '';
+}
+
 function cleanPlayerId(playerId, socketId) {
   const p = String(playerId || socketId).slice(0, 64).trim();
   return p || socketId;
@@ -448,6 +489,45 @@ io.on('connection', (socket) => {
   });
 
   // ---- Egy név bűnügyi számai (a bejelentkezett játékos saját kártyájához) ----
+  // ---- Csevegő: üzenet küldése a szobának ----
+  safeOn('chat_send', ({ text } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    const player = game && game.getPlayer(sess.playerId);
+    if (!player) return reply({ error: 'Csak szobában lehet csevegni.' });
+    const clean = cleanChatText(text);
+    if (!clean) return reply({ error: 'Üres üzenet.' });
+    const now = Date.now();
+    const recent = (chatTimes.get(socket.id) || []).filter((t) => now - t < CHAT_WINDOW_MS);
+    if (recent.length >= CHAT_BURST) return reply({ error: 'Lassabban! Várj egy kicsit a következő üzenettel.' });
+    game.chatLog = game.chatLog || [];
+    const last = game.chatLog[game.chatLog.length - 1];
+    if (last && last.pid === player.id && last.text === clean && now - last.ts < CHAT_DUP_MS) return reply({ error: 'Ezt az üzenetet épp most küldted.' });
+    recent.push(now);
+    chatTimes.set(socket.id, recent);
+    game.chatSeq = (game.chatSeq || 0) + 1;
+    const entry = { id: game.chatSeq, pid: player.id, name: player.name, text: clean, ts: now, uid: socialApi.userOf(socket.id) || null };
+    game.chatLog.push(entry);
+    if (game.chatLog.length > CHAT_KEEP) game.chatLog.splice(0, game.chatLog.length - CHAT_KEEP);
+    for (const [sid, s] of sockets) {
+      if (s.code === sess.code && chatVisible(sid, entry)) io.to(sid).emit('chat_msg', chatPublic(entry));
+    }
+    reply({ ok: true, id: entry.id });
+  });
+
+  // ---- Szabad-e a név? (a vendég-névmező előzetes ellenőrzése; a szerver a belépéskor úgyis kikényszeríti) ----
+  safeOn('check_name', ({ name, guest } = {}, ack) => {
+    if (typeof ack !== 'function') return;
+    const clean = typeof name === 'string' ? name.slice(0, 40) : '';
+    let problem = nameProblem(socket, clean);
+    // A vendég-névmezőbe sem írható be egy legenda pontos neve: arra a kártyája való (a kerete is azzal jár).
+    if (!problem && guest && REGISTRY.some((r) => r.nev === clean.trim())) {
+      problem = 'Ez egy nyilvántartott játékos neve. Válaszd ki a kártyáját a „A legendás tesztelők” között, vagy használj másik nevet.';
+    }
+    ack(problem ? { error: problem } : { ok: true });
+  });
+
   safeOn('get_stats', ({ name } = {}, ack) => {
     if (typeof ack !== 'function') return;
     ack({ stats: typeof name === 'string' ? statsForName(name.slice(0, 40)) : null });
@@ -482,6 +562,8 @@ io.on('connection', (socket) => {
     const code = newCode();
     if (!code) return ack && ack({ error: 'Nem sikerült szobát létrehozni.' });
     const pid = cleanPlayerId(playerId, socket.id);
+    const nameIssue = nameProblem(socket, name);
+    if (nameIssue) return ack && ack({ error: nameIssue });
     detachPreviousRoom();
     const game = new Game(code, io);
     rooms.set(code, game);
@@ -491,7 +573,7 @@ io.on('connection', (socket) => {
     socket.join(code);
     socket.join(pidRoom(pid, code));
     sockets.set(socket.id, { code, playerId: pid });
-    ack && ack({ code, playerId: pid, sessionToken: game.getPlayer(pid).sessionToken, state: game.publicState(pid), appearances: APPEARANCES });
+    ack && ack({ code, playerId: pid, sessionToken: game.getPlayer(pid).sessionToken, state: game.publicState(pid), appearances: APPEARANCES, chat: [] });
     game.broadcast();
     presenceChanged();
   });
@@ -520,6 +602,8 @@ io.on('connection', (socket) => {
       if (game.activePlayers().length >= 8) {
         return ack && ack({ error: 'A szoba tele van (max 8 játékos).' });
       }
+      const nameIssue = nameProblem(socket, name);
+      if (nameIssue) return ack && ack({ error: nameIssue });
       // Ugyanaz a név egyszer lehet a szobában.
       const nameTaken = Array.from(game.players.values())
         .some((p) => p.connected && p.name.toLowerCase() === String(name).toLowerCase());
@@ -541,7 +625,7 @@ io.on('connection', (socket) => {
     socket.join(pidRoom(pid, norm));
     sockets.set(socket.id, { code: norm, playerId: pid });
     if (returning) game.handleReconnect(pid);
-    ack && ack({ code: norm, playerId: pid, sessionToken: meP.sessionToken, state: game.publicState(pid), appearances: APPEARANCES });
+    ack && ack({ code: norm, playerId: pid, sessionToken: meP.sessionToken, state: game.publicState(pid), appearances: APPEARANCES, chat: chatFor(socket.id, game) });
     game.broadcast();
     presenceChanged();
   });
@@ -772,6 +856,7 @@ io.on('connection', (socket) => {
   });
   safeOn('disconnect', () => {
     rateWindows.delete(socket.id); // rate-limit ablak felszabadítása
+    chatTimes.delete(socket.id);
     socialApi.disconnect(socket.id); // offline lett (a barátai frissítik a listájukat)
     const sess = sockets.get(socket.id);
     if (!sess) return;

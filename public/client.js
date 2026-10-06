@@ -1300,11 +1300,15 @@ $('#btnGuestGo').addEventListener('click', () => {
     return;
   }
   const prior = GUEST_PRIORS.length ? GUEST_PRIORS[Math.floor(Math.random() * GUEST_PRIORS.length)] : 'Előélete tiszta. Túl tiszta.';
-  CHOSEN = { nev: name, profile: false, titulus: 'Ismeretlen tettes', priusz: prior };
-  MY.name = name;
-  LS.setItem('kb_name', name);
-  show('menu');
-  autoConnectAfterName();
+  // Foglalt név (regisztrált vagy nyilvántartott játékosé) nem használható: a szerver dönt (és a belépéskor is ellenőrzi).
+  socket.emit('check_name', { name, guest: true }, (res) => {
+    if (res && res.error) { $('#guestPrior').textContent = '❌ ' + res.error; return; }
+    CHOSEN = { nev: name, profile: false, titulus: 'Ismeretlen tettes', priusz: prior };
+    MY.name = name;
+    LS.setItem('kb_name', name);
+    show('menu');
+    autoConnectAfterName();
+  });
 });
 
 $('#btnChangeSuspect').addEventListener('click', () => {
@@ -1395,6 +1399,7 @@ function enterLobby(res) {
   if (res.state) S = res.state;
   KICKED_FROM_ROOM = false; // új csatlakozás – a korábbi kirúgás már nem érvény
   MY.code = res.code;
+  if (window.kbChat) window.kbChat.load(res.chat || []); // a szoba csevegő-előzménye
   MY.appearances = res.appearances || MY.appearances;
   LS.setItem('kb_code', res.code);
   $('#lobbyCode').textContent = res.code;
@@ -3126,7 +3131,7 @@ socket.on('connect', () => {
         const errEl = document.querySelector('#menuError');
         if (errEl) errEl.textContent = '⚠️ ' + res.error;
         showToast('⚠️ ' + res.error);
-      }
+      } else if (res && window.kbChat) window.kbChat.load(res.chat || []); // újracsatlakozás: a kimaradt üzenetek pótlása
       // Sikeres válasz esetén a socket.on('state') handler rajzolja újra a játékot.
     }));
   }, 400);

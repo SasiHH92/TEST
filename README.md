@@ -109,6 +109,12 @@ Nyisd meg a `data/cards.json` fájlt, és írd az új szöveget a megfelelő mó
 - **Végpontok:** `/api/friends/` `state`, `ticket`, `request`, `accept`, `decline`, `cancel`, `remove`, `block`, `unblock`, `settings` (mind bejelentkezést kér, JSON + eredet-ellenőrzés, sebességkorlát). Limitek: 100 barát, 30 függő kérés, 100 letiltott.
 - **Tesztek:** `npm run test:social` (valódi szerver, HTTP + socket); a `test/rules.js` is futtatja.
 
+### Csevegő és névszabály
+
+- **Csevegő:** `chat_send` socket-esemény (csak szobában), a szoba tagjai `chat_msg`-ként kapják. A szerver az utolsó 80 üzenetet tartja a szoba memóriájában (`game.chatLog`), belépéskor/újracsatlakozáskor a join válasz `chat` mezője hozza. Szűrés: 280 karakter, vezérlő- és irány-átíró karakterek kiszedve, 4 üzenet / 6 mp, azonos üzenet 4 mp-en belül nem ismételhető. A kliens mindent szövegként (escape-elve) jelenít meg. A bejelentkezett játékos letiltottjának üzenete nem megy neki (élőben és az előzményben sem), az ilyen szűrés szerveren történik, a belső fiók-azonosító nem kerül ki.
+- **Névszabály (szerver, `nameProblem` a `server.js`-ben):** regisztrált játékos nevét csak a bejelentkezett tulajdonosa használhatja; a nyilvántartott (legendás) nevek csak pontosan, a kártyájukkal; a kis/nagybetűs, ékezet-egyesített változat tilos (`kyrashi`, `KYRASHI`); a vendég-névmezőbe a legenda pontos neve sem írható (`check_name` + `guest`). A szobában a nevek eleve egyediek. A szabály `create_room` / `join_room` (új belépő) esetén is érvényes, nem csak a kliensben.
+- **Tesztek:** `npm run test:chat` (a `test/rules.js` is futtatja).
+
 ### Védőügyvéd
 
 5 vagy több játékosnál a körben megjelenik a **védőügyvéd**: 2 titkos trükkkártyát kap, a vádlott után **45 mp-et** beszél, és **ártatlan ítéletnél ő is pontot kap** a vádlottal együtt.

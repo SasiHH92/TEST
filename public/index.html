@@ -262,6 +262,24 @@
   </button>
   <div id="inviteStack" class="invite-stack" aria-live="polite"></div>
 
+  <!-- Szobai csevegő: lobbi + játék, mindenki ír mindenkinek a szobában -->
+  <button id="chatFab" type="button" class="chat-fab hidden" aria-label="Csevegő" title="Csevegő a szobával">
+    <span class="fab-ico" aria-hidden="true">💬</span><span class="fab-text">CSEVEGŐ</span>
+    <i id="chatBadge" class="shop-badge hidden" title="Olvasatlan üzenet"></i>
+  </button>
+  <section id="chatPanel" class="chat-panel hidden" aria-label="Csevegő">
+    <header class="chat-head">
+      <b>💬 Csevegő</b><span id="chatSub" class="chat-sub"></span>
+      <button id="chatClose" type="button" class="chat-x" aria-label="Csevegő bezárása">✕</button>
+    </header>
+    <div id="chatLog" class="chat-log" role="log" aria-live="polite"></div>
+    <form id="chatForm" class="chat-form" autocomplete="off">
+      <input id="chatInput" type="text" maxlength="280" placeholder="Írj a teremnek…" aria-label="Üzenet" autocomplete="off">
+      <button type="submit" class="btn small">KÜLD</button>
+    </form>
+    <p id="chatNote" class="chat-note" role="status" aria-live="polite"></p>
+  </section>
+
   <!-- Vendég-sáv: csak a nem bejelentkezett játékosnak (a fiókos a profiljánál találja a Kijelentkezést) -->
   <div id="accountDock" class="account-dock hidden">
     <button id="accountSignIn" type="button" class="btn small ghost hidden">BEJELENTKEZÉS / REGISZTRÁCIÓ</button>
@@ -458,5 +476,6 @@
   <script src="/auth.js"></script>
   <script src="/shop.js"></script>
   <script src="/friends.js"></script>
+  <script src="/chat.js"></script>
 </body>
 </html>

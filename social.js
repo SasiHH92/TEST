@@ -354,7 +354,14 @@ function createSocial({ auth, roomOf = () => null, emit = () => {}, now = () => 
     return { ok: true };
   }
 
-  return { router, connect, disconnect, userOf, touch, issueTicket, consumeTicket, invite, stateFor, presenceOf };
+  // A néző letiltotta-e a feladót (a letiltott csevegő-üzenetei nem jelennek meg neki).
+  function hides(viewerId, senderId) {
+    if (!viewerId || !senderId) return false;
+    const viewer = byId(viewerId);
+    return !!viewer && socialOf(viewer).blocked.includes(senderId);
+  }
+
+  return { router, connect, disconnect, userOf, touch, issueTicket, consumeTicket, invite, stateFor, presenceOf, hides };
 }
 
 module.exports = { createSocial, socialOf, PRESENCE_MODES, MAX_FRIENDS };
