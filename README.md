@@ -145,6 +145,14 @@ Minden legendás tesztelő a saját kártyájához kapcsolt fiókot kaphat: egy 
 
 5 vagy több játékosnál a körben megjelenik a **védőügyvéd**: 2 titkos trükkkártyát kap, a vádlott után **45 mp-et** beszél, és **ártatlan ítéletnél ő is pontot kap** a vádlottal együtt.
 
+### Üzemeltetés: hibanapló, mentések, admin oldal
+
+- **Hibanapló** (`errorlog.js`): a váratlan hibák (socket-kezelők, HTTP-útvonalak, nem elkapott kivételek, sikertelen adatbázis-mentés / levélküldés) és a böngészőben elkapott hibák (`public/report.js` → `POST /api/client-error`, percenként 8 jelentés IP-nként) egy bejegyzésbe vonva, darabszámmal. Fajtánként 50 bejegyzés; az e-mail címek, hosszú tokenek és adatbázis-címek kimaradnak. Fájl: `data/errors.json` (`KB_ERRORS_FILE`), és az adatbázisban is megmarad.
+- **Admin oldal** (`/admin`, `admin.js`): az `ADMIN_TOKEN` környezeti változó (legalább 24 karakter) bekapcsolja; nélküle 404. Áttekintés, hibák, mentések, próbalevél, kézi jelszó-visszaállító link. Rossz tokennel 10 próba / 10 perc.
+- **Adatbázis-mentés**: naponta egy pillanatkép a Neonban (`kb_backup`, a legutóbbi 14 marad), `npm run db-backup` helyi másolathoz, `npm run db-restore` visszaállításhoz – részletek a **[TAROLAS.md](TAROLAS.md)**-ben.
+- **Jelszó-visszaállító levél**: Resend; a beállítás lépései az **[AUTH_BEALLITAS.md](AUTH_BEALLITAS.md)**-ben. Levélküldés nélkül az admin oldalon kézi link készíthető.
+- Teszt: `npm run test:ops` (17 ellenőrzés), a mentésekre a `npm run test:storage` (14).
+
 ## Botokkal tesztelés
 
 Egyedül is ki tudod próbálni a teljes játékot: a házigazda a lobbyban botokat adhat a szobához, és ők önállóan levezetik a tárgyalást.

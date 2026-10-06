@@ -64,7 +64,7 @@ function cosmeticsFor(user) {
   return Object.keys(out).length ? out : null;
 }
 
-function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriends = () => false, onGift = () => {} }) {
+function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriends = () => false, onGift = () => {}, onError = () => {} }) {
   const router = express.Router();
   const calls = new Map(); // userId -> időbélyegek (egyszerű sebességkorlát)
   const giftsToday = new Map(); // userId -> { date, count } (memóriában: újraindításkor nullázódik)
@@ -239,6 +239,7 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
     if (error && error.status) return res.status(error.status).json({ error: error.message });
     if (error && error.type === 'entity.parse.failed') return res.status(400).json({ error: 'Érvénytelen kérés.' });
     console.error('Bolt hiba:', error && (error.code || error.name));
+    try { onError('http', error, { path: '/api/shop' + req.path }); } catch (_) { /* a naplózás hibája nem számít */ }
     res.status(503).json({ error: 'A bolt most nem elérhető. Próbáld újra később.' });
   });
 

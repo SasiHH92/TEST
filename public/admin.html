@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Kamu Bíróság – üzemeltetés</title>
+<style>
+  :root { --bg:#14121a; --panel:#1d1a24; --line:#3a3347; --ink:#efe8d8; --dim:#a79f8f; --gold:#f2c14e; --red:#e5484d; --green:#3fbf6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif; }
+  main { max-width:900px; margin:0 auto; padding:16px; }
+  h1 { font-size:22px; margin:6px 0 14px; color:var(--gold); }
+  h2 { font-size:16px; margin:0 0 10px; color:var(--gold); }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
+  input { background:#0f0d14; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:9px 10px; font:inherit; min-width:0; }
+  button { background:var(--gold); color:#241a06; border:0; border-radius:6px; padding:9px 14px; font:inherit; font-weight:700; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
+  button:disabled { opacity:.5; cursor:default; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .row input { flex:1 1 220px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; }
+  .kv dt { color:var(--dim); } .kv dd { margin:0; word-break:break-word; }
+  .ok { color:var(--green); } .bad { color:var(--red); } .dim { color:var(--dim); }
+  .err { border-top:1px solid var(--line); padding:10px 0; }
+  .err:first-child { border-top:0; }
+  .tag { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--gold); margin-right:6px; }
+  pre { margin:6px 0 0; padding:8px; background:#0f0d14; border-radius:6px; overflow:auto; font-size:12px; color:var(--dim); }
+  .msg { margin-top:8px; min-height:1.3em; }
+  code { background:#0f0d14; padding:1px 5px; border-radius:4px; word-break:break-all; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>⚖️ Kamu Bíróság – üzemeltetés</h1>
+
+  <section id="login">
+    <h2>Belépés</h2>
+    <p class="dim">Add meg az <code>ADMIN_TOKEN</code> értékét (a Render Environment fülén állítottad be). A böngésző csak erre a fülre jegyzi meg.</p>
+    <form class="row" id="loginForm" autocomplete="off">
+      <input id="token" type="password" placeholder="ADMIN_TOKEN" aria-label="Admin token" autocomplete="off">
+      <button type="submit">BELÉPÉS</button>
+    </form>
+    <p class="msg bad" id="loginMsg" role="status"></p>
+  </section>
+
+  <div id="panel" class="hidden">
+    <section>
+      <h2>Áttekintés <button class="ghost" id="reload" style="float:right;padding:4px 10px">Frissítés</button></h2>
+      <dl class="kv" id="status"></dl>
+    </section>
+
+    <section>
+      <h2>Hibák</h2>
+      <div class="row" style="margin-bottom:8px"><button class="ghost" id="clearErrors">Napló törlése</button><span class="dim" id="errSummary"></span></div>
+      <div id="errors"></div>
+    </section>
+
+    <section>
+      <h2>Adatbázis-mentések (Neon)</h2>
+      <div class="row" style="margin-bottom:8px"><button id="backupNow">Mentés most</button><span class="dim">Naponta automatikusan is készül, a legutóbbi 14 marad meg.</span></div>
+      <div id="backups"></div>
+      <p class="msg" id="backupMsg" role="status"></p>
+    </section>
+
+    <section>
+      <h2>Levélküldés (Resend)</h2>
+      <form class="row" id="mailForm"><input id="mailTo" type="email" placeholder="címzett e-mail" aria-label="Címzett" required><button type="submit">PRÓBALEVÉL</button></form>
+      <p class="msg" id="mailMsg" role="status"></p>
+    </section>
+
+    <section>
+      <h2>Kézi jelszó-visszaállító link</h2>
+      <p class="dim">Ha a levélküldés nincs beállítva: add meg a játékos e-mail címét, és a kapott linket küldd el neki (Discordon). A link 1 óráig, egyszer használható.</p>
+      <form class="row" id="resetForm"><input id="resetEmail" type="email" placeholder="a játékos e-mail címe" aria-label="Játékos e-mail címe" required><button type="submit">LINK KÉSZÍTÉSE</button></form>
+      <p class="msg" id="resetMsg" role="status"></p>
+    </section>
+  </div>
+</main>
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  let token = '';
+  try { token = sessionStorage.getItem('kb_admin') || ''; } catch (_) { /* tiltott tároló */ }
+
+  function el(tag, props, ...kids) {
+    const e = document.createElement(tag);
+    Object.assign(e, props || {});
+    for (const k of kids) e.append(k);
+    return e;
+  }
+  const when = (v) => v ? new Date(v).toLocaleString('hu-HU') : '–';
+
+  async function api(method, path, body) {
+    const res = await fetch('/api/admin' + path, {
+      method, headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    let data = {};
+    try { data = await res.json(); } catch (_) { /* nincs JSON */ }
+    if (!res.ok) { const e = new Error(data.error || ('Hiba (' + res.status + ')')); e.status = res.status; throw e; }
+    return data;
+  }
+
+  function show(on) {
+    $('#login').classList.toggle('hidden', on);
+    $('#panel').classList.toggle('hidden', !on);
+  }
+
+  function row(dl, k, v, cls) { dl.append(el('dt', { textContent: k }), el('dd', { textContent: v, className: cls || '' })); }
+
+  async function load() {
+    const s = await api('GET', '/status');
+    show(true);
+    const dl = $('#status'); dl.replaceChildren();
+    row(dl, 'Futásidő', Math.floor(s.uptimeSeconds / 60) + ' perc');
+    row(dl, 'Adatbázis (Neon)', s.database ? 'be van kötve' : 'NINCS (csak helyi fájlok)', s.database ? 'ok' : 'bad');
+    row(dl, 'Mentések', s.backups.error ? 'hiba: ' + s.backups.error : s.backups.count + ' db, legutóbbi: ' + (s.backups.latest ? when(s.backups.latest.takenAt) : 'még nincs'), s.backups.error ? 'bad' : (s.backups.count ? 'ok' : 'dim'));
+    row(dl, 'Levélküldés', s.mail.configured ? 'be van állítva' : 'nincs beállítva (kulcs: ' + (s.mail.key ? 'van' : 'nincs') + ', feladó: ' + (s.mail.sender ? 'van' : 'nincs') + ', AUTH_BASE_URL: ' + (s.mail.baseUrl ? 'van' : 'nincs') + ')', s.mail.configured ? 'ok' : 'bad');
+    row(dl, 'Hibák', s.errors.distinct + ' féle, összesen ' + s.errors.total + ' előfordulás', s.errors.total ? 'bad' : 'ok');
+    const [errs, backs] = await Promise.all([api('GET', '/errors'), api('GET', '/backups')]);
+    renderErrors(errs); renderBackups(backs);
+  }
+
+  function renderErrors(data) {
+    const box = $('#errors'); box.replaceChildren();
+    $('#errSummary').textContent = data.summary.total + ' előfordulás';
+    if (!data.errors.length) { box.append(el('p', { className: 'ok', textContent: 'Nincs rögzített hiba. 🎉' })); return; }
+    for (const e of data.errors) {
+      const ctx = Object.entries(e.ctx || {}).map(([k, v]) => k + '=' + v).join(', ');
+      box.append(el('div', { className: 'err' },
+        el('div', {}, el('span', { className: 'tag', textContent: e.kind }), el('b', { textContent: e.message || '(üres üzenet)' })),
+        el('div', { className: 'dim', textContent: e.count + '× • első: ' + when(e.first) + ' • utolsó: ' + when(e.last) + (ctx ? ' • ' + ctx : '') }),
+        e.stack && e.stack.length ? el('pre', { textContent: e.stack.join('\n') }) : ''));
+    }
+  }
+
+  function renderBackups(data) {
+    const box = $('#backups'); box.replaceChildren();
+    if (!data.database) { box.append(el('p', { className: 'bad', textContent: 'Nincs adatbázis (DATABASE_URL), ezért nincs mentés.' })); return; }
+    if (!data.backups.length) { box.append(el('p', { className: 'dim', textContent: 'Még nincs mentés.' })); return; }
+    for (const b of data.backups) box.append(el('div', { className: 'err' }, el('b', { textContent: b.id }), el('span', { className: 'dim', textContent: '  ' + when(b.takenAt) + ' • ' + Math.round((b.bytes || 0) / 1024) + ' KB' })));
+  }
+
+  const msg = (sel, text, cls) => { const m = $(sel); m.textContent = text; m.className = 'msg ' + (cls || ''); };
+
+  $('#loginForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    token = $('#token').value.trim();
+    msg('#loginMsg', '');
+    try {
+      await load();
+      try { sessionStorage.setItem('kb_admin', token); } catch (_) { /* nem kritikus */ }
+      $('#token').value = '';
+    } catch (e) {
+      token = '';
+      msg('#loginMsg', e.status === 404 ? 'Az admin felület nincs bekapcsolva (hiányzik vagy túl rövid az ADMIN_TOKEN).' : e.message, 'bad');
+    }
+  });
+  $('#reload').addEventListener('click', () => load().catch((e) => msg('#backupMsg', e.message, 'bad')));
+  $('#clearErrors').addEventListener('click', async () => { if (confirm('Biztosan törlöd a hibanaplót?')) { await api('POST', '/errors/clear'); load(); } });
+  $('#backupNow').addEventListener('click', async () => {
+    const b = $('#backupNow'); b.disabled = true; msg('#backupMsg', 'Mentés…');
+    try { const r = await api('POST', '/backups'); msg('#backupMsg', 'Kész: ' + r.backup.id, 'ok'); await load(); }
+    catch (e) { msg('#backupMsg', e.message, 'bad'); }
+    b.disabled = false;
+  });
+  $('#mailForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); msg('#mailMsg', 'Küldés…');
+    try { await api('POST', '/mail-test', { to: $('#mailTo').value }); msg('#mailMsg', 'Elküldve – nézd meg a postaládát (a spamet is).', 'ok'); }
+    catch (e) { msg('#mailMsg', e.message, 'bad'); }
+  });
+  $('#resetForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); msg('#resetMsg', '');
+    try {
+      const r = await api('POST', '/reset-link', { email: $('#resetEmail').value });
+      const m = $('#resetMsg'); m.className = 'msg ok'; m.replaceChildren(el('span', { textContent: r.username + ' számára (' + r.expiresInMinutes + ' percig érvényes): ' }), el('code', { textContent: r.link }));
+    } catch (e) { msg('#resetMsg', e.message, 'bad'); }
+  });
+
+  if (token) load().catch(() => { token = ''; try { sessionStorage.removeItem('kb_admin'); } catch (_) { /* */ } });
+})();
+</script>
+</body>
+</html>

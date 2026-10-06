@@ -6,6 +6,8 @@ npm run test:auth
 npm run test:rules
 npm run test:rooms
 npm run test:bots
+npm run test:ops       # hibanapló, admin felület, böngészős hibajelentés, kézi jelszó-link
+npm run test:storage   # adatbázis-tárolás és a napi pillanatképek (memóriában futó Postgres)
 node test/deploy-check.js
 ```
 

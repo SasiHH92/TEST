@@ -15,6 +15,11 @@ data/stats.json
 data/avatars.json
 data/dms.json
 data/dms.json.*.tmp
+data/errors.json
+data/errors.json.*.tmp
+
+# helyi adatbázis-másolatok (scripts/db-backup.js): jelszó-hash-eket tartalmaznak
+backups/
 
 # naplók és teszt-kimenetek
 *.log

@@ -21,7 +21,8 @@ async function boot(options={}) {
   const base='http://127.0.0.1:'+server.address().port;
   const file=options.file||path.join(root,crypto.randomUUID()+'.json');
   const env={AUTH_BASE_URL:base,...options.env};
-  app.use('/api/auth',createAuth({...options,file,env}).router);
+  const auth=createAuth({...options,file,env});
+  app.use('/api/auth',auth.router);
   app.get('/health',(req,res)=>res.send('ok'));
   const jar=()=>new Map();
   async function req(method,route,body,settings={}) {
@@ -39,7 +40,7 @@ async function boot(options={}) {
     return {status:response.status,data,text:content,cookies:cookieHeaders,headers:response.headers,
       location:response.headers.get('location')};
   }
-  return {base,file,req,jar,server};
+  return {base,file,req,jar,server,auth};
 }
 const password='Egy hosszú titok 123!';
 const registration=(name='Teszt Anna',address='anna@example.invalid')=>({username:name,email:address,password,confirmPassword:password});
@@ -318,6 +319,42 @@ async function main() {
     assert.equal((await failure.req('POST','/forgot',{email:'anna@example.invalid'})).status,200);
     await new Promise(resolve=>setTimeout(resolve,25));
     assert.equal(JSON.parse(fs.readFileSync(failure.file)).resets.length,0);
+  });
+  await test('Levélküldés elutasítása: az ok a naplóba és a hibakezelőbe kerül, a kulcs és a cím nem',async()=>{
+    const seen=[],logged=[],original=console.error;
+    console.error=(...args)=>logged.push(args.join(' '));
+    try {
+      const refused=await boot({env:{AUTH_MAIL_API_KEY:'titkos-resend-kulcs',AUTH_MAIL_FROM:'Kamu <sender@example.invalid>'},
+        fetch:async()=>Response.json({statusCode:403,name:'validation_error',message:'You can only send testing emails to your own email address (owner@example.invalid).'},{status:403}),
+        onError:(kind,error)=>seen.push([kind,error.message])});
+      await refused.req('POST','/register',registration());
+      assert.equal((await refused.req('POST','/forgot',{email:'anna@example.invalid'})).status,200,'a válasz egységes marad');
+      await new Promise(resolve=>setTimeout(resolve,40));
+      assert.equal(seen.length,1);assert.equal(seen[0][0],'mail');
+      assert.match(seen[0][1],/403/);assert.match(seen[0][1],/testing emails/);
+      assert.ok(logged.some(line=>/403/.test(line)&&/testing emails/.test(line)),'a konzolon is látszik az ok');
+      assert.ok(!logged.join('\n').includes('titkos-resend-kulcs'),'a kulcs nem kerül a naplóba');
+      assert.ok(!logged.join('\n').includes('owner@example.invalid'),'az e-mail cím kimarad a naplóból');
+      assert.equal(JSON.parse(fs.readFileSync(refused.file)).resets.length,0,'a link visszavonva');
+      await assert.rejects(()=>refused.auth.admin.sendTestMail('anna@example.invalid'),error=>error.mail===true&&/403/.test(error.message));
+    } finally {console.error=original;}
+  });
+  await test('Üzemeltetői műveletek: levél-állapot, próbalevél, kézi visszaállító link',async()=>{
+    const off=await boot();
+    assert.deepEqual(off.auth.admin.mailStatus(),{configured:false,baseUrl:true,sender:false,key:false});
+    await assert.rejects(()=>off.auth.admin.sendTestMail('x@example.invalid'),error=>error.status===503);
+    const sent=[];
+    const on=await boot({sendMail:async message=>{sent.push(message);}});
+    assert.equal(on.auth.admin.mailStatus().configured,true);
+    await on.auth.admin.sendTestMail('proba@example.invalid');
+    assert.equal(sent[0].to,'proba@example.invalid');
+    await assert.rejects(()=>on.auth.admin.sendTestMail('nem-email'),error=>error.status===400);
+    await on.req('POST','/register',registration('Link Lajos','lajos@example.invalid'));
+    const made=on.auth.admin.resetLinkFor('Lajos@Example.invalid');
+    assert.equal(made.username,'Link Lajos');assert.ok(made.link.startsWith(on.base+'/#reset='),made.link);
+    assert.match(made.link.split('#reset=')[1],/^[A-Za-z0-9_-]{43}$/);
+    assert.equal(sent.length,1,'a kézi link nem küld levelet');
+    assert.throws(()=>on.auth.admin.resetLinkFor('nincs@example.invalid'),error=>error.status===404);
   });
   await test('Profil (saját kártya): szerkesztés, validáció, foglalt és fix kártya-nevek',async()=>{
     const renames=[];

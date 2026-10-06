@@ -21,9 +21,14 @@ function defaultFiles(env) {
     stats: path.join(ROOT, 'data', 'stats.json'),
     avatars: path.join(ROOT, 'data', 'avatars.json'),
     accounts: path.resolve(ROOT, env.AUTH_STORE_PATH || 'data/accounts.json'),
-    dms: path.resolve(ROOT, env.KB_DMS_FILE || 'data/dms.json') // privát üzenetek a barátok között
+    dms: path.resolve(ROOT, env.KB_DMS_FILE || 'data/dms.json'), // privát üzenetek a barátok között
+    errors: path.resolve(ROOT, env.KB_ERRORS_FILE || 'data/errors.json') // hibanapló (errorlog.js)
   };
 }
+
+const BACKUP_KEEP = 14;                    // ennyi mentést őrzünk meg (a régebbiek törlődnek)
+const BACKUP_EVERY_MS = 23 * 60 * 60 * 1000; // legfeljebb ilyen régi lehet a legutóbbi mentés
+const BACKUP_SKIP = ['errors'];            // a hibanapló nem része a mentésnek
 
 function createStorage(options = {}) {
   const env = options.env || process.env;
@@ -37,6 +42,13 @@ function createStorage(options = {}) {
   const inflight = new Set(); // futó feltöltések
 
   const enabled = () => !!(pool || url);
+
+  // A végleg sikertelen mentéseket a hibanapló is megkapja (server.js köti be). A hibanapló hibája nem állíthat meg semmit.
+  let errorHook = options.onError || null;
+  const setErrorHook = (fn) => { errorHook = typeof fn === 'function' ? fn : null; };
+  function report(e, name) {
+    try { if (errorHook) errorHook(e, name); } catch (_) { /* */ }
+  }
 
   function getPool() {
     if (pool) return pool;
@@ -117,8 +129,10 @@ function createStorage(options = {}) {
         log.error('Adatbázis-mentés sikertelen (' + name + '), újrapróbálom:', e.message);
         await new Promise((r) => setTimeout(r, 4000));
         await pushNow(name);
-      }).catch((e) => log.error('Adatbázis-mentés végleg sikertelen (' + name + '):', e.message))
-        .finally(() => inflight.delete(job));
+      }).catch((e) => {
+        log.error('Adatbázis-mentés végleg sikertelen (' + name + '):', e.message);
+        report(e, name);
+      }).finally(() => inflight.delete(job));
       inflight.add(job);
     }, delayMs));
   }
@@ -128,18 +142,93 @@ function createStorage(options = {}) {
     for (const [name, t] of Array.from(timers)) {
       clearTimeout(t);
       timers.delete(name);
-      try { await pushNow(name); } catch (e) { log.error('Adatbázis-mentés sikertelen (' + name + '):', e.message); }
+      try { await pushNow(name); } catch (e) { log.error('Adatbázis-mentés sikertelen (' + name + '):', e.message); report(e, name); }
     }
     await Promise.allSettled(Array.from(inflight));
+  }
+
+  // ---------- rendszeres mentés (pillanatkép) ----------
+  // A kb_store összes dokumentumáról (fiókok, statisztika, avatárok, privát üzenetek) egy-egy teljes pillanatkép
+  // készül a kb_backup táblába; naponta legfeljebb egy automatikus, a legutóbbi BACKUP_KEEP marad meg.
+  // A pillanatkép az adatbázis tartalmából készül (nem a szerver memóriájából), így független a futó állapottól.
+  let backupReady = false;
+  async function ensureBackupTable() {
+    if (backupReady) return;
+    await ensureTable();
+    await getPool().query('CREATE TABLE IF NOT EXISTS kb_backup (id text PRIMARY KEY, taken_at timestamptz NOT NULL, bytes integer, docs jsonb NOT NULL)');
+    backupReady = true;
+  }
+
+  async function listBackups() {
+    if (!enabled()) return [];
+    await ensureBackupTable();
+    const res = await getPool().query('SELECT id, taken_at, bytes FROM kb_backup ORDER BY taken_at DESC');
+    return res.rows.map((r) => ({ id: r.id, takenAt: new Date(r.taken_at).toISOString(), bytes: r.bytes }));
+  }
+
+  async function backupNow(label) {
+    if (!enabled()) return null;
+    await ensureBackupTable();
+    const db = getPool();
+    const rows = (await db.query('SELECT name, value FROM kb_store')).rows.filter((r) => !BACKUP_SKIP.includes(r.name));
+    if (!rows.length) return null; // üres adatbázisról nem készül mentés
+    const docs = {};
+    for (const r of rows) docs[r.name] = r.value;
+    const text = JSON.stringify(docs);
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+    const id = stamp + (label ? '-' + String(label).replace(/[^a-z0-9]/gi, '').slice(0, 12) : '');
+    await db.query('INSERT INTO kb_backup (id, taken_at, bytes, docs) VALUES ($1, now(), $2, $3::jsonb) ON CONFLICT (id) DO NOTHING', [id, text.length, text]);
+    const all = await listBackups();
+    for (const old of all.slice(BACKUP_KEEP)) await db.query('DELETE FROM kb_backup WHERE id = $1', [old.id]);
+    return { id, bytes: text.length, docs: Object.keys(docs), kept: Math.min(all.length, BACKUP_KEEP) };
+  }
+
+  // Ha a legutóbbi mentés régebbi, mint BACKUP_EVERY_MS (vagy még nincs), újat készít.
+  async function backupIfDue(nowMs = Date.now()) {
+    if (!enabled()) return null;
+    const latest = (await listBackups())[0];
+    if (latest && nowMs - Date.parse(latest.takenAt) < BACKUP_EVERY_MS) return null;
+    return backupNow('auto');
+  }
+
+  // Visszaállítás: a mentés dokumentumai felülírják a kb_store megfelelő sorait. Előtte biztonsági mentés készül
+  // a mostani állapotról. FIGYELEM: a futó szerver a saját memóriájából mentene vissza, ezért csak leállított
+  // játék mellett használd (lásd TAROLAS.md).
+  async function restoreBackup(id) {
+    if (!enabled()) throw new Error('Nincs adatbázis (DATABASE_URL).');
+    await ensureBackupTable();
+    const res = await getPool().query('SELECT docs FROM kb_backup WHERE id = $1', [id]);
+    if (!res.rows.length) throw new Error('Nincs ilyen mentés: ' + id);
+    const docs = res.rows[0].docs;
+    await backupNow('prerestore');
+    const restored = [];
+    for (const [name, value] of Object.entries(docs)) {
+      if (BACKUP_SKIP.includes(name)) continue;
+      await upsert(name, JSON.stringify(value));
+      restored.push(name);
+    }
+    return { restored };
+  }
+
+  // Háttérfeladat: indulás után és óránként ellenőrzi, kell-e új mentés. A hibát a `onError` kapja, a szerver fut tovább.
+  function scheduleBackups(onError, intervalMs = 60 * 60 * 1000, firstDelayMs = 60 * 1000) {
+    if (!enabled()) return () => {};
+    const tick = () => backupIfDue().catch((e) => { log.error('Automatikus mentés sikertelen:', e.message); if (onError) onError(e); });
+    const first = setTimeout(tick, firstDelayMs);
+    const every = setInterval(tick, intervalMs);
+    if (first.unref) first.unref();
+    if (every.unref) every.unref();
+    return () => { clearTimeout(first); clearInterval(every); };
   }
 
   async function close() {
     if (pool && pool.end) await pool.end();
     pool = null;
     ready = false;
+    backupReady = false;
   }
 
-  return { enabled, hydrate, push, flush, close, files };
+  return { enabled, hydrate, push, flush, close, files, setErrorHook, listBackups, backupNow, backupIfDue, restoreBackup, scheduleBackups };
 }
 
-module.exports = { createStorage, storage: createStorage() };
+module.exports = { createStorage, storage: createStorage(), BACKUP_KEEP, BACKUP_EVERY_MS };

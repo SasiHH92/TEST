@@ -20,6 +20,16 @@ services:
         sync: false
       - key: AUTH_TRUST_PROXY    # a Render proxy mögött 1
         value: "1"
+      # A következő titkokat a Render Environment fülén add meg (itt csak emlékeztető; a blueprint-szinkron ne kérje őket):
+      # - key: ADMIN_TOKEN         # /admin oldal (hibanapló, mentések): legalább 24 véletlen karakter – TITKOS
+      #   sync: false
+      # - key: LEGEND_SECRET       # a legendás kártyák igénylő-linkjeihez (legalább 16 karakter) – TITKOS
+      #   sync: false
+      # Jelszó-visszaállító levél (Resend): lásd AUTH_BEALLITAS.md
+      # - key: AUTH_MAIL_API_KEY
+      #   sync: false
+      # - key: AUTH_MAIL_FROM
+      #   sync: false
       # Discord-belépés (opcionális): lásd AUTH_BEALLITAS.md
       # - key: AUTH_DISCORD_CLIENT_ID
       #   sync: false

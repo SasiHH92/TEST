@@ -21,6 +21,8 @@ const {createShop} = require('./shop');
 const {createSocial} = require('./social');
 const {verifyLegendCode} = require('./legend-claims');
 const {createDms} = require('./dms');
+const {createErrorLog} = require('./errorlog');
+const {createAdmin} = require('./admin');
 const {cleanText} = require('./textclean');
 const {budapestDate, weekStart, msUntilWeekReset} = require('./quests');
 const lb = require('./leaderboard');
@@ -65,8 +67,16 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 app.set('trust proxy', 1);
 // Legendás kártya igénylése: a kódot a LEGEND_SECRET-ből számoljuk (a titkot a tulajdonos állítja be a tárhelyen, a kódban nincs).
 const LEGEND_SECRET = process.env.LEGEND_SECRET || '';
+// Hibanapló: a váratlan hibák összevonva, fájlban és (DATABASE_URL esetén) az adatbázisban is megmaradnak; az /admin oldal mutatja.
+const errors = createErrorLog({
+  file: path.resolve(__dirname, process.env.KB_ERRORS_FILE || 'data/errors.json'),
+  persist: () => storage.push('errors')
+});
+const reportError = (kind, err, ctx) => errors.record(kind, err, ctx);
+storage.setErrorHook((err) => errors.record('storage', err));
 const authApi = createAuth({
   persist:()=>storage.push('accounts'),
+  onError:reportError,
   reservedNames:()=>REGISTRY.map((r)=>r.nev),
   onRename:renameStats,
   // érvényes (név, kód) párra a legenda pontos nevét adja vissza, egyébként null
@@ -86,6 +96,7 @@ app.use('/api/auth',authApi.router);
 // Bolt + napi küldetések (pogácsa). A küldetések haladását a nyilvántartás napi számlálói adják.
 const shopApi = createShop({
   auth:authApi,
+  onError:reportError,
   dailyCounts:(name)=>dailyCountsFor(name),
   areFriends:(a,b)=>socialApi.areFriends(a,b),
   // Ajándék: a barát privát üzenetet kap (megmarad, olvasatlanként látszik), és élő értesítést, ha online
@@ -102,6 +113,7 @@ const dms = createDms({ file: path.resolve(__dirname, process.env.KB_DMS_FILE ||
 const socialApi = createSocial({
   auth: authApi,
   dms,
+  onError: reportError,
   roomOf: (socketId) => {
     const sess = sockets.get(socketId);
     const game = sess && rooms.get(sess.code);
@@ -110,6 +122,29 @@ const socialApi = createSocial({
   emit: (userId, event, payload) => io.to('u:' + userId).emit(event, payload)
 });
 app.use('/api/friends',socialApi.router);
+
+// Üzemeltetői felület: csak ADMIN_TOKEN (legalább 24 karakter) beállításakor él, egyébként 404 (lásd admin.js).
+const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi });
+app.use('/api/admin', adminApi.router);
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+// Böngészős hibák jelentése (public/report.js): szigorúan korlátozva, csak rövid, tisztított szöveg kerül a naplóba.
+const clientErrorHits = new Map(); // ip -> időbélyegek
+app.post('/api/client-error', express.json({ limit: '4kb' }), (req, res) => {
+  const now = Date.now();
+  const hits = (clientErrorHits.get(req.ip) || []).filter((t) => now - t < 60 * 1000);
+  if (hits.length >= 8) return res.status(429).end();
+  hits.push(now); clientErrorHits.set(req.ip, hits);
+  if (clientErrorHits.size > 5000) clientErrorHits.delete(clientErrorHits.keys().next().value);
+  const b = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+  if (typeof b.message !== 'string' || !b.message.trim()) return res.status(400).end();
+  const device = /iPhone|iPad|iPod/i.test(req.get('user-agent') || '') ? 'iOS' : /Android/i.test(req.get('user-agent') || '') ? 'Android' : 'gép';
+  errors.record('client', { message: b.message }, {
+    src: typeof b.src === 'string' ? b.src.replace(/[?#].*$/, '').split('/').slice(-2).join('/') : '',
+    line: Number.isFinite(+b.line) ? String(+b.line) : '', device
+  });
+  res.status(204).end();
+});
 
 // Statikus fájlok: a html/js/css ETag/Last-Modified fejléccel (nem cache-el hosszan),
 // a rajzok (assets/) hosszan cache-elhetők, mert ritkán változnak.
@@ -559,6 +594,7 @@ io.on('connection', (socket) => {
       fn(...args);
     } catch (err) {
       console.error('HIBA a(z) "' + evt + '" eseménykezelőben:', err);
+      errors.record('socket', err, { event: evt });
       try { socket.emit('host_warning', { message: '⚠️ Belső hiba történt (“' + evt + '”). Próbáld újra!' }); } catch (e2) { /* */ }
     }
   });
@@ -1092,9 +1128,20 @@ setInterval(() => {
 // ---------- a szerver váratlan hibái ne állítsák le a folyamatot ----------
 process.on('uncaughtException', (err) => {
   console.error('uncaughtException (a szerver fut tovább):', err);
+  errors.record('process', err, { type: 'uncaughtException' });
 });
 process.on('unhandledRejection', (err) => {
   console.error('unhandledRejection (a szerver fut tovább):', err);
+  errors.record('process', err, { type: 'unhandledRejection' });
+});
+
+// Minden más útvonal váratlan hibája: naplózzuk, a kliens általános üzenetet kap (a részletek nem szivárognak ki).
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err && (err.type === 'entity.parse.failed' || err.type === 'entity.too.large')) return res.status(400).json({ error: 'Érvénytelen kérés.' });
+  console.error('HTTP hiba:', req.method, req.path, err && err.message);
+  errors.record('http', err, { path: req.path, method: req.method });
+  res.status(500).json({ error: 'Belső hiba történt. Próbáld újra később.' });
 });
 
 Game.setStatRecorder((name, key, by) => bumpStat(name, key, by));
@@ -1113,6 +1160,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
       if (statsPending) { fs.writeFileSync(STATS_FILE, JSON.stringify(STATS, null, 2)); storage.push('stats'); }
       if (avatarsPending) { fs.writeFileSync(AVATARS_FILE, JSON.stringify(PROFILE_AVATARS, null, 2)); storage.push('avatars'); }
       dms.flush(); // a függő privát üzenetek is kiíródnak (és feltöltődnek)
+      errors.flush();
       await storage.flush();
     } catch (e) {
       console.error('Leállítás közbeni mentés sikertelen:', e.message);
@@ -1123,4 +1171,9 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
 
 server.listen(PORT, HOST, () => {
   console.log('KAMU BÍRÓSÁG fut: http://' + (HOST === '0.0.0.0' ? 'localhost' : HOST) + ':' + PORT + ' (PORT=' + PORT + ')');
+  if (storage.enabled()) {
+    storage.scheduleBackups((err) => errors.record('storage', err, { task: 'backup' })); // naponta egy pillanatkép a Neonban
+    console.log('Adatbázis-mentés: naponta automatikusan (a legutóbbi 14 marad meg).');
+  }
+  if (adminApi.enabled) console.log('Admin felület: /admin (ADMIN_TOKEN beállítva).');
 });

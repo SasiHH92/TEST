@@ -18,7 +18,10 @@
     "test:leaderboard": "node test/leaderboard.js",
     "test:claims": "node test/claims.js",
     "legend-links": "node scripts/legend-links.js",
-    "test:storage": "node test/storage.js"
+    "test:storage": "node test/storage.js",
+    "test:ops": "node test/ops.js",
+    "db-backup": "node scripts/db-backup.js",
+    "db-restore": "node scripts/db-restore.js"
   },
   "engines": {
     "node": ">=18"

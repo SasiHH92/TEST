@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const {promisify} = require('util');
 const express = require('express');
+const {scrub} = require('./errorlog');
 const derive = promisify(crypto.scrypt);
 const SCRYPT = {N:32768,r:8,p:3,maxmem:64*1024*1024};
 const COOKIE = 'kb_account';
@@ -271,29 +272,44 @@ function createAuth(options={}) {
     if(token) store.commit(data=>{data.sessions=data.sessions.filter(s=>s.hash!==digest(token));});
     res.clearCookie(COOKIE,cookieOptions(req));res.json({ok:true});
   }));
+  // Visszaállító token kiadása: a /forgot és az admin-felület közös útja (egy felhasználónak egyszerre egy él).
+  function issueReset(user) {
+    const token=crypto.randomBytes(32).toString('base64url');
+    store.commit(data=>{
+      data.resets=data.resets.filter(r=>r.userId!==user.id && r.expiresAt>now());
+      data.resets.push({hash:digest(token),userId:user.id,expiresAt:now()+60*60*1000});
+    });
+    return token;
+  }
+  // Levélküldés (Resend vagy teszt-küldő). Hiba esetén a Resend válaszkódját és üzenetét is megmutatja (az API-kulcs soha nem szerepel benne).
+  async function deliver(message) {
+    if(options.sendMail) return options.sendMail(message);
+    let result;
+    try {
+      result=await request('https://api.resend.com/emails',{method:'POST',
+        headers:{Authorization:'Bearer '+env.AUTH_MAIL_API_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({...message,from:env.AUTH_MAIL_FROM,to:[message.to]}),signal:AbortSignal.timeout(10000)});
+    } catch(error) {error.mail=true;throw error;} // hálózati hiba / időtúllépés
+    if(!result.ok) {
+      let detail='';
+      try {detail=String((await result.json()).message||'');} catch(_) { /* nincs JSON-törzs */ }
+      const error=new Error('Mail delivery failed ('+result.status+')'+(detail?': '+scrub(detail,200):''));
+      error.mail=true;throw error;
+    }
+  }
   router.post('/forgot',wrap(async(req,res)=>{
     if(!mailEnabled) fail(503,'A jelszó-visszaállítás jelenleg nem elérhető.');
     const address=email(req.body.email), user=store.state.users.find(u=>u.email===address && u.password);
     if(user) {
-      const token=crypto.randomBytes(32).toString('base64url');
-      store.commit(data=>{
-        data.resets=data.resets.filter(r=>r.userId!==user.id && r.expiresAt>now());
-        data.resets.push({hash:digest(token),userId:user.id,expiresAt:now()+60*60*1000});
-      });
-      const link=origin+'/#reset='+token;
+      const token=issueReset(user);
       const message={to:user.email,subject:'Kamu Bíróság – új jelszó',
-        text:'Új jelszó beállításához nyisd meg ezt a linket:\n'+link+'\n\nA link 1 óráig, egyszer használható. Ha nem te kérted, hagyd figyelmen kívül.'};
+        text:'Új jelszó beállításához nyisd meg ezt a linket:\n'+origin+'/#reset='+token+'\n\nA link 1 óráig, egyszer használható. Ha nem te kérted, hagyd figyelmen kívül.'};
       // Respond uniformly; email transport never reveals whether an account exists.
-      const send=options.sendMail?()=>options.sendMail(message):async()=>{
-        const result=await request('https://api.resend.com/emails',{method:'POST',
-          headers:{Authorization:'Bearer '+env.AUTH_MAIL_API_KEY,'Content-Type':'application/json'},
-          body:JSON.stringify({...message,from:env.AUTH_MAIL_FROM,to:[message.to]}),signal:AbortSignal.timeout(10000)});
-        if(!result.ok) throw new Error('Mail delivery failed');
-      };
-      Promise.resolve().then(send).catch(()=>{
+      Promise.resolve().then(()=>deliver(message)).catch(error=>{
         try {store.commit(data=>{data.resets=data.resets.filter(r=>r.hash!==digest(token));});}
         catch(_) {console.error('A sikertelen visszaállító link törlése nem sikerült.');}
-        console.error('A jelszó-visszaállító levél kézbesítése nem sikerült.');
+        console.error('A jelszó-visszaállító levél kézbesítése nem sikerült:',scrub(error&&error.message,200));
+        try {options.onError?.('mail',error);} catch(_) { /* a naplózás hibája nem állíthat meg semmit */ }
       });
     }
     res.json({message:'Ha ehhez a címhez jelszavas fiók tartozik, elküldjük a visszaállító linket.'});
@@ -394,6 +410,7 @@ function createAuth(options={}) {
     if(error.type==='entity.too.large') return res.status(413).json({error:'Túl nagy kérés.'});
     if(error.type==='entity.parse.failed') return res.status(400).json({error:'Érvénytelen kérés.'});
     console.error('Fiókkezelési hiba:',error.code||error.name);
+    try {options.onError?.('http',error,{path:'/api/auth'+req.path});} catch(_) { /* naplózási hiba nem számít */ }
     res.status(503).json({error:'A fiókkezelés most nem elérhető. Próbáld újra később.'});
   });
   // A bolt (shop.js) és a játék-szerver (hitelesített kozmetikumok) ezeket használja.
@@ -411,6 +428,21 @@ function createAuth(options={}) {
     byId:id=>(store&&typeof id==='string'?store.state.users.find(u=>u.id===id):null)||null,
     byName:name=>(store&&typeof name==='string'?store.state.users.find(u=>normalize(u.username)===normalize(name)):null)||null
   };
-  return {router,session,mutate,expectedOrigin,directory};
+  // Üzemeltetői műveletek (az admin.js hívja, ADMIN_TOKEN mögött): levélküldés próbája és kézi visszaállító link.
+  const admin={
+    mailStatus:()=>({configured:mailEnabled,baseUrl:!!origin,sender:!!(options.sendMail||env.AUTH_MAIL_FROM),key:!!(options.sendMail||env.AUTH_MAIL_API_KEY)}),
+    async sendTestMail(to) {
+      if(!mailEnabled) fail(503,'A levélküldés nincs beállítva (AUTH_MAIL_API_KEY, AUTH_MAIL_FROM, AUTH_BASE_URL).');
+      await deliver({to:email(to),subject:'Kamu Bíróság – próbalevél',text:'Ez egy próbalevél a Kamu Bíróság szerveréről. Ha ezt olvasod, a levélküldés működik.'});
+    },
+    resetLinkFor(address) {
+      if(!store) fail(503,'A fiókkezelés most nem elérhető.');
+      if(!origin) fail(503,'Az AUTH_BASE_URL nincs beállítva, a link nem készíthető el.');
+      const user=store.state.users.find(u=>u.email===email(address) && u.password);
+      if(!user) fail(404,'Nincs jelszavas fiók ezzel az e-mail címmel.');
+      return {link:origin+'/#reset='+issueReset(user),username:user.username,expiresInMinutes:60};
+    }
+  };
+  return {router,session,mutate,expectedOrigin,directory,admin};
 }
 module.exports={createAuth,loadAuthEnvironment};

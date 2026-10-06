@@ -59,7 +59,7 @@ function cardOf(user) {
 
 const without = (list, id) => list.filter((x) => x !== id);
 
-function createSocial({ auth, roomOf = () => null, emit = () => {}, now = () => Date.now(), dms = null }) {
+function createSocial({ auth, roomOf = () => null, emit = () => {}, now = () => Date.now(), dms = null, onError = () => {} }) {
   const router = express.Router();
   const dmGap = new Map();        // "ki>kinek" -> utolsó privát üzenet ideje
   const announced = new Map();    // userId -> mikor szóltunk utoljára, hogy online lépett
@@ -428,6 +428,7 @@ function createSocial({ auth, roomOf = () => null, emit = () => {}, now = () => 
     if (error && error.status) return res.status(error.status).json({ error: error.message });
     if (error && error.type === 'entity.parse.failed') return res.status(400).json({ error: 'Érvénytelen kérés.' });
     console.error('Barátlista hiba:', error && (error.code || error.name));
+    try { onError('http', error, { path: '/api/friends' + req.path }); } catch (_) { /* a naplózás hibája nem számít */ }
     res.status(503).json({ error: 'A barátlista most nem elérhető. Próbáld újra később.' });
   });
 

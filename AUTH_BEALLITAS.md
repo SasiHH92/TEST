@@ -64,6 +64,26 @@ AUTH_MAIL_API_KEY=SAJAT_RESEND_API_KULCS
 AUTH_MAIL_FROM=Kamu Bíróság <belepes@SAJAT-HITELESITETT-DOMAIN>
 ```
 
+### Beállítás lépésről lépésre (Resend)
+
+1. Regisztrálj a [resend.com](https://resend.com) oldalon (az ingyenes csomag napi 100 levelet engedélyez, ez a játékhoz bőven elég).
+2. **Domains → Add Domain**: add meg a saját domainedet, és a Resend által kiírt DNS-rekordokat (SPF, DKIM) vidd fel a domain szolgáltatódnál. Amíg a Resend nem jelzi a domaint „Verified"-nek, a levelek más címzetteknek **nem** mennek ki. (Domain nélkül a Resend csak a saját fiókod e-mail címére enged próbalevelet küldeni, a játékosoknak nem – erre lásd a „Kézi link" részt lent.)
+3. **API Keys → Create API Key** („Sending access" elég). A kulcsot csak egyszer mutatja meg; **ne oszd meg, ne írd a repóba**.
+4. A Renderen, a szolgáltatás **Environment** fülén add meg (a kulcsot te írd be, ne küldd el senkinek):
+
+   | Kulcs | Érték |
+   | --- | --- |
+   | `AUTH_MAIL_API_KEY` | a Resend API-kulcs |
+   | `AUTH_MAIL_FROM` | `Kamu Bíróság <belepes@SAJAT-DOMAIN>` (a hitelesített domainről) |
+   | `AUTH_BASE_URL` | a játék pontos címe (már megvan) |
+   | `ADMIN_TOKEN` | legalább 24 karakteres véletlen titok az admin oldalhoz (lásd TAROLAS.md / README „Üzemeltetés") |
+
+5. Mentés után a Render újraindul. Nyisd meg az `/admin` oldalt, lépj be az `ADMIN_TOKEN`-nel, és a **Levélküldés** résznél küldj próbalevelet magadnak. Ha nem sikerül, az oldal pontosan kiírja a Resend válaszát (pl. „domain not verified"), és a hiba a **Hibák** listába is bekerül.
+
+### Kézi link (amíg nincs levélküldés)
+
+Ha egy játékos elfelejtette a jelszavát, de a levélküldés nincs beállítva: az `/admin` oldal **Kézi jelszó-visszaállító link** részében add meg a játékos e-mail címét, a kapott linket pedig küldd el neki (például Discordon). A link 1 óráig érvényes, egyszer használható, és belépés után azonnal új jelszót kér. Ezt csak az `ADMIN_TOKEN` birtokosa teheti meg.
+
 A feladó legyen a Resendnél hitelesített cím/domain. Az `AUTH_BASE_URL` itt is a böngészőben elérhető címed. A levélben egy óráig, egyszer használható link van; a titkos token csak a link töredékében (`#reset=…`) szerepel. Új jelszó mentése az összes korábbi fiók-munkamenetet visszavonja. A válasz nem árulja el, hogy egy megadott címhez van-e fiók. A regisztráció nem küld külön e-mailes megerősítő levelet.
 
 ## Fióktár és üzemeltetés
