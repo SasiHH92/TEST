@@ -263,18 +263,24 @@
   <div id="inviteStack" class="invite-stack" aria-live="polite"></div>
 
   <!-- Szobai csevegő: lobbi + játék, mindenki ír mindenkinek a szobában -->
-  <button id="chatFab" type="button" class="chat-fab hidden" aria-label="Csevegő" title="Csevegő a szobával">
+  <button id="chatFab" type="button" class="chat-fab hidden" aria-label="Csevegő" title="Csevegő és közös tér">
     <span class="fab-ico" aria-hidden="true">💬</span><span class="fab-text">CSEVEGŐ</span>
     <i id="chatBadge" class="shop-badge hidden" title="Olvasatlan üzenet"></i>
   </button>
   <section id="chatPanel" class="chat-panel hidden" aria-label="Csevegő">
     <header class="chat-head">
-      <b>💬 Csevegő</b><span id="chatSub" class="chat-sub"></span>
+      <div class="chat-tabs" role="tablist">
+        <button id="chTabRoom" type="button" role="tab" class="chat-tab" aria-selected="true">🏛️ SZOBA <i id="chRoomBadge" class="shop-badge hidden"></i></button>
+        <button id="chTabBoard" type="button" role="tab" class="chat-tab" aria-selected="false">📣 KÖZÖS <i id="chBoardBadge" class="shop-badge hidden"></i></button>
+      </div>
       <button id="chatClose" type="button" class="chat-x" aria-label="Csevegő bezárása">✕</button>
     </header>
+    <p id="chatSub" class="chat-sub"></p>
+    <div id="chatAds" class="chat-ads hidden" aria-label="Hirdetések: emberek keresése"></div>
     <div id="chatLog" class="chat-log" role="log" aria-live="polite"></div>
     <form id="chatForm" class="chat-form" autocomplete="off">
       <input id="chatInput" type="text" maxlength="280" placeholder="Írj a teremnek…" aria-label="Üzenet" autocomplete="off">
+      <button id="chatAdBtn" type="button" class="btn small ghost chat-adbtn hidden" title="Kihirdetem a szobámat: keresek embereket">📣</button>
       <button type="submit" class="btn small">KÜLD</button>
     </form>
     <p id="chatNote" class="chat-note" role="status" aria-live="polite"></p>
@@ -430,10 +436,14 @@
 
     <!-- Ponttábla-oldalsáv (desktopon fix, mobilon felcsúszó) -->
     <aside id="scoreSidebar" class="score-sidebar">
-      <button id="sbToggle" class="sb-toggle" aria-label="Pontok megnyitása">PONTOK</button>
+      <button id="sbToggle" class="sb-toggle" aria-label="Pontok megnyitása">PONTOK <i id="sbToggleBadge" class="shop-badge hidden"></i></button>
       <div class="sb-inner">
-        <div class="sb-title">⚖️ PONTTÁBLA</div>
+        <div class="sb-tabs" role="tablist">
+          <button id="sbTabScores" type="button" role="tab" class="sb-tab active" aria-selected="true">⚖️ PONTTÁBLA</button>
+          <button id="sbTabChat" type="button" role="tab" class="sb-tab" aria-selected="false">💬 CSEVEGŐ <i id="sbChatBadge" class="shop-badge hidden"></i></button>
+        </div>
         <div id="sbRows" class="sb-rows"></div>
+        <div id="sbChatSlot" class="sb-chat-slot hidden"></div>
         <div class="sb-reactions">
           <button class="react-btn" data-emoji="😂">😂</button>
           <button class="react-btn" data-emoji="💀">💀</button>

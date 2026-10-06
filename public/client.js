@@ -3102,6 +3102,7 @@ function identifySocket() {
     if (seq !== identSeq || !socket.connected) return; // közben újabb azonosítás indult, vagy megszakadt a kapcsolat
     await new Promise((resolve) => socket.timeout(5000).emit('identify', { ticket }, () => resolve()));
     if (seq === identSeq && window.kbFriends) window.kbFriends.refresh(true);
+    if (seq === identSeq && window.kbChat) window.kbChat.resubscribe(); // a közös tér előzménye az új azonosítóval (letiltottak szűrése)
   })();
   return identPromise;
 }

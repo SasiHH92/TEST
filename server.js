@@ -322,6 +322,59 @@ function chatFor(socketId, game) {
   return (game.chatLog || []).filter((m) => chatVisible(socketId, m)).slice(-50).map(chatPublic);
 }
 
+// ---- Közös tér: globális csevegő + hirdetőtábla ("keresek embereket") ----
+// Az egész oldalon elérhető (névválasztó, menü, lobbi, játék). A hirdetés egy nyitott lobbi szobakódját teszi közzé
+// (a kódot a szerver adja, a kliens nem hamisíthatja), amíg a szoba a lobbiban van, nincs tele, és legfeljebb 20 percig.
+const BOARD_KEEP = 100, BOARD_MAX_LEN = 240, AD_MAX_LEN = 120, AD_TTL_MS = 20 * 60 * 1000, AD_GAP_MS = 3 * 60 * 1000;
+const BOARD_WINDOW_MS = 30 * 1000, BOARD_BURST = 6, BOARD_GAP_MS = 1500, BOARD_DUP_MS = 10 * 1000;
+const board = { msgs: [], seq: 0, ads: new Map(), adSeq: 0 }; // ads: szobakód -> hirdetés
+const boardTimes = new Map(); // socketId -> küldések időbélyegei
+const adGaps = new Map();     // fiók-azonosító / socketId -> utolsó hirdetés ideje
+let lastAdsJson = '[]', adsTimer = null;
+
+const boardPublic = ({ id, name, text, ts, kind }) => ({ id, name, text, ts, kind });
+function boardFor(socketId) {
+  return board.msgs.filter((m) => chatVisible(socketId, m)).slice(-60).map(boardPublic);
+}
+
+// A közös térben használt név: szobában a játékos neve, bejelentkezve a fiók neve; vendégnél a (szabad) megadott név.
+function boardNameFor(socket, clientName) {
+  const sess = sockets.get(socket.id);
+  const game = sess && rooms.get(sess.code);
+  const player = game && game.getPlayer(sess.playerId);
+  if (player && !player.isBot) return { name: player.name };
+  const userId = socialApi.userOf(socket.id);
+  const user = userId ? authApi.directory.byId(userId) : null;
+  if (user) return { name: user.username };
+  const raw = typeof clientName === 'string' ? clientName.trim().slice(0, 20) : '';
+  if (!raw) return { error: 'Előbb válaszd ki a karaktered (vagy a vendégnevedet), utána tudsz írni.' };
+  // legenda nevén csak az írhat, aki az ő kártyájával játszik (szobában: fent), vendég nem
+  if (REGISTRY.some((r) => normName(r.nev) === normName(raw))) return { error: 'Ez egy nyilvántartott játékos neve, vendégként nem használható.' };
+  const problem = nameProblem(socket, raw);
+  return problem ? { error: problem } : { name: raw };
+}
+
+function adsSnapshot() {
+  const now = Date.now(), out = [];
+  for (const [code, ad] of board.ads) {
+    const game = rooms.get(code);
+    const players = game ? game.activePlayers().length : 0;
+    if (!game || players === 0 || game.phase !== PHASES.LOBBY || players >= 8 || now - ad.ts > AD_TTL_MS) { board.ads.delete(code); continue; }
+    out.push({ id: ad.id, code, name: ad.name, text: ad.text, ts: ad.ts, players, max: 8 });
+  }
+  return out.sort((a, b) => b.ts - a.ts);
+}
+// A hirdetések listája csak változáskor megy ki (szoba megtelt / elindult / kiürült / lejárt / új hirdetés).
+function refreshAds() {
+  clearTimeout(adsTimer);
+  adsTimer = setTimeout(() => {
+    const ads = adsSnapshot(), json = JSON.stringify(ads);
+    if (json !== lastAdsJson) { lastAdsJson = json; io.to('board').emit('board_ads', ads); }
+  }, 250);
+  if (adsTimer.unref) adsTimer.unref();
+}
+setInterval(refreshAds, 15 * 1000).unref();
+
 // ---- Névszabály: foglalt név nem használható ----
 // A nyilvántartott (legendás) nevek csak a saját kártyájukkal, a regisztrált játékosok nevei csak a bejelentkezett
 // gazdájuknak járnak; ezek kis/nagybetűs, ékezetes változata sem (megszemélyesítés ellen). Szobán belül a nevek
@@ -421,6 +474,7 @@ function attachStats(game) {
   // Ha a szoba lobbiból játékba (vagy vissza) váltott, a benne lévő fiókok barátai új állapotot látnak.
   if (game._presencePhase !== game.phase) {
     game._presencePhase = game.phase;
+    refreshAds(); // a játékba lépett szoba hirdetése lekerül a közös térről
     for (const [socketId, sess] of sockets) {
       if (sess.code !== game.code) continue;
       const uid = socialApi.userOf(socketId);
@@ -446,7 +500,7 @@ io.on('connection', (socket) => {
 
   // ---- Fiók-azonosítás: a kliens a /api/friends/ticket jegyével jelzi, melyik fiók (vagy vendég) a socket ----
   // (A süti a socket létrejöttekor rögzül, ezért bejelentkezés/kijelentkezés után nem lehetne arra támaszkodni.)
-  const presenceChanged = () => { const uid = socialApi.userOf(socket.id); if (uid) socialApi.touch(uid); };
+  const presenceChanged = () => { const uid = socialApi.userOf(socket.id); if (uid) socialApi.touch(uid); refreshAds(); };
   safeOn('identify', (payload, ack) => {
     const ticket = payload && typeof payload.ticket === 'string' ? payload.ticket.slice(0, 80) : '';
     const userId = ticket ? socialApi.consumeTicket(ticket) : null;
@@ -514,6 +568,75 @@ io.on('connection', (socket) => {
       if (s.code === sess.code && chatVisible(sid, entry)) io.to(sid).emit('chat_msg', chatPublic(entry));
     }
     reply({ ok: true, id: entry.id });
+  });
+
+  // ---- Közös tér: feliratkozás (előzmény + aktuális hirdetések) ----
+  safeOn('board_sub', (_payload, ack) => {
+    socket.join('board');
+    if (typeof ack === 'function') ack({ msgs: boardFor(socket.id), ads: adsSnapshot() });
+  });
+
+  // ---- Közös tér: üzenet ----
+  safeOn('board_send', ({ text, name } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const who = boardNameFor(socket, name);
+    if (who.error) return reply({ error: who.error });
+    const clean = cleanChatText(text).slice(0, BOARD_MAX_LEN);
+    if (!clean) return reply({ error: 'Üres üzenet.' });
+    const now = Date.now();
+    const recent = (boardTimes.get(socket.id) || []).filter((t) => now - t < BOARD_WINDOW_MS);
+    if (recent.length && now - recent[recent.length - 1] < BOARD_GAP_MS) return reply({ error: 'Lassabban! Várj egy kicsit a következő üzenettel.' });
+    if (recent.length >= BOARD_BURST) return reply({ error: 'Túl sok üzenet. Várj fél percet.' });
+    const last = [...board.msgs].reverse().find((m) => m.kind === 'msg' && m.name === who.name);
+    if (last && last.text === clean && now - last.ts < BOARD_DUP_MS) return reply({ error: 'Ezt az üzenetet épp most küldted.' });
+    recent.push(now);
+    boardTimes.set(socket.id, recent);
+    board.seq += 1;
+    const entry = { id: board.seq, kind: 'msg', name: who.name, text: clean, ts: now, uid: socialApi.userOf(socket.id) || null };
+    board.msgs.push(entry);
+    if (board.msgs.length > BOARD_KEEP) board.msgs.splice(0, board.msgs.length - BOARD_KEEP);
+    const members = io.sockets.adapter.rooms.get('board') || new Set();
+    for (const sid of members) if (chatVisible(sid, entry)) io.to(sid).emit('board_msg', boardPublic(entry));
+    reply({ ok: true, id: entry.id });
+  });
+
+  // ---- Közös tér: hirdetés a saját (nyitott lobbi) szobámról ----
+  safeOn('board_ad', ({ text } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    const player = game && game.getPlayer(sess.playerId);
+    if (!player) return reply({ error: 'Hirdetni csak a saját szobádból lehet: előbb hozz létre vagy lépj be egy szobába.' });
+    if (game.phase !== PHASES.LOBBY) return reply({ error: 'Hirdetni csak a lobbiból lehet, a játék elindulása előtt.' });
+    if (game.activePlayers().length >= 8) return reply({ error: 'A szoba tele van, nincs mit hirdetni.' });
+    const existing = adsSnapshot().find((a) => a.code === sess.code);
+    if (existing) return reply({ error: 'A szobának már van hirdetése. Addig érvényes, amíg a szoba a lobbiban van (legfeljebb 20 percig).' });
+    const key = socialApi.userOf(socket.id) || socket.id;
+    const now = Date.now();
+    if (now - (adGaps.get(key) || 0) < AD_GAP_MS) return reply({ error: 'Hirdetni 3 percenként lehet. Várj egy kicsit.' });
+    if (board.ads.size >= 30) return reply({ error: 'Most túl sok a hirdetés. Próbáld később.' });
+    const clean = cleanChatText(text).slice(0, AD_MAX_LEN) || 'Keresek embereket a szobámba!';
+    adGaps.set(key, now);
+    if (adGaps.size > 2000) adGaps.delete(adGaps.keys().next().value);
+    board.adSeq += 1;
+    board.ads.set(sess.code, { id: board.adSeq, name: player.name, text: clean, ts: now, owner: socket.id, uid: socialApi.userOf(socket.id) || null });
+    // a közös csevegőben is megjelenik egy sor
+    board.seq += 1;
+    const entry = { id: board.seq, kind: 'ad', name: player.name, text: '📣 ' + clean, ts: now, uid: socialApi.userOf(socket.id) || null };
+    board.msgs.push(entry);
+    if (board.msgs.length > BOARD_KEEP) board.msgs.splice(0, board.msgs.length - BOARD_KEEP);
+    const members = io.sockets.adapter.rooms.get('board') || new Set();
+    for (const sid of members) if (chatVisible(sid, entry)) io.to(sid).emit('board_msg', boardPublic(entry));
+    lastAdsJson = '';
+    refreshAds();
+    reply({ ok: true, code: sess.code });
+  });
+
+  // ---- Közös tér: a saját hirdetés visszavonása (a szoba bármelyik tagja) ----
+  safeOn('board_ad_remove', (_payload, ack) => {
+    const sess = sockets.get(socket.id);
+    if (sess && board.ads.delete(sess.code)) { lastAdsJson = ''; refreshAds(); }
+    if (typeof ack === 'function') ack({ ok: true });
   });
 
   // ---- Szabad-e a név? (a vendég-névmező előzetes ellenőrzése; a szerver a belépéskor úgyis kikényszeríti) ----
@@ -857,6 +980,8 @@ io.on('connection', (socket) => {
   safeOn('disconnect', () => {
     rateWindows.delete(socket.id); // rate-limit ablak felszabadítása
     chatTimes.delete(socket.id);
+    boardTimes.delete(socket.id);
+    refreshAds(); // a lecsatlakozó szoba hirdetése frissül / eltűnik
     socialApi.disconnect(socket.id); // offline lett (a barátai frissítik a listájukat)
     const sess = sockets.get(socket.id);
     if (!sess) return;

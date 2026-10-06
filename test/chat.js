@@ -222,6 +222,102 @@ async function main() {
       for (const s of [sA, sB, guest, rejoin, guestJoin]) s.disconnect();
     });
 
+    // ---------------- közös tér (globális csevegő + hirdetőtábla) ----------------
+    const sub = async (s) => { s.board = []; s.ads = []; s.on('board_msg', (m) => s.board.push(m)); s.on('board_ads', (a) => { s.ads = a; s.adsEvents = (s.adsEvents || 0) + 1; }); return emit(s, 'board_sub', {}); };
+
+    await test('Közös tér: feliratkozás, üzenet mindenkinek; vendég névvel, szobában a játékos neve, fióknál a fiók neve', async () => {
+      const g1 = await connect(), g2 = await connect(), acct = await connect(), inRoom = await connect();
+      const first = await sub(g1); await sub(g2); await sub(acct); await sub(inRoom);
+      assert.deepEqual(first, { msgs: [], ads: [] });
+      assert.match((await emit(g1, 'board_send', { text: 'szia' })).error, /Előbb válaszd ki/, 'név nélkül nem lehet írni');
+      assert.ok((await emit(g1, 'board_send', { text: 'Sziasztok, ki játszik?', name: 'Vendeg Hirdeto' })).ok);
+      await identify(acct, anna);
+      assert.ok((await emit(acct, 'board_send', { text: 'Én is', name: 'Valaki Mas' })).ok, 'fiókkal a kliens neve nem számít');
+      await emit(inRoom, 'create_room', { name: 'Szobas Jatekos', playerId: 'sj' });
+      assert.ok((await emit(inRoom, 'board_send', { text: 'Szobából írok', name: 'Hamis Nev' })).ok);
+      await pause(150);
+      for (const s of [g1, g2, acct, inRoom]) assert.deepEqual(s.board.map((m) => m.name + ': ' + m.text), ['Vendeg Hirdeto: Sziasztok, ki játszik?', 'Anna Teszt: Én is', 'Szobas Jatekos: Szobából írok'], 'mindenki ugyanazt látja, a név a szerveré');
+      assert.ok(s0(g2.board).every((m) => !('uid' in m)), 'belső azonosító nem szivárog');
+      // előzmény a későn feliratkozónak
+      const late = await connect(); const hist = await sub(late);
+      assert.equal(hist.msgs.length, 3);
+      for (const s of [g1, g2, acct, inRoom, late]) s.disconnect();
+      function s0(x) { return x; }
+    });
+
+    await test('Közös tér: legenda neve vendégként tilos, a sebesség- és ismétlés-szűrés működik', async () => {
+      const g = await connect(); await sub(g);
+      assert.match((await emit(g, 'board_send', { text: 'én vagyok', name: 'Kyrashi' })).error, /nyilvántartott/);
+      assert.match((await emit(g, 'board_send', { text: 'én vagyok', name: 'kyrashi' })).error, /nyilvántartott/);
+      assert.match((await emit(g, 'board_send', { text: 'én vagyok', name: 'Anna Teszt' })).error, /regisztrált/, 'regisztrált név vendégnek nem');
+      assert.ok((await emit(g, 'board_send', { text: 'egy', name: 'Gyors Vendeg' })).ok);
+      assert.match((await emit(g, 'board_send', { text: 'kettő', name: 'Gyors Vendeg' })).error, /Lassabban/, 'túl gyors');
+      await pause(1700);
+      assert.match((await emit(g, 'board_send', { text: 'egy', name: 'Gyors Vendeg' })).error, /épp most/, 'ismétlés');
+      assert.ok((await emit(g, 'board_send', { text: '   ', name: 'Gyors Vendeg' })).error, 'üres');
+      g.disconnect();
+    });
+
+    await test('Hirdetés: csak lobbi-szobából, a kódot a szerver adja, szobánként egy; az ablak minden feliratkozónak frissül', async () => {
+      const watcher = await connect(); await sub(watcher);
+      const adv = await connect(); await sub(adv);
+      assert.match((await emit(adv, 'board_ad', { text: 'x' })).error, /szobádból/, 'szoba nélkül nem');
+      const created = await emit(adv, 'create_room', { name: 'Hirdeto Host', playerId: 'ah' });
+      const r = await emit(adv, 'board_ad', { text: 'Keresek 3 embert!  <b>PUBG</b>', code: 'ZZZZ' });
+      assert.ok(r.ok); assert.equal(r.code, created.code, 'a kliens nem adhat meg kódot');
+      await pause(500);
+      assert.equal(watcher.ads.length, 1);
+      assert.deepEqual({ code: watcher.ads[0].code, name: watcher.ads[0].name, players: watcher.ads[0].players, max: watcher.ads[0].max, text: watcher.ads[0].text },
+        { code: created.code, name: 'Hirdeto Host', players: 1, max: 8, text: 'Keresek 3 embert! <b>PUBG</b>' });
+      assert.ok(!('owner' in watcher.ads[0]) && !('uid' in watcher.ads[0]));
+      assert.ok(watcher.board.some((m) => m.kind === 'ad' && m.name === 'Hirdeto Host'), 'a közös csevegőben is megjelenik');
+      assert.match((await emit(adv, 'board_ad', { text: 'még egy' })).error, /már van hirdetése/);
+      // a játékosszám élőben követi a szobát
+      const joiner = await connect();
+      await emit(joiner, 'join_room', { code: created.code, name: 'Jelentkezo', playerId: 'jj' });
+      await pause(500);
+      assert.equal(watcher.ads[0].players, 2);
+      // más játékos is visszavonhatja a szobája hirdetését
+      await emit(joiner, 'board_ad_remove', {});
+      await pause(500);
+      assert.equal(watcher.ads.length, 0, 'visszavonva');
+      // a játék elindulása után új hirdetés nem adható, a lista üres marad
+      await emit(adv, 'add_bot'); await emit(adv, 'add_bot');
+      assert.ok(!(await emit(adv, 'start_game', { settings: { modes: ['cs'], autoNextRound: false, autoNewGame: false } })).error);
+      await pause(400);
+      assert.match((await emit(adv, 'board_ad', { text: 'késő' })).error, /lobbi|3 percenként/);
+      for (const s of [watcher, adv, joiner]) s.disconnect();
+    });
+
+    await test('Hirdetés: a játékba lépett vagy kiürült szoba hirdetése eltűnik', async () => {
+      const watcher = await connect(); await sub(watcher);
+      const adv = await connect();
+      const created = await emit(adv, 'create_room', { name: 'Masik Hirdeto', playerId: 'mh' });
+      assert.ok((await emit(adv, 'board_ad', { text: 'Játszunk!' })).ok);
+      await pause(500);
+      assert.equal(watcher.ads.length, 1);
+      await emit(adv, 'add_bot'); await emit(adv, 'add_bot');
+      await emit(adv, 'start_game', { settings: { modes: ['cs'], autoNextRound: false, autoNewGame: false } });
+      await pause(500);
+      assert.equal(watcher.ads.length, 0, 'a játék elindult: a hirdetés lekerült');
+      void created;
+      adv.disconnect(); watcher.disconnect();
+    });
+
+    await test('Közös tér: a letiltott játékos üzenete nem látszik annak, aki letiltotta', async () => {
+      const sA = await connect(), sB = await connect(), sG = await connect();
+      await identify(sA, anna); await identify(sB, bela);
+      await sub(sA); await sub(sB); await sub(sG);
+      assert.equal((await bela.friends('/block', { userId: anna.id })).status, 200);
+      assert.ok((await emit(sA, 'board_send', { text: 'Bela, itt vagyok' })).ok);
+      await pause(200);
+      assert.equal(sG.board.length, 1); assert.equal(sA.board.length, 1);
+      assert.equal(sB.board.length, 0, 'a letiltó nem látja');
+      const hist = await emit(await connect().then(async (s) => { await identify(s, bela); return s; }), 'board_sub', {});
+      assert.ok(!hist.msgs.some((m) => m.text === 'Bela, itt vagyok'), 'az előzményben sem');
+      for (const s of [sA, sB, sG]) s.disconnect();
+    });
+
     await test('Szerver-hibák nélkül lefutott', async () => {
       assert.ok(!/HIBA|Error|uncaught/i.test(errors), errors.slice(0, 800));
     });
