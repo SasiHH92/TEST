@@ -1918,8 +1918,12 @@ function chargeMarkup(text,name) {
   const safe=escapeHtml(text), who=escapeHtml(name);
   return who ? safe.split(who).join('<span class="accused-name">'+who+'</span>') : safe;
 }
+let chargeTransitionBound=false;
 function renderAccusationTicker() {
   const t=$('#accusationTicker');
+  // A vád-sáv a nyitó-animáció végén átúszik a helyére; a színpad (bíró-buborék) elrendezése csak az átmenet VÉGÉN mérje a sáv helyét,
+  // különben a gyors továbblépés (pl. azonnali FELOLVASTAM) utáni mérés félúton talál rá, és a buborék rossz helyen marad.
+  if(!chargeTransitionBound) {chargeTransitionBound=true;t.addEventListener('transitionend',ev=>{if(ev.target===t) scheduleSceneLayout();});}
   if(S.accusationText) lastCharge={text:S.accusationText,name:nameOf(S.defendantId),mode:S.modeName,caseNo:S.caseNo,custom:S.isCustom};
   const c=S.accusationText?lastCharge:(S.phase==='game_over'?lastCharge:null);
   if(!c) {cancelChargeIntro();t.classList.add('hidden');return;}

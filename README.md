@@ -184,6 +184,7 @@ npm run test:rules        # 12 szabály- és időzítési tesztcsoport
 npm run test:rooms        # valódi Socket.io: jogosultságok, kirúgás, kilépés
 node test/e2e-bots.js     # 1 ember + 4 bot, 2 kör botokkal (22 ellenőrzés)
 node test/stress-bots.js  # 6 teljes, háromkörös botjáték virtuális órával (3–8 fő)
+npm run test:layout       # valódi böngésző (Playwright), 7 méret: átfedés, kilógás, hang/mozgás kapcsolók (kb. 2 perc)
 ```
 
 A hálózati bot-teszt valós szerveren, valós időzítőkkel játszik két kört. A stresszteszt a valódi BotManager időzített műveleteit futtatja virtuális órával; mind a hat játékmódot és a 3–8 fős szobákat ellenőrzi.

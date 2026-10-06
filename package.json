@@ -21,7 +21,8 @@
     "test:storage": "node test/storage.js",
     "test:ops": "node test/ops.js",
     "db-backup": "node scripts/db-backup.js",
-    "db-restore": "node scripts/db-restore.js"
+    "db-restore": "node scripts/db-restore.js",
+    "test:layout": "node test/layout.js"
   },
   "engines": {
     "node": ">=18"
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "pg-mem": "^3.0.14",
+    "playwright-core": "^1.63.0",
     "socket.io-client": "^4.8.4"
   }
 }
