@@ -3179,17 +3179,154 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 }
 
 /* kártyahátterek */
-.mug-card.cos-bg-night, .poster.cos-bg-night { background: radial-gradient(120% 70% at 50% 0%, rgba(120, 170, 255, 0.22), transparent 62%), linear-gradient(180deg, #14264d, #070d1c) !important; }
-.mug-card.cos-bg-court, .poster.cos-bg-court { background: radial-gradient(120% 70% at 50% 0%, rgba(255, 170, 90, 0.22), transparent 62%), linear-gradient(180deg, #4d2a12, #26140a) !important; }
-.mug-card.cos-bg-velvet, .poster.cos-bg-velvet { background: radial-gradient(120% 70% at 50% 0%, rgba(255, 90, 120, 0.22), transparent 62%), linear-gradient(180deg, #5c1224, #26060f) !important; }
-.mug-card.cos-bg-sea, .poster.cos-bg-sea { background: radial-gradient(120% 70% at 50% 0%, rgba(90, 220, 255, 0.22), transparent 62%), linear-gradient(180deg, #0d4560, #051c29) !important; }
+/* A hátterek finoman mozognak: éjszakai csillagok, tárgyalótermi fénysáv, bársony-csillogás, tengeri hullámok. */
+.mug-card.cos-bg-night, .poster.cos-bg-night {
+  background:
+    radial-gradient(1.6px 1.6px at 18% 22%, #fff, transparent 70%), radial-gradient(1.2px 1.2px at 62% 14%, #cfe3ff, transparent 70%),
+    radial-gradient(1.8px 1.8px at 82% 46%, #fff, transparent 70%), radial-gradient(1.2px 1.2px at 36% 64%, #bcd6ff, transparent 70%),
+    radial-gradient(1.5px 1.5px at 72% 82%, #fff, transparent 70%), radial-gradient(1.2px 1.2px at 10% 88%, #cfe3ff, transparent 70%),
+    radial-gradient(120% 70% at 50% 0%, rgba(120, 170, 255, 0.22), transparent 62%), linear-gradient(180deg, #14264d, #070d1c) !important;
+  background-size: 140px 160px, 170px 130px, 150px 190px, 130px 150px, 160px 120px, 180px 170px, auto, auto !important;
+  animation: cos-stars 26s linear infinite;
+}
+@keyframes cos-stars {
+  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
+  to { background-position: 140px 160px, -170px 130px, 150px -190px, -130px -150px, 160px 120px, -180px 170px, 0 0, 0 0; }
+}
+.mug-card.cos-bg-court, .poster.cos-bg-court {
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 205, 140, 0.2) 50%, transparent 62%),
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 170, 90, 0.22), transparent 62%), linear-gradient(180deg, #4d2a12, #26140a) !important;
+  background-size: 260% 100%, auto, auto !important; background-repeat: no-repeat !important;
+  animation: cos-lamp 7s ease-in-out infinite alternate;
+}
+@keyframes cos-lamp { from { background-position: 100% 0, 0 0, 0 0; } to { background-position: 0% 0, 0 0, 0 0; } }
+.mug-card.cos-bg-velvet, .poster.cos-bg-velvet {
+  background: linear-gradient(125deg, transparent 40%, rgba(255, 150, 175, 0.22) 50%, transparent 60%),
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 90, 120, 0.22), transparent 62%), linear-gradient(180deg, #5c1224, #26060f) !important;
+  background-size: 240% 100%, auto, auto !important; background-repeat: no-repeat !important;
+  animation: cos-velvet 5.5s ease-in-out infinite;
+}
+@keyframes cos-velvet { 0% { background-position: 110% 0, 0 0, 0 0; } 60%, 100% { background-position: -10% 0, 0 0, 0 0; } }
+.mug-card.cos-bg-sea, .poster.cos-bg-sea {
+  background:
+    repeating-linear-gradient(172deg, rgba(150, 235, 255, 0.1) 0 8px, transparent 8px 22px),
+    radial-gradient(120% 70% at 50% 0%, rgba(90, 220, 255, 0.22), transparent 62%), linear-gradient(180deg, #0d4560, #051c29) !important;
+  background-size: 100% 44px, auto, auto !important;
+  animation: cos-waves 5s linear infinite;
+}
+@keyframes cos-waves { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 0 44px, 0 0, 0 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cos-bg-night, .cos-bg-court, .cos-bg-velvet, .cos-bg-sea { animation: none !important; }
+}
 
-/* névhatások */
-.cos-name-gold .mug-name, .cos-name-gold .p-name { color: #ffd75e; text-shadow: 0 0 10px rgba(255, 200, 60, 0.8), 0 2px 0 #7a5410; }
-.cos-name-fire .mug-name, .cos-name-fire .p-name { color: #ffb347; text-shadow: 0 0 8px #ff5a00, 0 0 18px #ff2a00; animation: cos-flicker 1.4s ease-in-out infinite alternate; }
-.cos-name-ice .mug-name, .cos-name-ice .p-name { color: #cdeeff; text-shadow: 0 0 8px #4fc3ff, 0 0 16px #2a8dff; }
-.cos-name-royal .mug-name, .cos-name-royal .p-name { color: #f0d0ff; text-shadow: 0 0 8px #a855f7, 0 0 16px #ffd75e; }
-@keyframes cos-flicker { from { text-shadow: 0 0 6px #ff5a00, 0 0 12px #ff2a00; } to { text-shadow: 0 0 10px #ff7a18, 0 0 22px #ff3b00; } }
+/* névhatások: animált névtábla (kártya + plakát), a színpadi névtáblán csak a betűk */
+.cos-name-gold .mug-name, .cos-name-gold .p-name,
+.cos-name-fire .mug-name, .cos-name-fire .p-name,
+.cos-name-ice .mug-name, .cos-name-ice .p-name,
+.cos-name-royal .mug-name, .cos-name-royal .p-name { position: relative; }
+
+/* arany: átfutó fénycsík + lüktető arany ragyogás */
+.cos-name-gold .mug-name, .cos-name-gold .p-name {
+  overflow: hidden; color: #ffe08a; border-color: #ffd75e;
+  background: linear-gradient(180deg, #7a540f, #3f2905);
+  animation: cos-gold 2.4s ease-in-out infinite alternate;
+}
+.cos-name-gold .mug-name::after, .cos-name-gold .p-name::after,
+.cos-name-ice .mug-name::after, .cos-name-ice .p-name::after {
+  content: ''; position: absolute; top: -10%; bottom: -10%; left: -70%; width: 45%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: skewX(-20deg); animation: cos-sheen 2.8s ease-in-out infinite;
+}
+.cos-name-gold .mug-name::after, .cos-name-gold .p-name::after { background: linear-gradient(100deg, transparent, rgba(255, 244, 190, 0.85), transparent); }
+@keyframes cos-gold {
+  from { text-shadow: 0 0 6px rgba(255, 200, 60, 0.7), 0 2px 0 #7a5410; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 8px rgba(255, 200, 60, 0.35), 0 4px 9px rgba(0, 0, 0, 0.45); }
+  to { text-shadow: 0 0 14px #ffd75e, 0 0 24px rgba(255, 190, 40, 0.7), 0 2px 0 #7a5410; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 20px rgba(255, 200, 60, 0.7), 0 4px 9px rgba(0, 0, 0, 0.45); }
+}
+@keyframes cos-sheen { 0%, 25% { left: -70%; } 70%, 100% { left: 130%; } }
+
+/* láng: lobogó betűk, felszálló szikrák, forró keret */
+.cos-name-fire .mug-name, .cos-name-fire .p-name {
+  color: #fff0c2; border-color: #ff8a1f;
+  background: linear-gradient(180deg, #5a1d08, #2a0d05);
+  animation: cos-fire 0.9s ease-in-out infinite alternate;
+}
+.cos-name-fire .mug-name::before, .cos-name-fire .p-name::before,
+.cos-name-fire .mug-name::after, .cos-name-fire .p-name::after {
+  content: ''; position: absolute; left: 8%; bottom: 55%; width: 3px; height: 3px; border-radius: 50%; pointer-events: none;
+  background: #ffd35e; opacity: 0;
+  box-shadow: 22px -2px 0 #ff9a1f, 46px 3px 0 #ffd35e, 72px -3px 0 #ff6a00, 98px 2px 0 #ffb347, 124px -2px 0 #ff8a1f;
+  animation: cos-embers 1.6s ease-out infinite;
+}
+.cos-name-fire .mug-name::after, .cos-name-fire .p-name::after {
+  left: 3%; bottom: 40%; animation-duration: 2.1s; animation-delay: 0.7s;
+  box-shadow: 14px 0 0 #ffd35e, 38px -3px 0 #ff7a18, 64px 2px 0 #ff9a1f, 90px -2px 0 #ffe27a, 116px 3px 0 #ff5a00;
+}
+@keyframes cos-fire {
+  from { text-shadow: 0 0 2px #fff, 0 -2px 5px #ffd35e, 0 -5px 9px #ff9a1f, 0 -9px 14px #ff5a00, 0 -13px 20px #d92b00; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 10px rgba(255, 90, 0, 0.45), 0 4px 9px rgba(0, 0, 0, 0.45); }
+  to { text-shadow: 0 0 3px #fff, 0 -3px 6px #ffe27a, 0 -7px 11px #ff8a1f, 0 -12px 17px #ff4a00, 0 -17px 24px #b81d00; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 22px rgba(255, 90, 0, 0.8), 0 4px 9px rgba(0, 0, 0, 0.45); }
+}
+@keyframes cos-embers {
+  0% { transform: translateY(8px) scale(1); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-28px) scale(0.3); opacity: 0; }
+}
+
+/* jég: hideg ragyogás, átfutó csillanás, villogó jégcsillagok */
+.cos-name-ice .mug-name, .cos-name-ice .p-name {
+  overflow: hidden; color: #effbff; border-color: #7fd8ff;
+  background: linear-gradient(180deg, #164a6b, #09263a);
+  animation: cos-ice 2.2s ease-in-out infinite alternate;
+}
+.cos-name-ice .mug-name::before, .cos-name-ice .p-name::before {
+  content: '✦'; position: absolute; right: 7px; top: 1px; font-size: 11px; line-height: 1; color: #fff; pointer-events: none;
+  text-shadow: 0 0 6px #7fd8ff; animation: cos-twinkle 1.7s ease-in-out infinite;
+}
+@keyframes cos-ice {
+  from { text-shadow: 0 0 5px #7fd8ff, 0 0 10px #2a8dff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 8px rgba(100, 200, 255, 0.35), 0 4px 9px rgba(0, 0, 0, 0.45); }
+  to { text-shadow: 0 0 9px #bff0ff, 0 0 20px #4fc3ff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 20px rgba(120, 215, 255, 0.7), 0 4px 9px rgba(0, 0, 0, 0.45); }
+}
+@keyframes cos-twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.6) rotate(0deg); } 50% { opacity: 1; transform: scale(1.15) rotate(25deg); } }
+
+/* királyi: lebegő korona, lila-arany színváltás */
+.cos-name-royal .mug-name, .cos-name-royal .p-name {
+  color: #f0d0ff; border-color: #ffd75e;
+  background: linear-gradient(180deg, #46206e, #1f0b38);
+  animation: cos-royal 2.6s ease-in-out infinite alternate;
+}
+.cos-name-royal .mug-name::before, .cos-name-royal .p-name::before {
+  content: '♛'; position: absolute; top: -21px; left: 50%; font-size: 24px; line-height: 1; color: #ffd75e; pointer-events: none; z-index: 3;
+  text-shadow: 0 0 6px #7c3aed, 0 0 12px #a855f7, 0 0 16px rgba(255, 215, 94, 0.85); transform: translateX(-50%); animation: cos-crown 1.8s ease-in-out infinite alternate;
+}
+.cos-name-royal .mug-name::after, .cos-name-royal .p-name::after {
+  content: '✦'; position: absolute; right: 6px; bottom: 1px; font-size: 10px; line-height: 1; color: #ffe9a8; pointer-events: none;
+  animation: cos-twinkle 2s ease-in-out infinite 0.6s;
+}
+@keyframes cos-royal {
+  from { color: #f0d0ff; text-shadow: 0 0 6px #a855f7, 0 0 14px #7c3aed; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 0 10px rgba(168, 85, 247, 0.5), 0 4px 9px rgba(0, 0, 0, 0.45); }
+  to { color: #ffe9a8; text-shadow: 0 0 8px #ffd75e, 0 0 18px #c084fc; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 20px rgba(255, 215, 94, 0.55), 0 4px 9px rgba(0, 0, 0, 0.45); }
+}
+@keyframes cos-crown { from { transform: translateX(-50%) translateY(1px) rotate(-6deg); } to { transform: translateX(-50%) translateY(-3px) rotate(6deg); } }
+
+/* színpadi névtábla: csak a betűk kapják a hatást (a tábla kicsi és vágott) */
+.stage-plate.cos-name-gold .plate-person b { color: #ffe08a; animation: cos-gold-text 2.4s ease-in-out infinite alternate; }
+.stage-plate.cos-name-fire .plate-person b { color: #ffd9a0; animation: cos-flicker 0.9s ease-in-out infinite alternate; }
+.stage-plate.cos-name-ice .plate-person b { color: #dff6ff; animation: cos-ice-text 2.2s ease-in-out infinite alternate; }
+.stage-plate.cos-name-royal .plate-person b { color: #f0d0ff; animation: cos-royal-text 2.6s ease-in-out infinite alternate; }
+@keyframes cos-gold-text { from { text-shadow: 0 0 4px rgba(255, 200, 60, 0.6); } to { text-shadow: 0 0 10px #ffd75e, 0 0 16px rgba(255, 190, 40, 0.7); } }
+@keyframes cos-flicker { from { text-shadow: 0 0 4px #ff5a00, 0 0 8px #ff2a00; } to { text-shadow: 0 0 8px #ff7a18, 0 0 14px #ff3b00; } }
+@keyframes cos-ice-text { from { text-shadow: 0 0 4px #7fd8ff; } to { text-shadow: 0 0 9px #bff0ff, 0 0 14px #4fc3ff; } }
+@keyframes cos-royal-text { from { color: #f0d0ff; text-shadow: 0 0 5px #a855f7; } to { color: #ffe9a8; text-shadow: 0 0 9px #ffd75e; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cos-name-gold .mug-name, .cos-name-gold .p-name, .cos-name-fire .mug-name, .cos-name-fire .p-name,
+  .cos-name-ice .mug-name, .cos-name-ice .p-name, .cos-name-royal .mug-name, .cos-name-royal .p-name,
+  .cos-name-gold .mug-name::before, .cos-name-gold .mug-name::after, .cos-name-fire .mug-name::before, .cos-name-fire .mug-name::after,
+  .cos-name-ice .mug-name::before, .cos-name-ice .mug-name::after, .cos-name-royal .mug-name::before, .cos-name-royal .mug-name::after,
+  .cos-name-gold .p-name::before, .cos-name-gold .p-name::after, .cos-name-fire .p-name::before, .cos-name-fire .p-name::after,
+  .cos-name-ice .p-name::before, .cos-name-ice .p-name::after, .cos-name-royal .p-name::before, .cos-name-royal .p-name::after,
+  .stage-plate[class*='cos-name-'] .plate-person b { animation: none !important; }
+  .cos-name-fire .mug-name::before, .cos-name-fire .mug-name::after, .cos-name-fire .p-name::before, .cos-name-fire .p-name::after { display: none; }
+}
 
 /* pecsét */
 .cos-stamp {

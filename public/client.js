@@ -1917,7 +1917,7 @@ function renderStage() {
   });
   const juryMore = Math.max(0, jurors.length - juryPositions.length);
 
-  const key = entries.map((e) => e.role + ':' + e.pid + ':' + playerById(e.pid)?.name + ':' + playerById(e.pid)?.avatar + ':' + (playerById(e.pid)?.profile?.cosm?.frame || '')).join('|') +
+  const key = entries.map((e) => e.role + ':' + e.pid + ':' + playerById(e.pid)?.name + ':' + playerById(e.pid)?.avatar + ':' + (playerById(e.pid)?.profile?.cosm?.frame || '') + (playerById(e.pid)?.profile?.cosm?.nameFx || '')).join('|') +
     '#' + mobile + '+' + juryMore;
   if (stage.dataset.key !== key) {
     stage.dataset.key = key;
@@ -1953,10 +1953,11 @@ function renderStage() {
     return '<span class="plate-role" style="--role:'+roleColorOf(role)+'">'+roleLabel(role)+'</span><span class="plate-person"><span>'+avatarEmoji(p?.avatar)+'</span><b>'+escapeHtml(p?.name||(role==='judge'?'Bíró':''))+'</b></span>';
   };
   const plates=$('#stagePlates');
-  const plateKey=key+':judge:'+scene.currentJudgeId+':'+playerById(scene.currentJudgeId)?.name+':'+playerById(scene.currentJudgeId)?.avatar+':'+(playerById(scene.currentJudgeId)?.profile?.cosm?.frame||'');
+  const plateKey=key+':judge:'+scene.currentJudgeId+':'+playerById(scene.currentJudgeId)?.name+':'+playerById(scene.currentJudgeId)?.avatar+':'+(playerById(scene.currentJudgeId)?.profile?.cosm?.frame||'')+(playerById(scene.currentJudgeId)?.profile?.cosm?.nameFx||'');
   if(plates.dataset.key!==plateKey) {
     plates.dataset.key=plateKey;
-    const plateFrame=pid=>{const f=cosId(playerById(pid)?.profile?.cosm?.frame);return f?' cos-frame-'+f:'';};
+    // A színpadi névtábla a keretet és a névhatást is megkapja (a kártya/plakát mellett itt is látszik, mit vettek).
+    const plateFrame=pid=>{const c=playerById(pid)?.profile?.cosm,f=cosId(c?.frame),n=cosId(c?.nameFx);return (f?' cos-frame-'+f:'')+(n?' cos-name-'+n:'');};
     plates.innerHTML='<div id="judgePlate" class="stage-plate judge-plate'+plateFrame(scene.currentJudgeId)+'" data-role="judge">'+plateHtml('judge',scene.currentJudgeId)+'</div>'+entries.map(e=>'<div class="stage-plate'+plateFrame(e.pid)+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'">'+plateHtml(e.role,e.pid)+'</div>').join('');
   }
   [...plates.children].forEach((el,i)=>{
