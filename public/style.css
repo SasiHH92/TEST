@@ -3180,6 +3180,8 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
   animation: var(--after-anim, cos-spin var(--spin, 3.4s) linear infinite);
 }
 @keyframes cos-spin { to { --ang: 360deg; } }
+/* a ponttábla sorain a gyűrű belül marad (különben vízszintes görgetősáv jelenne meg a sávon) */
+.sb-row[class*='cos-frame-']::after { inset: 0; }
 
 /* közös lüktetés: a ragyogás erősödik-gyengül */
 @keyframes cos-glow {
@@ -3352,6 +3354,140 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 @media (prefers-reduced-motion: reduce) {
   .mug-card.cos-bg-night, .mug-card.cos-bg-court, .mug-card.cos-bg-velvet, .mug-card.cos-bg-sea,
   .poster.cos-bg-night, .poster.cos-bg-court, .poster.cos-bg-velvet, .poster.cos-bg-sea { --bg-anim: none; }
+}
+
+/* ------------------------------------------------------------
+   LEGENDÁS TESZTELŐK: 12 egyedi, a boltban nem kapható kártyaháttér (a data/players.json "hatter" mezője).
+   Mindegyik más téma, mint a kerete, és mozog. A mozgást regisztrált CSS-változók adják (--bgx/--bgy/--bga/--bgl).
+   ------------------------------------------------------------ */
+@property --bgx { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@property --bgy { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@property --bga { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@property --bgl { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@keyframes cos-bgx { to { --bgx: 100%; } }
+@keyframes cos-bgy { to { --bgy: 100%; } }
+@keyframes cos-bga { to { --bga: 360deg; } }
+@keyframes cos-bgl { to { --bgl: 100px; } }
+
+/* 2CORE – glitch: pásztázó-vonalak, RGB-szétcsúszott sáv, ami akadozva lefut a kártyán */
+.mug-card.cos-bg-glitch, .poster.cos-bg-glitch {
+  background:
+    linear-gradient(180deg, transparent 0 46%, rgba(25, 230, 255, 0.22) 46% 48%, rgba(255, 43, 214, 0.2) 48% 50%, transparent 50% 100%) 0 var(--bgy) / 100% 300% no-repeat,
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 3px),
+    radial-gradient(100% 60% at 18% 0%, rgba(25, 230, 255, 0.24), transparent 60%),
+    radial-gradient(100% 60% at 92% 100%, rgba(255, 43, 214, 0.22), transparent 60%),
+    linear-gradient(180deg, #0a1020, #06060f) !important;
+  --bg-anim: cos-bgy 3s steps(10, end) infinite;
+}
+/* Izsván – pill: piros-kék kettéosztott háttér, átfutó fényes csík */
+.mug-card.cos-bg-pill, .poster.cos-bg-pill {
+  background:
+    linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.17) 50%, transparent 60%) var(--bgx) 0 / 260% 100% no-repeat,
+    radial-gradient(90% 70% at 0% 0%, rgba(255, 70, 70, 0.32), transparent 60%),
+    radial-gradient(90% 70% at 100% 100%, rgba(60, 140, 255, 0.34), transparent 60%),
+    linear-gradient(135deg, #3d0c12 0 49%, #0c1d42 51% 100%) !important;
+  --bg-anim: cos-bgx 4.5s ease-in-out infinite alternate;
+}
+/* Dubble_Gii – titokzatos: lila köd és két rétegben sodródó csillagok */
+.mug-card.cos-bg-mystic, .poster.cos-bg-mystic {
+  background:
+    radial-gradient(1.6px 1.6px at 30% 25%, #e6dcff, transparent 70%) calc(var(--bgl) * -1) var(--bgl) / 100px 100px,
+    radial-gradient(1.2px 1.2px at 70% 65%, #fff, transparent 70%) var(--bgl) calc(var(--bgl) * 2) / 50px 50px,
+    radial-gradient(70% 45% at 25% 20%, rgba(150, 100, 255, 0.34), transparent 70%),
+    radial-gradient(70% 45% at 80% 80%, rgba(80, 60, 220, 0.34), transparent 70%),
+    linear-gradient(180deg, #1c0f3d, #0a0620) !important;
+  --bg-anim: cos-bgl 34s linear infinite;
+}
+/* H3roMarci – hős: pirkadat, lebegő arany nap, kék ég */
+.mug-card.cos-bg-hero, .poster.cos-bg-hero {
+  background:
+    radial-gradient(70% 38% at 50% calc(112% - var(--bgy) * 0.12), rgba(255, 214, 110, 0.7), transparent 72%),
+    repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 26px),
+    radial-gradient(80% 50% at 50% 0%, rgba(76, 201, 255, 0.28), transparent 70%),
+    linear-gradient(180deg, #153a86 0%, #2a3f7a 55%, #b8742a 140%) !important;
+  --bg-anim: cos-bgy 4s ease-in-out infinite alternate;
+}
+/* Kyrashi – szörny: karmolásnyomok, lüktető vérvörös izzás a mélyből */
+.mug-card.cos-bg-monster, .poster.cos-bg-monster {
+  background:
+    radial-gradient(85% 55% at 50% calc(115% - var(--bgy) * 0.25), rgba(220, 0, 30, 0.55), transparent 70%),
+    repeating-linear-gradient(104deg, transparent 0 22px, rgba(196, 0, 31, 0.2) 22px 24px, transparent 24px 30px, rgba(196, 0, 31, 0.12) 30px 31px, transparent 31px 52px),
+    radial-gradient(120% 90% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.6) 100%),
+    linear-gradient(180deg, #1a0408, #060102) !important;
+  --bg-anim: cos-bgy 2.2s ease-in-out infinite alternate;
+}
+/* Sanyi/Sasi – alapító: sötét, díszes arany sugárzás, lassan forgó fénysugarak, átcsillanó fénysáv */
+.mug-card.cos-bg-founder, .poster.cos-bg-founder {
+  background:
+    linear-gradient(105deg, transparent 42%, rgba(255, 240, 180, 0.3) 50%, transparent 58%) var(--bgx) 0 / 300% 100% no-repeat,
+    repeating-conic-gradient(from var(--bga) at 50% 28%, rgba(255, 215, 94, 0.12) 0 6deg, transparent 6deg 14deg),
+    radial-gradient(75% 45% at 50% 22%, rgba(255, 215, 94, 0.34), transparent 70%),
+    radial-gradient(100% 60% at 50% 110%, rgba(255, 170, 40, 0.22), transparent 70%),
+    linear-gradient(180deg, #2f2108, #0d0902) !important;
+  --bg-anim: cos-bgx 6s ease-in-out infinite alternate, cos-bga 40s linear infinite;
+}
+/* Alexhh – WOW: pop-art pöttyök két színben, lassan úsznak */
+.mug-card.cos-bg-wow, .poster.cos-bg-wow {
+  background:
+    radial-gradient(circle, rgba(255, 43, 214, 0.5) 2px, transparent 3px) var(--bgl) var(--bgl) / 20px 20px,
+    radial-gradient(circle, rgba(255, 230, 0, 0.4) 1.5px, transparent 2.5px) calc(var(--bgl) * -1 + 10px) calc(var(--bgl) + 10px) / 20px 20px,
+    radial-gradient(90% 60% at 100% 0%, rgba(255, 230, 0, 0.18), transparent 60%),
+    linear-gradient(135deg, #2c0733, #1d1b05) !important;
+  --bg-anim: cos-bgl 12s linear infinite;
+}
+/* Collie – ismeretlen tényező: ködös, sodródó szellemfoltok */
+.mug-card.cos-bg-ghost, .poster.cos-bg-ghost {
+  background:
+    radial-gradient(42% 28% at calc(12% + var(--bgx) * 0.6) 28%, rgba(255, 255, 255, 0.17), transparent 72%),
+    radial-gradient(46% 30% at calc(92% - var(--bgx) * 0.6) 62%, rgba(210, 235, 255, 0.15), transparent 72%),
+    radial-gradient(60% 30% at calc(30% + var(--bgx) * 0.4) 92%, rgba(255, 255, 255, 0.1), transparent 72%),
+    linear-gradient(180deg, #1d2b38, #0b1218) !important;
+  --bg-anim: cos-bgx 9s ease-in-out infinite alternate;
+}
+/* marci – az örök "majd": álmos türkiz-kék északi fény, nagyon lassan hullámzik */
+.mug-card.cos-bg-lazy, .poster.cos-bg-lazy {
+  background:
+    radial-gradient(75% 38% at 30% calc(18% + var(--bgy) * 0.4), rgba(47, 227, 194, 0.32), transparent 72%),
+    radial-gradient(65% 34% at 75% calc(72% - var(--bgy) * 0.4), rgba(90, 140, 255, 0.26), transparent 72%),
+    linear-gradient(180deg, #06231f, #040d14) !important;
+  --bg-anim: cos-bgy 13s ease-in-out infinite alternate;
+}
+/* Marci – a másik Marci: függőlegesen kettéosztott narancs-türkiz, a közepén forgó örvény */
+.mug-card.cos-bg-twin, .poster.cos-bg-twin {
+  background:
+    conic-gradient(from var(--bga) at 50% 50%, rgba(255, 138, 61, 0.2), transparent 25%, rgba(47, 208, 197, 0.2) 50%, transparent 75%, rgba(255, 138, 61, 0.2)),
+    radial-gradient(16% 100% at 50% 50%, rgba(255, 255, 255, 0.16), transparent),
+    linear-gradient(90deg, #3a1a08 0 50%, #06302d 50% 100%) !important;
+  --bg-anim: cos-bga 14s linear infinite;
+}
+/* Szipuska – a toborzó: terepmintás háttér, körbeforgó radar-sugár */
+.mug-card.cos-bg-recruit, .poster.cos-bg-recruit {
+  background:
+    conic-gradient(from var(--bga) at 50% 50%, rgba(123, 208, 74, 0.34), transparent 22%),
+    radial-gradient(34% 22% at 22% 24%, rgba(70, 90, 36, 0.7), transparent 72%),
+    radial-gradient(36% 24% at 78% 40%, rgba(54, 70, 28, 0.7), transparent 72%),
+    radial-gradient(40% 26% at 36% 82%, rgba(82, 98, 40, 0.65), transparent 72%),
+    repeating-linear-gradient(135deg, rgba(123, 208, 74, 0.07) 0 5px, transparent 5px 16px),
+    linear-gradient(180deg, #1b2410, #0b1005) !important;
+  --bg-anim: cos-bga 5s linear infinite;
+}
+/* UltraGoku996 – elektromos: gyorsan forgó sárga sugarak, kék aura */
+.mug-card.cos-bg-ultra, .poster.cos-bg-ultra {
+  background:
+    repeating-conic-gradient(from var(--bga) at 50% 40%, rgba(255, 230, 0, 0.22) 0 5deg, transparent 5deg 15deg),
+    radial-gradient(52% 46% at 50% 40%, rgba(58, 180, 255, 0.4), transparent 72%),
+    radial-gradient(100% 60% at 50% 110%, rgba(255, 230, 0, 0.2), transparent 70%),
+    linear-gradient(180deg, #06173f, #02040f) !important;
+  --bg-anim: cos-bga 6s linear infinite;
+}
+/* Képernyőn kívüli kártyák animációja szünetel (ne terhelje a telefont a 12 egyszerre mozgó kártya). */
+.mug-card.off-screen, .mug-card.off-screen::after, .poster.off-screen, .poster.off-screen::after { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+  .mug-card[class*='cos-bg-'], .poster[class*='cos-bg-'] { --bg-anim: none; }
+}
+/* Telefonon a névválasztó 12 legenda-kártyáján a háttér csak áll (a keret továbbra is mozog): kíméli az akkut és a processzort. */
+@media (max-width: 700px) {
+  #mugGrid .mug-card[class*='cos-bg-'] { --bg-anim: none; }
 }
 
 /* névhatások: animált névtábla (kártya + plakát), a színpadi névtáblán csak a betűk */

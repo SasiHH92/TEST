@@ -51,9 +51,32 @@ async function main() {
     assert.equal(new Set(frames).size, 12, 'a keretek mind különbözőek');
   });
 
-  await test('A legenda-keretek nem kaphatók a boltban (nem hamisíthatók fiókkal)', async () => {
+  await test('A legenda-keretek és -hátterek nem kaphatók a boltban (nem hamisíthatók fiókkal)', async () => {
     const shopIds = new Set(shop.targyak.map((i) => i.id));
-    for (const p of players) assert.ok(!shopIds.has(p.keret), p.nev + ': a keret nem lehet bolti tárgy');
+    for (const p of players) {
+      assert.ok(!shopIds.has(p.keret), p.nev + ': a keret nem lehet bolti tárgy');
+      assert.ok(!shopIds.has(p.hatter), p.nev + ': a háttér nem lehet bolti tárgy');
+    }
+  });
+
+  await test('12 egyedi háttér van, mindegyiknek saját, mozgó stílusa a stíluslapban', async () => {
+    const bgs = players.map((p) => p.hatter);
+    assert.ok(bgs.every((b) => /^bg_[a-z]+$/.test(b)), 'minden háttér bg_<betűk> alakú: ' + bgs.join(', '));
+    assert.equal(new Set(bgs).size, 12, 'a hátterek mind különbözőek');
+    const bodies = new Set();
+    for (const p of players) {
+      const cls = '.mug-card.cos-bg-' + p.hatter.replace(/^bg_/, '');
+      const at = css.indexOf(cls + ', .poster.cos-bg-' + p.hatter.replace(/^bg_/, '') + ' {');
+      assert.ok(at >= 0, p.nev + ': hiányzik a háttér-szabály: ' + cls);
+      const body = css.slice(at, css.indexOf('\n}', at));
+      assert.ok(/--bg-anim: cos-bg[xyal]/.test(body), p.nev + ': a háttér nem mozog (nincs --bg-anim)');
+      assert.ok(/!important/.test(body), p.nev + ': a háttér nem írja felül az alap kártyát');
+      const sig = body.slice(body.indexOf('{'));
+      assert.ok(!bodies.has(sig), p.nev + ': ugyanaz a háttér, mint egy másiknak');
+      bodies.add(sig);
+    }
+    for (const name of ['cos-bgx', 'cos-bgy', 'cos-bga', 'cos-bgl']) assert.ok(css.includes('@keyframes ' + name + ' '), 'hiányzó @keyframes: ' + name);
+    for (const prop of ['--bgx', '--bgy', '--bga', '--bgl']) assert.ok(css.includes('@property ' + prop + ' '), 'nincs regisztrálva: ' + prop);
   });
 
   await test('Minden legenda-keretnek van saját, mozgó stílusa a stíluslapban', async () => {
@@ -99,7 +122,10 @@ async function main() {
       const s = await connect();
       const res = await emit(s, 'get_registry', {});
       assert.equal(res.registry.length, 12);
-      for (const p of players) assert.equal(res.registry.find((r) => r.nev === p.nev).keret, p.keret, p.nev);
+      for (const p of players) {
+        const r = res.registry.find((x) => x.nev === p.nev);
+        assert.equal(r.keret, p.keret, p.nev); assert.equal(r.hatter, p.hatter, p.nev);
+      }
       s.disconnect();
     });
 
@@ -109,7 +135,7 @@ async function main() {
         profile: { titulus: 'x', cosm: { frame: 'frame_rainbow', nameFx: 'name_fire' }, acct: true } });
       assert.ok(created.code);
       const me = created.state.players.find((p) => p.name === 'Sanyi/Sasi').profile;
-      assert.deepEqual(me.cosm, { frame: 'frame_founder', labelText: 'LEGENDA' }, 'a kliens által küldött cosm nem számít');
+      assert.deepEqual(me.cosm, { frame: 'frame_founder', bg: 'bg_founder', labelText: 'LEGENDA' }, 'a kliens által küldött cosm nem számít');
       assert.ok(!me.acct, 'az acct jelzőt sem lehet hamisítani');
       // egy másik legenda, és egy nem legenda
       const marci = await connect(), Marci = await connect(), other = await connect();
@@ -118,6 +144,7 @@ async function main() {
       assert.ok(!a.error, a.error);
       assert.equal(cosmIn(a.state, 'marci')?.frame, 'frame_lazy');
       assert.equal(cosmIn(a.state, 'marci')?.labelText, 'LEGENDA');
+      assert.equal(cosmIn(a.state, 'marci')?.bg, 'bg_lazy');
       // (a szobában a nevek kis/nagybetű nélkül egyediek: a másik Marci csak az első kilépése után jöhet)
       assert.match((await emit(Marci, 'join_room', { code: created.code, name: 'Marci', playerId: 'm2' })).error, /ŐRIZETBEN/);
       await emit(marci, 'leave_room');

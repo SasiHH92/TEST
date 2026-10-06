@@ -224,6 +224,7 @@ const REGISTRY = PLAYER_DB.players.map((p) => ({
   priusz: p.priusz || '',
   // A legendás tesztelők egyedi, a boltban nem kapható kerete (frame_<név>); a stíluslapban él a hozzá tartozó animáció.
   keret: /^frame_[a-z]+$/.test(p.keret || '') ? p.keret : '',
+  hatter: /^bg_[a-z]+$/.test(p.hatter || '') ? p.hatter : '', // egyedi, szintén nem kapható kártyaháttér
   stats: statsForName(p.nev)
 }));
 const LEGEND_LABEL = 'LEGENDA';
@@ -294,7 +295,7 @@ function profileFor(socket, name, rawProfile) {
     const legend = REGISTRY.find((r) => r.nev === name);
     if (legend && legend.keret) {
       profile = profile || { titulus: '', priusz: '', jelveny: '' };
-      profile.cosm = { frame: legend.keret, labelText: LEGEND_LABEL };
+      profile.cosm = { frame: legend.keret, ...(legend.hatter ? { bg: legend.hatter } : {}), labelText: LEGEND_LABEL };
     }
   } catch (e) { /* a profil a kozmetikum nélkül is érvényes */ }
   return profile;

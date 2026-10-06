@@ -1023,6 +1023,23 @@ function cosmeticStampHtml(c) {
 function ownCosm() {
   return (window.kbShop && window.kbShop.cosmetics && window.kbShop.cosmetics()) || null;
 }
+// A képernyőn kívüli, animált (keretes/hátteres) kártyák animációja szünetel: a névválasztón egyszerre
+// 12 legenda-kártya mozog, ez telefonon sokat terhelne. A .off-screen osztály a stíluslapban állítja le őket.
+const motionSeen = new WeakSet();
+let motionObserver = null;
+function observeMotion(root) {
+  if (typeof IntersectionObserver === 'undefined') return;
+  if (!motionObserver) {
+    motionObserver = new IntersectionObserver((entries) => {
+      for (const e of entries) e.target.classList.toggle('off-screen', !e.isIntersecting);
+    }, { rootMargin: '80px' });
+  }
+  for (const el of (root || document).querySelectorAll('.mug-card[class*="cos-"], .poster[class*="cos-"]')) {
+    if (motionSeen.has(el)) continue;
+    motionSeen.add(el);
+    motionObserver.observe(el);
+  }
+}
 
 // Egy kártya belső HTML-je. o: { label, name, badge, title, stats, avatar, taken, pick, edit }
 function mugCardHtml(o) {
@@ -1139,7 +1156,7 @@ function renderMugGrid() {
     const badge = r.jelveny || (tagMatch ? tagMatch[1] : '');
     const cleanName = r.nev.replace(/\s*\[[^\]]+\]\s*/, '').trim();
     // A legendás tesztelők egyedi kerettel és LEGENDA felirattal jelennek meg (nem a sima NYILVÁNTARTÁS).
-    const legend = r.keret ? { frame: r.keret, labelText: 'LEGENDA' } : null;
+    const legend = r.keret ? { frame: r.keret, ...(r.hatter ? { bg: r.hatter } : {}), labelText: 'LEGENDA' } : null;
     const card = mugCardShell(cleanName, taken, CHOSEN && CHOSEN.nev === r.nev, cosmeticClasses(legend).trim());
     card.innerHTML = mugCardHtml({
       name: cleanName, badge, title: r.titulus, stats: r.stats, avatar: r.avatar, taken, pick: true, cosm: legend
@@ -1158,6 +1175,7 @@ function renderMugGrid() {
     }
     grid.appendChild(card);
   });
+  observeMotion(grid);
 }
 
 // Profil-statisztika: a saját számok csempékben + szerepek szerinti bontás + a profil módosítása.
