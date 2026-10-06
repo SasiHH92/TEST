@@ -3741,7 +3741,14 @@ body.chat-docked #screen-lobby { padding-left: 372px; box-sizing: border-box; }
   position: static; width: auto; height: auto; flex: 1; min-height: 0; z-index: auto;
   border: 1px solid #5a4528; border-radius: 12px; box-shadow: none; background: rgba(9, 12, 20, 0.55);
 }
-.chat-panel.embedded .chat-x { display: none; }
+.chat-panel.embedded .chat-x:not(.chat-snd) { display: none; }
+.chat-snd { font-size: 14px; }
+.ad-tools { display: flex; flex-direction: column; gap: 4px; }
+.ad-mini { cursor: pointer; width: 30px; height: 26px; border-radius: 7px; font-size: 13px; color: #d7c9a8; background: transparent; border: 1px solid #5a5140; }
+.ad-mini:hover, .ad-mini.on { border-color: var(--gold); color: var(--gold); }
+.ad-qr { display: flex; justify-content: center; padding: 6px 0 2px; }
+.ad-qr img { width: 130px; height: 130px; border-radius: 8px; border: 2px solid var(--gold-dark, #8a6420); background: #fdf6e3; }
+.ad-wrap { display: flex; flex-direction: column; }
 .chat-panel.embedded .chat-sub { display: none; }
 @media (max-width: 700px) {
   .chat-fab { right: 10px; bottom: 108px; padding: 10px 13px; }

@@ -127,6 +127,19 @@ const SFX = {
   }
 };
 
+// Csevegő-hangok: halk jelzés új szobai / közös üzenetre (chat) és privát üzenetre (ping). Külön kapcsolható (🔔 a csevegő fejlécében),
+// és a játék általános némítását / hangerejét is követi. A böngésző csak az első érintés után enged hangot.
+SFX.chat = () => { tone(880, 0.09, 'sine', 0, 0.26); tone(1175, 0.12, 'sine', 0.08, 0.2); };
+SFX.dm = () => { tone(660, 0.1, 'triangle', 0, 0.34); tone(990, 0.18, 'triangle', 0.1, 0.3); };
+let chatSound = LS.getItem('kb_chat_sound') !== '0';
+window.kbSound = {
+  ping() { if (chatSound) { ensureAudio(); SFX.dm(); } },
+  chat() { if (chatSound) { ensureAudio(); SFX.chat(); } },
+  enabled: () => chatSound,
+  setEnabled(on) { chatSound = !!on; LS.setItem('kb_chat_sound', chatSound ? '1' : '0'); }
+};
+document.addEventListener('pointerdown', ensureAudio, { once: true, passive: true }); // az első érintés élesíti a hangot
+
 function startDrumroll() {
   stopDrumroll();
   drumrollInterval = setInterval(() => SFX.drumTick(), 90);

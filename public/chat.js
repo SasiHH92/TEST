@@ -42,17 +42,38 @@
       '<span class="cm-text">' + escapeHtml(m.text) + '</span></div>';
   }
 
+  const qrOpen = new Set(); // azok a hirdetések, amelyeknél a QR-kód ki van nyitva
+
   function adsHtml() {
     const myCode = here().code;
     return ads.map((a) => {
       const ownRoom = myCode && myCode === a.code;
+      const code = escapeHtml(a.code);
       const action = ownRoom
         ? '<button type="button" class="btn small ghost" data-ad-remove="1">VISSZAVON</button>'
         : (myCode ? '<span class="ad-note">Előbb lépj ki a szobádból</span>'
-          : '<button type="button" class="btn small" data-ad-join="' + escapeHtml(a.code) + '">CSATLAKOZOM</button>');
-      return '<div class="ad-card"><span class="ad-main"><b>' + escapeHtml(a.name) + '</b><span>' + escapeHtml(a.text) + '</span>' +
-        '<small>' + a.players + '/' + a.max + ' játékos · kód <b>' + escapeHtml(a.code) + '</b></small></span>' + action + '</div>';
+          : '<button type="button" class="btn small" data-ad-join="' + code + '">CSATLAKOZOM</button>');
+      const tools = '<span class="ad-tools"><button type="button" class="ad-mini" data-ad-copy="' + code + '" title="Meghívó-link másolása" aria-label="Link másolása">🔗</button>' +
+        '<button type="button" class="ad-mini' + (qrOpen.has(a.code) ? ' on' : '') + '" data-ad-qr="' + code + '" title="QR-kód (telefonnal beolvasható)" aria-label="QR-kód">▦</button></span>';
+      return '<div class="ad-wrap"><div class="ad-card"><span class="ad-main"><b>' + escapeHtml(a.name) + '</b><span>' + escapeHtml(a.text) + '</span>' +
+        '<small>' + a.players + '/' + a.max + ' játékos · kód <b>' + code + '</b></small></span>' + action + tools + '</div>' +
+        (qrOpen.has(a.code) ? '<div class="ad-qr"><img src="/qr?room=' + encodeURIComponent(a.code) + '" alt="QR-kód a ' + code + ' szobához"></div>' : '') + '</div>';
     }).join('');
+  }
+
+  // A szoba meghívó-linkje a vágólapra (ugyanaz a link, amit a QR is tartalmaz).
+  async function copyRoomLink(code) {
+    const url = location.origin + '/?room=' + encodeURIComponent(code);
+    let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch (_) { /* tartalék: kijelölés + másolás */ }
+    if (!ok) {
+      const ta = document.createElement('textarea');
+      ta.value = url; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (_) { /* */ }
+      ta.remove();
+    }
+    setNote(ok ? '🔗 Meghívó-link kimásolva: ' + url : 'Nem sikerült másolni, a link: ' + url);
   }
 
   function renderLog() {
@@ -154,6 +175,8 @@
     const watching = visible() && current() === c;
     if (watching) renderLog();
     else if (!own) { st.unread++; renderBadges(); }
+    // Hang: a szoba üzeneteire mindig, a közös térre csak ha nyitva van a panel (a nyilvános tér ne zavarjon).
+    if (!own && window.kbSound && (c === 'room' || visible())) window.kbSound.chat();
   }
 
   function loadInto(c, list) {
@@ -225,10 +248,31 @@
     const t = e.target.closest('button');
     if (!t) return;
     if (t.dataset.adRemove) { socket.emit('board_ad_remove', {}); return; }
+    if (t.dataset.adCopy) { copyRoomLink(t.dataset.adCopy); return; }
+    if (t.dataset.adQr) {
+      if (qrOpen.has(t.dataset.adQr)) qrOpen.delete(t.dataset.adQr); else qrOpen.add(t.dataset.adQr);
+      renderHead();
+      return;
+    }
     if (t.dataset.adJoin && window.kbJoinFriendRoom) {
       if (window.kbJoinFriendRoom(t.dataset.adJoin)) setOpen(false, false);
     }
   });
+
+  // 🔔 / 🔕: hang új üzenetnél (szoba, közös tér, privát üzenet)
+  const paintSound = () => {
+    const on = window.kbSound ? window.kbSound.enabled() : true;
+    const b = $c('#chatSoundBtn');
+    b.textContent = on ? '🔔' : '🔕'; b.setAttribute('aria-pressed', String(on));
+    b.title = on ? 'Hang új üzenetnél: be (kattints a kikapcsoláshoz)' : 'Hang új üzenetnél: ki (kattints a bekapcsoláshoz)';
+  };
+  $c('#chatSoundBtn').addEventListener('click', () => {
+    if (!window.kbSound) return;
+    window.kbSound.setEnabled(!window.kbSound.enabled());
+    paintSound();
+    if (window.kbSound.enabled()) window.kbSound.chat(); // meghallgathatod, milyen
+  });
+  paintSound();
 
   $c('#chTabRoom').addEventListener('click', () => setChannel('room'));
   $c('#chTabBoard').addEventListener('click', () => setChannel('board'));
