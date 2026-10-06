@@ -111,6 +111,12 @@ Nyisd meg a `data/cards.json` fájlt, és írd az új szöveget a megfelelő mó
 - **Online értesítés:** ha egy barát offline → online lép (és nem láthatatlan), a barátai `friend_online` eseményt kapnak, ha be van kapcsolva (`notifyOnline`, alapból igen). Újracsatlakozásokra 5 percig nem szólunk újra.
 - **Tesztek:** `npm run test:social` és `npm run test:dm` (valódi szerver, HTTP + socket); a `test/rules.js` is futtatja.
 
+### Ranglista (heti és összesített)
+
+- **Végpont:** `GET /api/leaderboard?period=heti|osszes&metric=pont|gyozelem|artatlan|kihivas|jatek&me=<név>` (nyilvános, csak olvasható, percenként 60 kérés / cím). Válasz: a top 20 (helyezés, név, érték, `legend` jelző), a `me` név helyezése akkor is, ha nincs az élmezőnyben, a hét kezdete és a heti nullázásig hátralévő idő.
+- **Számok:** a statisztika (`data/stats.json`, név szerint) mellé minden esemény a heti számlálót is növeli (`weekly: { week, counts }`, a hét hétfőtől vasárnapig tart, Budapest szerint); új héten a régi számok már nem számítanak. A logika a `leaderboard.js` tiszta modulban van (azonos érték: a kevesebb játékkal elért előz, egyenlők azonos helyezést kapnak). Csak a saját mutató-kulcsok érvényesek (`__proto__` stb. nem).
+- **Kliens:** `public/ranking.js` (🏆 RANGLISTA gomb a profilnál). **Tesztek:** `npm run test:leaderboard`.
+
 ### Fiók a legendás tesztelőknek (igénylő-link)
 
 Minden legendás tesztelő a saját kártyájához kapcsolt fiókot kaphat: egy egyszer használható **igénylő-linket** küldesz neki, megnyitja, a saját e-mail címével és jelszavával regisztrál, és a fiókja a legenda pontos nevén jön létre (a név, a keret, a háttér és a statisztika az övé). A jelszavakat te sem látod.

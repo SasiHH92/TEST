@@ -102,4 +102,22 @@ function msUntilReset(ts = Date.now()) {
   return Math.max(0, hi - ts);
 }
 
-module.exports = { questsForDate, budapestDate, addDays, msUntilReset, BONUS, TIERS };
+// A hét kezdete (hétfő) "ÉÉÉÉ-HH-NN" alakban: a heti ranglista ezzel azonosítja a hetet (Budapest szerinti dátum alapján).
+function weekStart(date = budapestDate()) {
+  const [y, m, d] = date.split('-').map(Number);
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); // 0 = vasárnap
+  return addDays(date, -((weekday + 6) % 7));
+}
+
+// A heti ranglista nullázásáig (a következő hétfő 00:00 Budapest szerint) hátralévő idő (ms).
+function msUntilWeekReset(ts = Date.now()) {
+  const next = addDays(weekStart(budapestDate(ts)), 7);
+  let lo = ts, hi = ts + 8 * 24 * 3600 * 1000;
+  while (hi - lo > 1000) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (budapestDate(mid) >= next) hi = mid; else lo = mid;
+  }
+  return Math.max(0, hi - ts);
+}
+
+module.exports = { questsForDate, budapestDate, addDays, msUntilReset, weekStart, msUntilWeekReset, BONUS, TIERS };

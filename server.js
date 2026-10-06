@@ -22,7 +22,8 @@ const {createSocial} = require('./social');
 const {verifyLegendCode} = require('./legend-claims');
 const {createDms} = require('./dms');
 const {cleanText} = require('./textclean');
-const {budapestDate} = require('./quests');
+const {budapestDate, weekStart, msUntilWeekReset} = require('./quests');
+const lb = require('./leaderboard');
 loadAuthEnvironment(path.join(__dirname,'.env'));
 
 // Tartós tárolás: ha van DATABASE_URL, a fiókok / statisztika / avatárok az adatbázisból töltődnek vissza,
@@ -134,6 +135,30 @@ app.get('/qr', (req, res) => {
   });
 });
 
+// ---------- ranglista (nyilvános, csak olvasható) ----------
+// GET /api/leaderboard?period=heti|osszes&metric=pont|gyozelem|artatlan|kihivas|jatek&me=<név>
+// A számok név szerint a statisztikából jönnek (vendégek és fiókosok egyaránt); a heti lista hétfő 00:00-kor (Budapest) indul újra.
+const boardHits = new Map(); // ip -> időbélyegek (egyszerű sebességkorlát)
+app.get('/api/leaderboard', (req, res) => {
+  const now = Date.now();
+  const hits = (boardHits.get(req.ip) || []).filter((t) => now - t < 60 * 1000);
+  if (hits.length >= 60) return res.status(429).json({ error: 'Túl sok kérés. Próbáld újra egy perc múlva.' });
+  hits.push(now); boardHits.set(req.ip, hits);
+  if (boardHits.size > 5000) boardHits.delete(boardHits.keys().next().value);
+  const period = lb.PERIODS.includes(req.query.period) ? req.query.period : 'osszes';
+  const metric = lb.isMetric(req.query.metric) ? req.query.metric : 'pont';
+  const me = typeof req.query.me === 'string' ? req.query.me.slice(0, 40) : '';
+  const week = weekStart(budapestDate());
+  const result = lb.build(STATS, { period, metric, weekStart: week, me });
+  const legends = new Set(REGISTRY.filter((r) => r.keret).map((r) => r.nev));
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    ...result,
+    rows: result.rows.map((r) => ({ ...r, legend: legends.has(r.name) })),
+    metrics: lb.METRICS, weekStart: week, resetsInMs: msUntilWeekReset()
+  });
+});
+
 // ---------- előre megadott játékosok + bűnügyi nyilvántartás ----------
 
 const PLAYERS_FILE = path.join(__dirname, 'data', 'players.json');
@@ -208,6 +233,10 @@ function bumpStat(name, key, by = 1) {
   const day = budapestDate();
   if (!r.daily || r.daily.date !== day) r.daily = { date: day, counts: {} };
   r.daily.counts[key] = (r.daily.counts[key] || 0) + by;
+  // Heti számláló (a hét hétfőtől vasárnapig tart, Budapest szerint): a heti ranglista ebből jön.
+  const week = weekStart(day);
+  if (!r.weekly || r.weekly.week !== week) r.weekly = { week, counts: {} };
+  r.weekly.counts[key] = (r.weekly.counts[key] || 0) + by;
   saveStats();
 }
 
@@ -235,6 +264,12 @@ function renameStats(oldName, newName) {
   if (from.daily && from.daily.date === day) {
     if (!to.daily || to.daily.date !== day) to.daily = { date: day, counts: {} };
     for (const [k, v] of Object.entries(from.daily.counts || {})) to.daily.counts[k] = (to.daily.counts[k] || 0) + v;
+  }
+  // a heti számlálók is (ha ugyanarra a hétre szólnak)
+  const week = weekStart(day);
+  if (from.weekly && from.weekly.week === week) {
+    if (!to.weekly || to.weekly.week !== week) to.weekly = { week, counts: {} };
+    for (const [k, v] of Object.entries(from.weekly.counts || {})) to.weekly.counts[k] = (to.weekly.counts[k] || 0) + v;
   }
   delete STATS[oldName];
   saveStats();

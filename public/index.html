@@ -232,6 +232,23 @@
     </div>
   </div>
 
+  <!-- Ranglista: heti és összesített -->
+  <div id="rankModal" class="avatar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="rankTitle">
+    <div class="avatar-panel shop-panel rank-panel">
+      <div class="shop-head">
+        <h2 id="rankTitle">🏆 Ranglista</h2>
+        <button id="rankClose" type="button" class="btn small ghost">BEZÁR ✕</button>
+      </div>
+      <div class="shop-tabs" role="tablist">
+        <button id="rkTabWeek" type="button" role="tab" class="shop-tab" aria-selected="true">📅 HETI</button>
+        <button id="rkTabAll" type="button" role="tab" class="shop-tab" aria-selected="false">🏛️ ÖSSZESÍTETT</button>
+      </div>
+      <div id="rankMetrics" class="shop-filters rank-metrics"></div>
+      <div id="rankBody" class="shop-body"></div>
+      <p id="rankFoot" class="shop-hint rank-foot"></p>
+    </div>
+  </div>
+
   <!-- Barátlista: barátok + online állapot, kérések, hozzáadás -->
   <div id="friendsModal" class="avatar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="friendsTitle">
     <div class="avatar-panel shop-panel friends-panel">
@@ -490,5 +507,6 @@
   <script src="/shop.js"></script>
   <script src="/friends.js"></script>
   <script src="/chat.js"></script>
+  <script src="/ranking.js"></script>
 </body>
 </html>

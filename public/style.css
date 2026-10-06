@@ -3810,6 +3810,32 @@ body.chat-docked #screen-lobby { padding-left: 372px; box-sizing: border-box; }
 .fr-dm .shop-badge { position: absolute; top: -7px; right: -7px; margin: 0; padding: 0 5px; font-size: 10px; }
 .fr-dm.has-unread { border-color: var(--gold); }
 
+/* ranglista */
+.rank-panel { width: min(640px, 100%); }
+.rank-metrics { margin-bottom: 0; }
+.rk-row {
+  display: flex; align-items: center; gap: 12px; padding: 8px 14px; margin-bottom: 6px; border-radius: 12px;
+  border: 1px solid #5a4528; color: #f3e7c9; background: linear-gradient(180deg, #2f2012, #1b110a);
+}
+.rk-row.top1 { border-color: #f2c14e; box-shadow: 0 0 14px rgba(242, 193, 78, 0.35); background: linear-gradient(180deg, #4a3510, #231708); }
+.rk-row.top2 { border-color: #cfd6e2; background: linear-gradient(180deg, #3a3a42, #1d1d23); }
+.rk-row.top3 { border-color: #c98a4b; background: linear-gradient(180deg, #4a2f1a, #22150b); }
+.rk-row.me { outline: 2px solid #7ee2ff; outline-offset: -2px; }
+.rk-pos { flex: none; width: 44px; font-family: var(--font-disp); font-size: 20px; letter-spacing: 1px; text-align: center; color: #ffe08a; }
+.rk-name { flex: 1; min-width: 0; font-family: var(--font-disp); font-size: 17px; letter-spacing: 0.5px; color: #fff3d0; overflow-wrap: anywhere; }
+.rk-val { font-family: var(--font-disp); font-weight: 500; font-size: 22px; color: #ffe08a; }
+.rk-legend, .rk-you { font-style: normal; font-family: var(--font-body); font-size: 10px; font-weight: 800; letter-spacing: 1px; padding: 2px 7px; border-radius: 999px; vertical-align: middle; }
+.rk-legend { color: #241a06; background: linear-gradient(180deg, #f8d672, #d99a2b); }
+.rk-you { color: #05222b; background: #7ee2ff; }
+.rk-gap { text-align: center; color: #8b7f63; letter-spacing: 4px; margin: -2px 0 4px; }
+.rank-foot { margin: 0; }
+@media (max-width: 700px) {
+  .rk-row { padding: 7px 10px; gap: 8px; }
+  .rk-pos { width: 38px; font-size: 17px; }
+  .rk-name { font-size: 15px; }
+  .rk-val { font-size: 19px; }
+}
+
 /* privát beszélgetés a barátlista ablakban */
 .dm-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .dm-log {

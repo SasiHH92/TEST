@@ -1248,8 +1248,11 @@ function renderProfileStats(me) {
       '<button type="button" id="btnShopOpen" class="btn">🛒 BOLT</button>' +
       '<button type="button" id="btnQuestsOpen" class="btn">📜 NAPI KÜLDETÉSEK' + (ready ? ' <i class="shop-badge">' + ready + '</i>' : '') + '</button>' +
       '<button type="button" id="btnFriendsOpen" class="btn">👥 BARÁTOK' + (friendReq ? ' <i class="shop-badge">' + friendReq + '</i>' : '') + '</button>' +
+      '<button type="button" id="btnRankOpen" class="btn">🏆 RANGLISTA</button>' +
       '<button type="button" id="btnLogout" class="btn ghost ps-logout">⎋ KIJELENTKEZÉS</button>' +
     '</div>';
+  const rankBtn = $('#btnRankOpen');
+  if (rankBtn) rankBtn.addEventListener('click', () => window.kbRanking && window.kbRanking.open('heti'));
   const friendsBtn = $('#btnFriendsOpen');
   if (friendsBtn) friendsBtn.addEventListener('click', () => window.kbFriends && window.kbFriends.open());
   const logoutBtn = $('#btnLogout');

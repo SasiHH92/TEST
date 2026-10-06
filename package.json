@@ -15,6 +15,7 @@
     "test:social": "node test/social.js",
     "test:chat": "node test/chat.js",
     "test:dm": "node test/dm.js",
+    "test:leaderboard": "node test/leaderboard.js",
     "test:claims": "node test/claims.js",
     "legend-links": "node scripts/legend-links.js",
     "test:storage": "node test/storage.js"
