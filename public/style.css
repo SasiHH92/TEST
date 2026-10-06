@@ -3152,30 +3152,89 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
    MEGVÁSÁROLT TÁRGYAK (kártya, plakát, névtábla)
    ============================================================ */
 
-/* kártyakeretek */
+/* kártyakeretek: mindegyiknek saját animációja van.
+   Két réteg: (1) a keret külső ragyogása, ami lüktet / ver / villog (--frame-anim),
+              (2) egy fénycsík (üstökös), ami körbefut a kereten (::after, kúpos színátmenet + maszk). */
+@property --ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+.mug-card[class*='cos-frame-'], .poster[class*='cos-frame-'] { --fw: 4px; --frame-base: 0 10px 22px rgba(0, 0, 0, 0.55); }
+.stage-plate[class*='cos-frame-'] { --fw: 2px; --frame-base: 0 3px 12px rgba(0, 0, 0, 0.45); }
 .mug-card[class*='cos-frame-'], .poster[class*='cos-frame-'], .stage-plate[class*='cos-frame-'] {
   border-color: var(--frame-c) !important;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55), 0 0 18px var(--frame-g), inset 0 0 0 1px var(--frame-c) !important;
+  /* A ragyogást a --frame-anim animáció adja (az animáció felülírja ezt az alap értéket). */
+  box-shadow: var(--frame-base), 0 0 14px var(--frame-g), inset 0 0 0 1px var(--frame-c);
 }
-.cos-frame-silver { --frame-c: #cfd6e2; --frame-g: rgba(207, 214, 226, 0.35); }
-.cos-frame-emerald { --frame-c: #2fd37a; --frame-g: rgba(47, 211, 122, 0.4); }
-.cos-frame-ruby { --frame-c: #ff4d58; --frame-g: rgba(255, 77, 88, 0.45); }
-.cos-frame-sapphire { --frame-c: #4c8dff; --frame-g: rgba(76, 141, 255, 0.45); }
-.cos-frame-amethyst { --frame-c: #b07cff; --frame-g: rgba(176, 124, 255, 0.45); }
-.cos-frame-neon { --frame-c: #39ff88; --frame-g: rgba(57, 255, 136, 0.55); }
-.cos-frame-flame { --frame-c: #ff8a1f; --frame-g: rgba(255, 106, 0, 0.6); }
-.cos-frame-rainbow { --frame-c: #ff5fa8; --frame-g: rgba(255, 95, 168, 0.5); }
-.cos-frame-neon::after, .cos-frame-flame::after, .cos-frame-rainbow::after {
-  content: ''; position: absolute; inset: -3px; border-radius: inherit; pointer-events: none; z-index: 2;
+/* A keret és a (mozgó) háttér animációja egy listában fut, hogy ne írják felül egymást;
+   a lobbi-plakát belépő animációja is megmarad. */
+.mug-card[class*='cos-frame-'], .mug-card[class*='cos-bg-'], .stage-plate[class*='cos-frame-'] { animation: var(--frame-anim, none), var(--bg-anim, none); }
+.poster[class*='cos-frame-'], .poster[class*='cos-bg-'] { animation: poster-pin 0.5s cubic-bezier(0.18, 1.4, 0.4, 1), var(--frame-anim, none), var(--bg-anim, none); }
+
+.mug-card[class*='cos-frame-']::after, .poster[class*='cos-frame-']::after, .stage-plate[class*='cos-frame-']::after {
+  content: ''; position: absolute; inset: calc(var(--fw) * -1); border-radius: inherit; padding: var(--fw);
+  pointer-events: none; z-index: 2;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask-composite: exclude;
+  animation: cos-spin var(--spin, 3.4s) linear infinite;
 }
-.cos-frame-neon::after { box-shadow: 0 0 14px var(--frame-c), inset 0 0 14px var(--frame-g); animation: cos-pulse 1.5s ease-in-out infinite alternate; }
-.cos-frame-flame::after { box-shadow: 0 0 18px #ff7a18, 0 -8px 22px #ff3b00, inset 0 0 16px rgba(255, 122, 24, 0.55); animation: cos-flame 0.8s ease-in-out infinite alternate; }
-.cos-frame-rainbow::after { box-shadow: 0 0 16px #ff4d4d, inset 0 0 0 3px #ff4d4d; animation: cos-hue 4s linear infinite; }
-@keyframes cos-pulse { from { opacity: 0.35; } to { opacity: 1; } }
-@keyframes cos-flame { from { opacity: 0.55; transform: scale(1); } to { opacity: 1; transform: scale(1.015); } }
-@keyframes cos-hue { from { filter: hue-rotate(0deg); } to { filter: hue-rotate(360deg); } }
+@keyframes cos-spin { to { --ang: 360deg; } }
+
+/* közös lüktetés: a ragyogás erősödik-gyengül */
+@keyframes cos-glow {
+  from { box-shadow: var(--frame-base), 0 0 8px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+  to { box-shadow: var(--frame-base), 0 0 26px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+}
+/* rubin: szívverés (két dobbanás, szünet) */
+@keyframes cos-heart {
+  0%, 100% { box-shadow: var(--frame-base), 0 0 8px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+  12% { box-shadow: var(--frame-base), 0 0 32px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+  24% { box-shadow: var(--frame-base), 0 0 10px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+  38% { box-shadow: var(--frame-base), 0 0 28px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+  62% { box-shadow: var(--frame-base), 0 0 8px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+}
+/* neon: neoncső villogás */
+@keyframes cos-neon {
+  0%, 17%, 21%, 25%, 54%, 58%, 100% { box-shadow: var(--frame-base), 0 0 26px var(--frame-g), inset 0 0 12px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+  19%, 23%, 56% { box-shadow: var(--frame-base), 0 0 3px var(--frame-g), inset 0 0 2px var(--frame-g), inset 0 0 0 1px var(--frame-c); }
+}
+/* szivárvány: a ragyogás végigmegy a színeken */
+@keyframes cos-rainbow-glow {
+  0%, 100% { box-shadow: var(--frame-base), 0 0 22px rgba(255, 77, 77, 0.65), inset 0 0 0 1px var(--frame-c); }
+  20% { box-shadow: var(--frame-base), 0 0 22px rgba(255, 210, 77, 0.65), inset 0 0 0 1px var(--frame-c); }
+  40% { box-shadow: var(--frame-base), 0 0 22px rgba(77, 255, 136, 0.65), inset 0 0 0 1px var(--frame-c); }
+  60% { box-shadow: var(--frame-base), 0 0 22px rgba(77, 195, 255, 0.65), inset 0 0 0 1px var(--frame-c); }
+  80% { box-shadow: var(--frame-base), 0 0 22px rgba(176, 77, 255, 0.65), inset 0 0 0 1px var(--frame-c); }
+}
+
+/* ezüst: hideg fehér üstökös, lassú csillogás */
+.cos-frame-silver { --frame-c: #cfd6e2; --frame-g: rgba(207, 214, 226, 0.45); --frame-anim: cos-glow 3s ease-in-out infinite alternate; --spin: 3.8s; }
+.cos-frame-silver::after { background: conic-gradient(from var(--ang), transparent 0 180deg, rgba(220, 228, 240, 0.4) 290deg, #fff 346deg, transparent 360deg); }
+/* smaragd: zöld üstökös + élő zöld ragyogás */
+.cos-frame-emerald { --frame-c: #2fd37a; --frame-g: rgba(47, 211, 122, 0.5); --frame-anim: cos-glow 2.4s ease-in-out infinite alternate; --spin: 3.2s; }
+.cos-frame-emerald::after { background: conic-gradient(from var(--ang), transparent 0 170deg, rgba(47, 211, 122, 0.45) 285deg, #c4ffdc 346deg, transparent 360deg); }
+/* rubin: szívverés + vörös üstökös */
+.cos-frame-ruby { --frame-c: #ff4d58; --frame-g: rgba(255, 77, 88, 0.6); --frame-anim: cos-heart 1.8s ease-in-out infinite; --spin: 3s; }
+.cos-frame-ruby::after { background: conic-gradient(from var(--ang), transparent 0 180deg, rgba(255, 77, 88, 0.5) 290deg, #ffd0d4 346deg, transparent 360deg); }
+/* zafír: két ellentétes kék üstökös */
+.cos-frame-sapphire { --frame-c: #4c8dff; --frame-g: rgba(76, 141, 255, 0.55); --frame-anim: cos-glow 2.6s ease-in-out infinite alternate; --spin: 4s; }
+.cos-frame-sapphire::after { background: conic-gradient(from var(--ang), transparent 0 20deg, rgba(76, 141, 255, 0.5) 100deg, #d6e6ff 156deg, transparent 170deg 200deg, rgba(76, 141, 255, 0.5) 280deg, #d6e6ff 336deg, transparent 350deg); }
+/* ametiszt: két lila-fehér üstökös, mélyebb ragyogás */
+.cos-frame-amethyst { --frame-c: #b07cff; --frame-g: rgba(176, 124, 255, 0.55); --frame-anim: cos-glow 2.2s ease-in-out infinite alternate; --spin: 3.6s; }
+.cos-frame-amethyst::after { background: conic-gradient(from var(--ang), transparent 0 10deg, rgba(176, 124, 255, 0.5) 90deg, #f1e4ff 150deg, transparent 165deg 190deg, rgba(210, 170, 255, 0.5) 270deg, #fff 330deg, transparent 345deg); }
+/* neon: villogó neoncső, gyors zöld fény */
+.cos-frame-neon { --frame-c: #39ff88; --frame-g: rgba(57, 255, 136, 0.7); --frame-anim: cos-neon 3.2s linear infinite; --spin: 2.2s; }
+.cos-frame-neon::after { background: conic-gradient(from var(--ang), transparent 0 150deg, rgba(57, 255, 136, 0.5) 270deg, #e2ffee 340deg, transparent 360deg); }
+/* láng: gyors, hosszú tüzes csóva, remegő forró ragyogás */
+.cos-frame-flame { --frame-c: #ff8a1f; --frame-g: rgba(255, 106, 0, 0.75); --frame-anim: cos-glow 0.7s ease-in-out infinite alternate; --spin: 1.7s; }
+.cos-frame-flame::after { background: conic-gradient(from var(--ang), transparent 0 170deg, #ff3b00 250deg, #ff9a1f 310deg, #ffe27a 345deg, transparent 360deg); }
+/* szivárvány: a teljes keret körbefutó szivárvány */
+.cos-frame-rainbow { --frame-c: #ff5fa8; --frame-g: rgba(255, 95, 168, 0.6); --frame-anim: cos-rainbow-glow 5s linear infinite; --spin: 4.5s; }
+.cos-frame-rainbow::after { background: conic-gradient(from var(--ang), #ff4d4d, #ffd24d, #4dff88, #4dc3ff, #b04dff, #ff4dc3, #ff4d4d); }
+
 @media (prefers-reduced-motion: reduce) {
-  .cos-frame-neon::after, .cos-frame-flame::after, .cos-frame-rainbow::after, .cos-name-fire .mug-name, .cos-name-fire .p-name { animation: none; }
+  .mug-card[class*='cos-frame-'], .poster[class*='cos-frame-'], .stage-plate[class*='cos-frame-'] {
+    animation: none !important; box-shadow: var(--frame-base), 0 0 14px var(--frame-g), inset 0 0 0 1px var(--frame-c) !important;
+  }
+  .mug-card[class*='cos-frame-']::after, .poster[class*='cos-frame-']::after, .stage-plate[class*='cos-frame-']::after { animation: none !important; }
 }
 
 /* kártyahátterek */
@@ -3187,7 +3246,7 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
     radial-gradient(1.5px 1.5px at 72% 82%, #fff, transparent 70%), radial-gradient(1.2px 1.2px at 10% 88%, #cfe3ff, transparent 70%),
     radial-gradient(120% 70% at 50% 0%, rgba(120, 170, 255, 0.22), transparent 62%), linear-gradient(180deg, #14264d, #070d1c) !important;
   background-size: 140px 160px, 170px 130px, 150px 190px, 130px 150px, 160px 120px, 180px 170px, auto, auto !important;
-  animation: cos-stars 26s linear infinite;
+  --bg-anim: cos-stars 26s linear infinite;
 }
 @keyframes cos-stars {
   from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
@@ -3197,14 +3256,14 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
   background: linear-gradient(115deg, transparent 38%, rgba(255, 205, 140, 0.2) 50%, transparent 62%),
     radial-gradient(120% 70% at 50% 0%, rgba(255, 170, 90, 0.22), transparent 62%), linear-gradient(180deg, #4d2a12, #26140a) !important;
   background-size: 260% 100%, auto, auto !important; background-repeat: no-repeat !important;
-  animation: cos-lamp 7s ease-in-out infinite alternate;
+  --bg-anim: cos-lamp 7s ease-in-out infinite alternate;
 }
 @keyframes cos-lamp { from { background-position: 100% 0, 0 0, 0 0; } to { background-position: 0% 0, 0 0, 0 0; } }
 .mug-card.cos-bg-velvet, .poster.cos-bg-velvet {
   background: linear-gradient(125deg, transparent 40%, rgba(255, 150, 175, 0.22) 50%, transparent 60%),
     radial-gradient(120% 70% at 50% 0%, rgba(255, 90, 120, 0.22), transparent 62%), linear-gradient(180deg, #5c1224, #26060f) !important;
   background-size: 240% 100%, auto, auto !important; background-repeat: no-repeat !important;
-  animation: cos-velvet 5.5s ease-in-out infinite;
+  --bg-anim: cos-velvet 5.5s ease-in-out infinite;
 }
 @keyframes cos-velvet { 0% { background-position: 110% 0, 0 0, 0 0; } 60%, 100% { background-position: -10% 0, 0 0, 0 0; } }
 .mug-card.cos-bg-sea, .poster.cos-bg-sea {
@@ -3212,11 +3271,12 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
     repeating-linear-gradient(172deg, rgba(150, 235, 255, 0.1) 0 8px, transparent 8px 22px),
     radial-gradient(120% 70% at 50% 0%, rgba(90, 220, 255, 0.22), transparent 62%), linear-gradient(180deg, #0d4560, #051c29) !important;
   background-size: 100% 44px, auto, auto !important;
-  animation: cos-waves 5s linear infinite;
+  --bg-anim: cos-waves 5s linear infinite;
 }
 @keyframes cos-waves { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 0 44px, 0 0, 0 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .cos-bg-night, .cos-bg-court, .cos-bg-velvet, .cos-bg-sea { animation: none !important; }
+  .mug-card.cos-bg-night, .mug-card.cos-bg-court, .mug-card.cos-bg-velvet, .mug-card.cos-bg-sea,
+  .poster.cos-bg-night, .poster.cos-bg-court, .poster.cos-bg-velvet, .poster.cos-bg-sea { --bg-anim: none; }
 }
 
 /* névhatások: animált névtábla (kártya + plakát), a színpadi névtáblán csak a betűk */
