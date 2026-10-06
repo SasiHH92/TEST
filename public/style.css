@@ -3796,6 +3796,22 @@ body.chat-docked #screen-lobby { padding-left: 372px; box-sizing: border-box; }
   background: rgba(0, 0, 0, 0.45); border: 1px solid #8a6420;
 }
 .fr-count { background: #2e7d4a; }
+.fr-check { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #d8cdb2; cursor: pointer; }
+.fr-check input { width: 16px; height: 16px; accent-color: #d99a2b; }
+.fr-row.unread { border-color: var(--gold); box-shadow: 0 0 12px rgba(242, 193, 78, 0.25); }
+.fr-dm { position: relative; }
+.fr-dm .shop-badge { position: absolute; top: -7px; right: -7px; margin: 0; padding: 0 5px; font-size: 10px; }
+.fr-dm.has-unread { border-color: var(--gold); }
+
+/* privát beszélgetés a barátlista ablakban */
+.dm-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.dm-log {
+  height: min(34dvh, 250px); overflow-y: auto; padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px;
+  border: 1px solid #5a4528; border-radius: 12px; background: rgba(0, 0, 0, 0.25); scrollbar-width: thin;
+}
+.dm-log .chat-msg { margin-top: 2px; }
+.dm-time { margin-top: 1px; font-size: 10px; color: #8b7f63; }
+.dm-form { padding: 0; border-top: 0; }
 
 /* lebegő gomb: névválasztó, menü és lobbi (a hírszalag fölött) */
 .friends-fab {

@@ -20,6 +20,8 @@ const {createAuth,loadAuthEnvironment} = require('./auth');
 const {createShop} = require('./shop');
 const {createSocial} = require('./social');
 const {verifyLegendCode} = require('./legend-claims');
+const {createDms} = require('./dms');
+const {cleanText} = require('./textclean');
 const {budapestDate} = require('./quests');
 loadAuthEnvironment(path.join(__dirname,'.env'));
 
@@ -85,8 +87,11 @@ const shopApi = createShop({auth:authApi,dailyCounts:(name)=>dailyCountsFor(name
 app.use('/api/shop',shopApi.router);
 // Barátlista: kapcsolatok a fiókban, online állapot a socketekből (a `rooms`/`sockets` térképek lentebb jönnek létre,
 // de csak futás közben használjuk őket).
+// Privát üzenetek a barátok között: fájlban él, és a külső adatbázisba is feltöltődik (újraindítás után sem vész el).
+const dms = createDms({ file: path.resolve(__dirname, process.env.KB_DMS_FILE || 'data/dms.json'), persist: () => storage.push('dms') });
 const socialApi = createSocial({
   auth: authApi,
+  dms,
   roomOf: (socketId) => {
     const sess = sockets.get(socketId);
     const game = sess && rooms.get(sess.code);
@@ -328,11 +333,7 @@ function cleanAvatar(avatar) {
 // Szűrés: hossz, vezérlőkarakterek, sebességkorlát; a bejelentkezett játékos letiltottjának üzenete nem látszik neki.
 const CHAT_MAX_LEN = 280, CHAT_KEEP = 80, CHAT_WINDOW_MS = 6000, CHAT_BURST = 4, CHAT_DUP_MS = 4000;
 const chatTimes = new Map(); // socketId -> utolsó küldések időbélyegei
-// Tiltott karakterek: vezérlőkarakterek, zéró-szélességű és irány-átíró (bidi) jelek, sor-elválasztók.
-// (A tartományokat futásidőben építjük, így a forrásfájlban nincs kódolási csapda.)
-const CHAT_BAD = new RegExp('[' + [[0, 31], [127, 127], [0x200b, 0x200f], [0x2028, 0x2029], [0x202a, 0x202e], [0x2066, 0x2069]]
-  .map(([a, b]) => String.fromCharCode(a) + '-' + String.fromCharCode(b)).join('') + ']+', 'g');
-const cleanChatText = (v) => String(v == null ? '' : v).replace(CHAT_BAD, ' ').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX_LEN);
+const cleanChatText = (v) => cleanText(v, CHAT_MAX_LEN); // (a tiltott karakterek listája a textclean.js-ben él)
 function chatVisible(viewerSocketId, entry) {
   const viewer = socialApi.userOf(viewerSocketId);
   return !(viewer && entry.uid && socialApi.hides(viewer, entry.uid));
@@ -1067,6 +1068,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
     try {
       if (statsPending) { fs.writeFileSync(STATS_FILE, JSON.stringify(STATS, null, 2)); storage.push('stats'); }
       if (avatarsPending) { fs.writeFileSync(AVATARS_FILE, JSON.stringify(PROFILE_AVATARS, null, 2)); storage.push('avatars'); }
+      dms.flush(); // a függő privát üzenetek is kiíródnak (és feltöltődnek)
       await storage.flush();
     } catch (e) {
       console.error('Leállítás közbeni mentés sikertelen:', e.message);

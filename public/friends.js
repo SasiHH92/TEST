@@ -15,6 +15,7 @@
   let confirming = null;     // { key, timer }: kétlépéses megerősítés (eltávolítás, tiltás)
   let refreshTimer = null;
   let renderTimer = null;
+  let dm = { id: null, card: null, msgs: [] }; // a megnyitott privát beszélgetés
 
   const $f = (sel) => document.querySelector(sel);
   const key = (name) => String(name || '').normalize('NFKC').trim().toLocaleLowerCase('hu-HU');
@@ -36,6 +37,8 @@
 
   const friendsOnline = () => (state ? state.friends.filter((f) => f.status !== 'offline') : []);
   const requestCount = () => (state ? state.incoming.length : 0);
+  const dmUnread = () => (state ? state.dmUnread || 0 : 0);
+  const attention = () => requestCount() + dmUnread(); // a lebegő gomb piros száma: új kérések + olvasatlan privát üzenetek
   // A viszonyok (nem az online állapot) ujjlenyomata: ha ez változik, a lobbi-plakátok gombjait újra kell rajzolni.
   const relKey = () => (state ? [state.friends, state.incoming, state.outgoing, state.blocked].map((l) => l.map((c) => c.id).sort().join(',')).join('|') : '');
 
@@ -82,9 +85,11 @@
     if (here.lobby && f.status !== 'offline' && !same) {
       actions.push('<button type="button" class="btn small ghost" data-invite="' + f.id + '">MEGHÍVOM</button>');
     }
+    actions.push('<button type="button" class="fr-icon fr-dm' + (f.unread ? ' has-unread' : '') + '" data-dm="' + f.id + '" title="Privát üzenet" aria-label="Privát üzenet">💬' +
+      (f.unread ? '<i class="shop-badge">' + f.unread + '</i>' : '') + '</button>');
     actions.push('<button type="button" class="fr-icon" data-remove="' + f.id + '" title="Eltávolítás a barátok közül" aria-label="Eltávolítás">✕</button>');
     actions.push('<button type="button" class="fr-icon" data-block="' + f.id + '" title="Letiltás" aria-label="Letiltás">⛔</button>');
-    return '<div class="fr-row' + (f.status === 'offline' ? ' off' : '') + '">' + avatarHtml(f) +
+    return '<div class="fr-row' + (f.status === 'offline' ? ' off' : '') + (f.unread ? ' unread' : '') + '">' + avatarHtml(f) +
       '<span class="fr-main"><b>' + escapeHtml(f.username) + '</b>' + statusHtml(f) + '</span>' +
       '<span class="fr-actions">' + actions.join('') + '</span></div>';
   }
@@ -127,31 +132,72 @@
       '<p class="shop-hint">Játék közben a lobbi plakátjain a bejelentkezett játékostársaknál a <b>＋ BARÁT</b> gombbal is bejelölheted őket.</p>';
   }
 
+  // ---- privát beszélgetés ----
+  const dmTime = (ts) => { const d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  function dmMessageHtml(m) {
+    const own = state && m.from === state.me.id;
+    return '<div class="chat-msg' + (own ? ' me' : '') + '" data-id="' + m.id + '"><span class="cm-text">' + escapeHtml(m.text) + '</span><time class="dm-time">' + dmTime(m.ts) + '</time></div>';
+  }
+  function dmHtml() {
+    const card = dm.card || (state && state.friends.find((f) => f.id === dm.id)) || { username: '…', avatar: '' };
+    const f = state && state.friends.find((x) => x.id === dm.id);
+    return '<div class="dm-head"><button type="button" class="btn small ghost" data-dm-back="1">◀ VISSZA</button>' + avatarHtml(card) +
+      '<span class="fr-main"><b>' + escapeHtml(card.username) + '</b>' + (f ? statusHtml(f) : '') + '</span></div>' +
+      '<div id="dmLog" class="dm-log" role="log" aria-live="polite">' +
+      (dm.msgs.length ? dm.msgs.map(dmMessageHtml).join('') : '<p class="chat-empty">Még nincs üzenet. Írj valamit!</p>') + '</div>' +
+      '<form id="dmForm" class="chat-form dm-form" autocomplete="off"><input id="dmInput" type="text" maxlength="500" placeholder="Privát üzenet…" aria-label="Privát üzenet" autocomplete="off">' +
+      '<button type="submit" class="btn small">KÜLD</button></form>';
+  }
+  function scrollDm() { const log = $f('#dmLog'); if (log) log.scrollTop = log.scrollHeight; }
+  function addDm(m) {
+    if (!m || dm.msgs.some((x) => x.id === m.id)) return;
+    dm.msgs.push(m);
+    const log = $f('#dmLog');
+    if (!log) return;
+    const empty = log.querySelector('.chat-empty'); if (empty) empty.remove();
+    log.insertAdjacentHTML('beforeend', dmMessageHtml(m));
+    scrollDm();
+  }
+  async function openDm(id) {
+    dm = { id, card: null, msgs: [] };
+    tab = 'dm'; setMessage(''); render(true);
+    try {
+      const d = await call('GET', '/dm/' + encodeURIComponent(id));
+      if (dm.id !== id) return;
+      dm.card = d.with; dm.msgs = d.messages;
+    } catch (error) { setMessage(error.message); dm = { id: null, card: null, msgs: [] }; tab = 'friends'; render(true); return; }
+    render(true); scrollDm();
+    refresh(true); // az olvasatlan-számlálók frissülnek
+    setTimeout(() => { const i = $f('#dmInput'); if (i && matchMedia('(min-width: 701px)').matches) i.focus(); }, 40);
+  }
+
   function updateFab() {
     const fab = $f('#friendsFab');
     const screen = document.body.dataset.screen;
     fab.classList.toggle('hidden', !(window.kbAccount && ['name', 'menu', 'lobby'].includes(screen)));
-    const on = friendsOnline().length, req = requestCount();
+    const on = friendsOnline().length, req = attention();
     const onEl = $f('#friendsFabOnline'), badge = $f('#friendsFabBadge');
     onEl.textContent = on; onEl.classList.toggle('hidden', !on);
     badge.textContent = req; badge.classList.toggle('hidden', !req);
     const count = $f('#frCount'), reqBadge = $f('#frReqBadge');
     count.textContent = on + '/' + (state ? state.friends.length : 0);
     count.classList.toggle('hidden', !state || !state.friends.length);
-    reqBadge.textContent = req; reqBadge.classList.toggle('hidden', !req);
+    reqBadge.textContent = requestCount(); reqBadge.classList.toggle('hidden', !requestCount()); // csak az új kérések (a privát üzenetek a sorokon látszanak)
   }
 
   function render(force) {
     if (!state) { $f('#friendsBody').innerHTML = '<p class="shop-info">Betöltés…</p>'; return; }
-    $f('#frTabFriends').setAttribute('aria-selected', String(tab === 'friends'));
+    $f('#frTabFriends').setAttribute('aria-selected', String(tab === 'friends' || tab === 'dm'));
     $f('#frTabRequests').setAttribute('aria-selected', String(tab === 'requests'));
     $f('#frTabAdd').setAttribute('aria-selected', String(tab === 'add'));
     $f('#frPresence').value = state.presence;
+    $f('#frNotify').checked = state.notifyOnline !== false;
     updateFab();
     const body = $f('#friendsBody');
     if (tab === 'add' && !force && body.querySelector('#frAddName')) return; // ne töröljük a beírt nevet
+    if (tab === 'dm' && !force && body.querySelector('#dmInput')) return;    // a beszélgetés élőben egészül ki (addDm)
     const scroll = body.scrollTop;
-    body.innerHTML = tab === 'friends' ? friendsHtml() : tab === 'requests' ? requestsHtml() : addHtml();
+    body.innerHTML = tab === 'friends' ? friendsHtml() : tab === 'requests' ? requestsHtml() : tab === 'dm' ? dmHtml() : addHtml();
     body.scrollTop = scroll;
   }
 
@@ -222,6 +268,7 @@
   function open(which) {
     if (!window.kbAccount) return;
     tab = ['friends', 'requests', 'add'].includes(which) ? which : (requestCount() ? 'requests' : 'friends');
+    dm = { id: null, card: null, msgs: [] };
     setMessage('');
     $f('#friendsModal').classList.remove('hidden');
     render(true);
@@ -246,7 +293,23 @@
     act('/settings', { presence: e.target.value }, 'Láthatóság elmentve.');
   });
 
+  $f('#frNotify').addEventListener('change', (e) => {
+    act('/settings', { notifyOnline: e.target.checked }, e.target.checked ? 'Értesítünk, ha egy barátod online lép.' : 'Nem értesítünk az online lépésekről.');
+  });
+
   $f('#friendsBody').addEventListener('submit', async (e) => {
+    if (e.target.matches('#dmForm')) {
+      e.preventDefault();
+      const input = $f('#dmInput'), text = input.value.trim();
+      if (!text || !dm.id) return;
+      input.disabled = true;
+      try {
+        const r = await call('POST', '/dm/send', { userId: dm.id, text });
+        input.value = ''; addDm(r.message); setMessage('');
+      } catch (error) { setMessage(error.message); }
+      finally { input.disabled = false; input.focus(); }
+      return;
+    }
     if (!e.target.matches('#frAddForm')) return;
     e.preventDefault();
     const input = $f('#frAddName');
@@ -261,6 +324,8 @@
     const t = e.target.closest('button');
     if (!t) return;
     const d = t.dataset;
+    if (d.dm) return openDm(d.dm);
+    if (d.dmBack) { dm = { id: null, card: null, msgs: [] }; tab = 'friends'; setMessage(''); render(true); return; }
     if (d.join) { close(); return window.kbJoinFriendRoom && window.kbJoinFriendRoom(d.join); }
     if (d.invite) {
       t.disabled = true;
@@ -343,6 +408,29 @@
     refreshTimer = setTimeout(() => refresh(true), 400);
   });
   socket.on('friend_invite', showInvite);
+
+  // Új privát üzenet: ha épp az a beszélgetés van nyitva, beíródik és olvasottnak számít; egyébként értesítés + számláló.
+  socket.on('dm_msg', ({ from, message } = {}) => {
+    if (!from || !message) return;
+    const watching = modalOpen() && tab === 'dm' && dm.id === from.id;
+    if (watching) {
+      addDm(message);
+      call('POST', '/dm/read', { userId: from.id }).catch(() => {});
+    } else if (typeof showToast === 'function') {
+      showToast('💬 ' + from.username + ': ' + String(message.text).slice(0, 80));
+    }
+    if (window.kbSound) window.kbSound.ping();
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => refresh(true), 300);
+  });
+  socket.on('dm_sent', ({ to, message } = {}) => { if (message && modalOpen() && tab === 'dm' && dm.id === to) addDm(message); });
+  // Egy barátod most lépett online (a láthatóságát és a te beállításodat a szerver már figyelembe vette).
+  socket.on('friend_online', ({ from } = {}) => {
+    if (!from || document.body.dataset.screen === 'game') return; // játék közben nem zavarunk
+    if (typeof showToast === 'function') showToast('🟢 ' + from.username + ' online lett');
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => refresh(true), 300);
+  });
   document.addEventListener('kb:screen', () => {
     updateFab();
     // A szobában, ahová a meghívó szólt, már bent vagyunk: a kártya felesleges.

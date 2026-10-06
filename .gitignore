@@ -13,6 +13,8 @@ test/browser-report.json
 # ideiglenes adatok (az ingyenes tárhelyen ígyis újrakindul)
 data/stats.json
 data/avatars.json
+data/dms.json
+data/dms.json.*.tmp
 
 # naplók és teszt-kimenetek
 *.log

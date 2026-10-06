@@ -20,7 +20,8 @@ function defaultFiles(env) {
   return {
     stats: path.join(ROOT, 'data', 'stats.json'),
     avatars: path.join(ROOT, 'data', 'avatars.json'),
-    accounts: path.resolve(ROOT, env.AUTH_STORE_PATH || 'data/accounts.json')
+    accounts: path.resolve(ROOT, env.AUTH_STORE_PATH || 'data/accounts.json'),
+    dms: path.resolve(ROOT, env.KB_DMS_FILE || 'data/dms.json') // privát üzenetek a barátok között
   };
 }
 

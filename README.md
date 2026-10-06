@@ -107,7 +107,9 @@ Nyisd meg a `data/cards.json` fájlt, és írd az új szöveget a megfelelő mó
 - **Online állapot:** memóriában (`social.js`), a socketekből. A socket a bejelentkezett fiókjával egy rövid életű, egyszer használható jeggyel azonosítja magát (`POST /api/friends/ticket`, majd `identify` socket-esemény), mert a süti a socket létrejöttekor rögzül. Ugyanez adja a bolt-tárgyak és a `profile.acct` jelző hitelességét. A barát állapota a láthatósági beállítása szerint szűkített: `all` (online + szoba), `online` (csak online), `hidden` (offline-nak látszik).
 - **Valós idejű frissítés:** `friends_refresh` socket-esemény a barátoknak, ha valaki online lesz/kilép/szobát vált; `friend_invite` a szobai meghívó (csak lobbiból, csak barátnak, 15 mp-es korlát).
 - **Végpontok:** `/api/friends/` `state`, `ticket`, `request`, `accept`, `decline`, `cancel`, `remove`, `block`, `unblock`, `settings` (mind bejelentkezést kér, JSON + eredet-ellenőrzés, sebességkorlát). Limitek: 100 barát, 30 függő kérés, 100 letiltott.
-- **Tesztek:** `npm run test:social` (valódi szerver, HTTP + socket); a `test/rules.js` is futtatja.
+- **Privát üzenetek:** csak kölcsönös barátok között (`GET /api/friends/dm/:userId`, `POST /dm/send`, `POST /dm/read`; `dm_msg` / `dm_sent` socket-esemény). A tároló a `dms.js` (`data/dms.json`, beszélgetésenként az utolsó 60 üzenet, olvasási jelölők); mentés után a külső adatbázisba is feltöltődik (`dms` dokumentum), így újraindítás után is megvan. 500 karakter, vezérlő- és bidi-karakterek kiszedve (`textclean.js`), 0,7 mp köz. A barátság megszűnésekor (eltávolítás / letiltás) a beszélgetés törlődik.
+- **Online értesítés:** ha egy barát offline → online lép (és nem láthatatlan), a barátai `friend_online` eseményt kapnak, ha be van kapcsolva (`notifyOnline`, alapból igen). Újracsatlakozásokra 5 percig nem szólunk újra.
+- **Tesztek:** `npm run test:social` és `npm run test:dm` (valódi szerver, HTTP + socket); a `test/rules.js` is futtatja.
 
 ### Fiók a legendás tesztelőknek (igénylő-link)
 
