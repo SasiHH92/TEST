@@ -125,7 +125,20 @@
 
     <div id="registryStatus" class="registry-status" role="status" aria-live="polite"></div>
     <button id="btnRegistryRetry" class="btn small hidden">ÚJRA</button>
-    <div id="mugGrid" class="mug-grid"></div>
+    <!-- Saját profil: a saját kártya + statisztika (csak bejelentkezve) -->
+    <section id="profileSection" class="name-section profile-section hidden" aria-labelledby="profileSectionTitle">
+      <h2 id="profileSectionTitle" class="section-title"><span>SAJÁT PROFIL</span></h2>
+      <div class="profile-dash">
+        <div id="profileCardSlot" class="profile-card-slot"></div>
+        <div id="profileStats" class="profile-stats"></div>
+      </div>
+    </section>
+
+    <section class="name-section legends-section" aria-labelledby="legendsTitle">
+      <h2 id="legendsTitle" class="section-title"><span>A LEGENDÁS TESZTELŐK</span></h2>
+      <p class="section-sub">Akik segítettek a játék létrejöttében. Kattints a sajátodra, és játssz vele!</p>
+      <div id="mugGrid" class="mug-grid"></div>
+    </section>
     <button id="btnNameBack" class="btn small ghost">↩ VISSZA</button>
 
     <div class="new-suspect-box">        <button id="btnNewSuspect" class="btn police">ÚJ GYANÚSÍTOTT (vendég vagyok)</button>

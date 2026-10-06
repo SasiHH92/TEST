@@ -239,6 +239,7 @@ function createAuth(options={}) {
     const body=req.body||{};
     const name=body.username===undefined?current.username:username(body.username);
     const profile=cleanProfile(body);
+    const oldName=current.username;
     const saved=store.commit(data=>{
       const user=data.users.find(u=>u.id===current.id);
       if(!user) fail(401,'Előbb jelentkezz be.');
@@ -249,6 +250,7 @@ function createAuth(options={}) {
       user.username=name;user.profile=profile;
       return user;
     });
+    if(saved.username!==oldName) {try {options.onRename?.(oldName,saved.username);} catch(_) { /* a statisztika átvitele nem állíthatja meg a mentést */ }}
     res.json({user:publicUser(saved)});
   }));
   router.post('/logout',wrap((req,res)=>{

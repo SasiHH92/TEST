@@ -2957,3 +2957,69 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 
 /* A KIRÚG gomb ne takarja a számokat: a plakát alja kap helyet */
 .poster:has(.poster-kick) { padding-bottom: 52px; }
+
+/* ============================================================
+   NÉVVÁLASZTÓ: szakaszok (saját profil + A legendás tesztelők) és statisztika
+   ============================================================ */
+
+.name-section { width: 100%; max-width: 1180px; margin: 6px 0 10px; }
+.section-title {
+  display: flex; align-items: center; gap: 16px;
+  font-family: var(--font-disp); font-weight: 500; letter-spacing: 4px; text-align: center;
+  color: var(--gold); font-size: clamp(19px, 3.2vw, 28px); text-shadow: 0 2px 0 #6e4a14, 0 4px 14px rgba(0, 0, 0, 0.6);
+}
+.section-title::before, .section-title::after {
+  content: ''; flex: 1; height: 2px;
+  background: linear-gradient(90deg, transparent, #8a6420 35%, #8a6420 65%, transparent);
+}
+.section-sub { text-align: center; color: #e2d5b4; font-size: 14px; margin: 8px 0 20px; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+.legends-section { margin-top: 26px; }
+.legends-section .mug-grid { margin: 0 auto; }
+
+.profile-dash {
+  display: grid; grid-template-columns: minmax(230px, 270px) minmax(0, 1fr); gap: 22px; align-items: stretch;
+  margin-top: 16px; padding: 20px; border-radius: 20px;
+  border: 2px solid #8a6420;
+  background:
+    radial-gradient(110% 40% at 50% 0%, rgba(242, 193, 78, 0.13), transparent 62%),
+    repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.02) 0 3px, transparent 3px 9px),
+    linear-gradient(180deg, rgba(42, 28, 16, 0.94) 0%, rgba(21, 14, 8, 0.96) 100%);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(242, 193, 78, 0.22), inset 0 0 60px rgba(0, 0, 0, 0.45);
+}
+.profile-card-slot { display: flex; align-items: flex-start; justify-content: center; }
+.profile-card-slot .mug-card { width: 100%; max-width: 270px; }
+
+.profile-stats { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ps-head h3 { font-family: var(--font-disp); font-weight: 500; font-size: 20px; letter-spacing: 3px; color: #ffe08a; }
+.ps-sub { display: block; font-size: 13px; color: #cdbd96; margin-top: 2px; }
+.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 10px; }
+.st-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+  padding: 12px 8px 10px; border-radius: 13px;
+  background: linear-gradient(180deg, rgba(94, 64, 32, 0.55), rgba(40, 26, 12, 0.75));
+  border: 1px solid rgba(242, 193, 78, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.st-tile i { font-style: normal; font-size: 20px; line-height: 1; }
+.st-tile b { font-family: var(--font-disp); font-weight: 500; font-size: 30px; line-height: 1.1; color: #fff3d0; }
+.st-tile b small { font-size: 13px; color: #cdbd96; font-weight: 400; }
+.st-tile span { font-size: 11.5px; letter-spacing: 0.4px; color: #cdbd96; line-height: 1.25; }
+.st-tile.gold { border-color: var(--gold); box-shadow: 0 0 16px rgba(242, 193, 78, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+.st-tile.gold b { color: var(--gold); }
+.st-tile.bad b { color: #ffb9b4; }
+.st-tile.good b { color: #aef2c0; }
+.ps-roles { display: flex; flex-wrap: wrap; gap: 8px; }
+.ps-role {
+  font-size: 12.5px; color: #e8dcbc; padding: 5px 12px; border-radius: 999px;
+  background: rgba(8, 12, 22, 0.55); border: 1px solid rgba(242, 193, 78, 0.28);
+}
+.ps-role b { color: #fff3d0; }
+.ps-role small { color: #b6a780; }
+.ps-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
+
+@media (max-width: 760px) {
+  .profile-dash { grid-template-columns: 1fr; padding: 14px; }
+  .profile-card-slot .mug-card { max-width: 300px; }
+  .st-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .section-title { letter-spacing: 2px; gap: 10px; }
+}

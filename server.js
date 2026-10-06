@@ -56,7 +56,7 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 
 // Reverse proxy (Render) mögött a kliens IP-je a proxy fejlécéből jön.
 app.set('trust proxy', 1);
-app.use('/api/auth',createAuth({persist:()=>storage.push('accounts'),reservedNames:()=>REGISTRY.map((r)=>r.nev)}).router);
+app.use('/api/auth',createAuth({persist:()=>storage.push('accounts'),reservedNames:()=>REGISTRY.map((r)=>r.nev),onRename:renameStats}).router);
 
 // Statikus fájlok: a html/js/css ETag/Last-Modified fejléccel (nem cache-el hosszan),
 // a rajzok (assets/) hosszan cache-elhetők, mert ritkán változnak.
@@ -94,7 +94,7 @@ app.get('/qr', (req, res) => {
 // ---------- előre megadott játékosok + bűnügyi nyilvántartás ----------
 
 const PLAYERS_FILE = path.join(__dirname, 'data', 'players.json');
-const STATS_FILE = path.join(__dirname, 'data', 'stats.json');
+const STATS_FILE = process.env.KB_STATS_FILE || path.join(__dirname, 'data', 'stats.json'); // (a KB_STATS_FILE csak fejlesztéshez / teszthez kell)
 
 let PLAYER_DB = { players: [], vendeg_priuszok: [] };
 try {
@@ -143,12 +143,22 @@ function saveStats() {
   }, 300);
 }
 
+// A bűnügyi nyilvántartás számai (játékosonként, név szerint). A régi stats.json-ben hiányzó kulcsok 0-nak számítanak.
+//   vadlott/bunos/artatlan: vádlottként hányszor, ebből elítélve / felmentve   dijak: díjak
+//   jatek/gyozelem/pont: lejátszott játékok, megnyert játékok, összpontszám      korok: lejátszott körök
+//   ugyesz/ugyeszSiker, vedo/vedoSiker: ügyészként / védőként hányszor, ebből hány elítélés / felmentés
+//   biro/tanu: bíróként / tanúként hányszor                                       kihivas: teljesített kihívások
+const STAT_KEYS = ['vadlott', 'bunos', 'artatlan', 'dijak', 'jatek', 'gyozelem', 'pont', 'korok',
+  'ugyesz', 'ugyeszSiker', 'vedo', 'vedoSiker', 'biro', 'tanu', 'kihivas'];
+
 function recordFor(name) {
-  if (!STATS[name]) STATS[name] = { vadlott: 0, bunos: 0, artatlan: 0, dijak: 0 };
+  if (!STATS[name] || typeof STATS[name] !== 'object') STATS[name] = {};
+  for (const k of STAT_KEYS) if (typeof STATS[name][k] !== 'number') STATS[name][k] = 0;
   return STATS[name];
 }
 
 function bumpStat(name, key, by = 1) {
+  if (!STAT_KEYS.includes(key)) return;
   const r = recordFor(name);
   r[key] += by;
   saveStats();
@@ -156,7 +166,19 @@ function bumpStat(name, key, by = 1) {
 
 function statsForName(name) {
   const r = STATS[name];
-  return r ? { vadlott: r.vadlott, bunos: r.bunos, artatlan: r.artatlan, dijak: r.dijak } : null;
+  if (!r) return null;
+  const out = {};
+  for (const k of STAT_KEYS) out[k] = typeof r[k] === 'number' ? r[k] : 0;
+  return out;
+}
+
+// Átnevezéskor a számok követik a játékost (a régi név számai az újhoz kerülnek).
+function renameStats(oldName, newName) {
+  if (!oldName || !newName || oldName === newName || !STATS[oldName]) return;
+  const from = recordFor(oldName), to = recordFor(newName);
+  for (const k of STAT_KEYS) to[k] += from[k];
+  delete STATS[oldName];
+  saveStats();
 }
 
 // Az összes előre megadott játékos profilja (nyilvántartási kártyához).
@@ -319,7 +341,7 @@ io.on('connection', (socket) => {
       }
     }
     if (typeof ack === 'function') ack({
-      registry: REGISTRY.map((r) => ({ ...r, avatar: PROFILE_AVATARS[r.nev] || '' })),
+      registry: REGISTRY.map((r) => ({ ...r, stats: statsForName(r.nev), avatar: PROFILE_AVATARS[r.nev] || '' })),
       vendegPriuszok: GUEST_PRIORS,
       takenNames: Array.from(taken)
     });

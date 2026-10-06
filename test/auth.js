@@ -320,7 +320,8 @@ async function main() {
     assert.equal(JSON.parse(fs.readFileSync(failure.file)).resets.length,0);
   });
   await test('Profil (saját kártya): szerkesztés, validáció, foglalt és fix kártya-nevek',async()=>{
-    const p=await boot({reservedNames:()=>['Izsván']});
+    const renames=[];
+    const p=await boot({reservedNames:()=>['Izsván'],onRename:(oldName,newName)=>renames.push([oldName,newName])});
     const jar=p.jar(),guest=p.jar();
     assert.equal((await p.req('POST','/profile',{titulus:'x'},{jar:guest})).status,401,'bejelentkezés nélkül nincs profil');
     await p.req('POST','/register',registration('Profil Pista','pista@example.invalid'),{jar});
@@ -329,6 +330,7 @@ async function main() {
     assert.deepEqual(status.data.user.profile,{titulus:'',priusz:'',jelveny:'',avatar:''},'új fiók üres profillal indul');
     const ok=await p.req('POST','/profile',{username:'Pista Bá',titulus:'  A  vicces   <b>király</b> ',priusz:'Sosem késik.',jelveny:'vip',avatar:'av07'},{jar});
     assert.equal(ok.status,200);assert.equal(ok.data.user.username,'Pista Bá');
+    assert.deepEqual(renames,[['Profil Pista','Pista Bá']],'átnevezéskor a statisztika átvitele értesítést kap');
     assert.equal(ok.data.user.profile.titulus,'A vicces <b>király</b>','szóközök összevonva, a HTML szövegként marad');
     assert.equal(ok.data.user.profile.jelveny,'VIP','a jelvény nagybetűs');assert.equal(ok.data.user.profile.avatar,'av07');
     const stored=JSON.parse(fs.readFileSync(p.file)).users.find(u=>u.email==='pista@example.invalid');
@@ -343,7 +345,8 @@ async function main() {
     assert.equal((await p.req('POST','/profile',{username:'IZSVÁN'},{jar})).status,409,'a fix kártya neve nem foglalható le');
     assert.equal((await p.req('POST','/register',registration('Izsván','izsvan@example.invalid'),{jar:p.jar()})).status,409,'regisztrációnál sem');
     const sameName=await p.req('POST','/profile',{username:'pista bá',titulus:'Új cím'},{jar});
-    assert.equal(sameName.status,200,'a saját nevét átírhatja (kis-nagybetű)');assert.equal(sameName.data.user.profile.titulus,'Új cím');
+    assert.equal(sameName.status,200,'a saját nevét átírhatja (kis-nagybetű)');
+    assert.equal(renames.length,2,'a sikertelen próbálkozások nem váltanak ki átnevezést');assert.equal(sameName.data.user.profile.titulus,'Új cím');
     assert.equal((await p.req('POST','/profile',{titulus:'x'},{jar,headers:{Origin:'https://masik.example'}})).status,403,'másik eredetről nem fogadja');
   });
 }

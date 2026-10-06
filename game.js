@@ -764,7 +764,19 @@ class Game {
       }
     }
 
+    this.recordRoundStart();
     this.setPhase(PHASES.ACCUSATION, ACCUSATION_AUTO_MS, () => this.accusationRead());
+  }
+
+  // Bűnügyi nyilvántartás: ki milyen szerepben vett részt a körben (botok nem kerülnek be).
+  recordRoundStart() {
+    const d = this.roundData;
+    if (!d) return;
+    for (const p of this.activePlayers()) if (!p.isBot) Game.recordStat(p.name, 'korok');
+    for (const [slot, key] of [['prosecutorId', 'ugyesz'], ['defenderId', 'vedo'], ['currentJudgeId', 'biro'], ['witnessId', 'tanu']]) {
+      const p = d[slot] && this.players.get(d[slot]);
+      if (p && !p.isBot) Game.recordStat(p.name, key);
+    }
   }
 
   // ---------- tárgyalási fázisok ----------
@@ -1162,6 +1174,10 @@ class Game {
       Game.recordStat(defendant.name, 'vadlott');
       Game.recordStat(defendant.name, guilty ? 'bunos' : 'artatlan');
     }
+    const prosecutorP = d.prosecutorId && this.players.get(d.prosecutorId);
+    const defenderP = d.defenderId && this.players.get(d.defenderId);
+    if (guilty && prosecutorP && !prosecutorP.isBot) Game.recordStat(prosecutorP.name, 'ugyeszSiker');
+    if (!guilty && defenderP && !defenderP.isBot) Game.recordStat(defenderP.name, 'vedoSiker');
 
     this.setPhase(PHASES.VERDICT, 0, null);
   }
@@ -1232,6 +1248,15 @@ class Game {
     // zászlóval csak az ELSŐ hívás rögzít.
     if (!this.awardsRecorded) {
       this.awardsRecorded = true;
+      // A játék végén: lejátszott játék, összpontszám, teljesített kihívások, győzelem (a legtöbb pont).
+      const humans = Array.from(this.players.values()).filter((p) => !p.isBot && !p.kickedOut);
+      const top = humans.reduce((m, p) => Math.max(m, p.score), 0);
+      for (const p of humans) {
+        Game.recordStat(p.name, 'jatek');
+        if (p.score > 0) Game.recordStat(p.name, 'pont', p.score);
+        if (p.challengesDone > 0) Game.recordStat(p.name, 'kihivas', p.challengesDone);
+        if (top > 0 && p.score === top) Game.recordStat(p.name, 'gyozelem');
+      }
       for (const a of Object.values(awards)) {
         const p = a && (this.players.get(a.playerId) || this.archivedPlayers.get(a.playerId));
         if (a && p && !p.isBot) Game.recordStat(a.name, 'dijak');

@@ -1061,9 +1061,12 @@ function renderMugGrid() {
   const grid = $('#mugGrid');
   grid.innerHTML = '';
 
-  // A TE KÁRTYÁD: csak bejelentkezett fióknál, elől.
+  // SAJÁT PROFIL: csak bejelentkezett fióknál – a saját kártya + statisztika, a legendás tesztelők fölött.
   const me = personalCard();
-  if (me) {
+  const section = $('#profileSection');
+  if (!me) {
+    if (section) section.classList.add('hidden');
+  } else {
     if (PERSONAL_STATS.name !== me.nev) {
       PERSONAL_STATS = { name: me.nev, stats: null };
       socket.emit('get_stats', { name: me.nev }, (res) => {
@@ -1095,7 +1098,11 @@ function renderMugGrid() {
         }, () => card.classList.remove('chosen'));
       });
     }
-    grid.appendChild(card);
+    const slot = $('#profileCardSlot');
+    slot.innerHTML = '';
+    slot.appendChild(card);
+    renderProfileStats(me);
+    section.classList.remove('hidden');
   }
 
   REGISTRY.forEach((r) => {
@@ -1122,6 +1129,43 @@ function renderMugGrid() {
     }
     grid.appendChild(card);
   });
+}
+
+// Profil-statisztika: a saját számok csempékben + szerepek szerinti bontás + a profil módosítása.
+function statTile(icon, label, value, cls) {
+  return '<div class="st-tile' + (cls ? ' ' + cls : '') + '"><i aria-hidden="true">' + icon + '</i><b>' + value + '</b><span>' + label + '</span></div>';
+}
+
+function renderProfileStats(me) {
+  const box = $('#profileStats');
+  if (!box) return;
+  const s = PERSONAL_STATS.name === me.nev ? PERSONAL_STATS.stats : null;
+  const v = (k) => (s && typeof s[k] === 'number' ? s[k] : 0);
+  const pct = (a, b) => (b ? Math.round((100 * a) / b) + '%' : '–');
+  const played = v('jatek') > 0 || v('korok') > 0;
+  box.innerHTML =
+    '<div class="ps-head"><h3>STATISZTIKA</h3>' +
+      '<span class="ps-sub">' + (played ? 'A bűnügyi nyilvántartás szerint ennyit tettél eddig.' : 'Még nem játszottál végig egy játékot – az első után itt megjelennek a számaid.') + '</span></div>' +
+    '<div class="st-grid">' +
+      statTile('🎮', 'Lejátszott játék', v('jatek')) +
+      statTile('🏆', 'Győzelem', v('gyozelem') + (v('jatek') ? ' <small>(' + pct(v('gyozelem'), v('jatek')) + ')</small>' : ''), 'gold') +
+      statTile('⭐', 'Összpontszám', v('pont')) +
+      statTile('⚖️', 'Lejátszott kör', v('korok')) +
+      statTile('🔨', 'Elítélve (vádlottként)', v('bunos') + '×', 'bad') +
+      statTile('🕊️', 'Felmentve (vádlottként)', v('artatlan') + '×', 'good') +
+      statTile('🏅', 'Díj', v('dijak')) +
+      statTile('🎭', 'Teljesített kihívás', v('kihivas')) +
+    '</div>' +
+    '<div class="ps-roles">' +
+      '<span class="ps-role">⚖️ Vádlottként <b>' + v('vadlott') + '×</b> <small>(felmentési arány ' + pct(v('artatlan'), v('vadlott')) + ')</small></span>' +
+      '<span class="ps-role">🗡️ Ügyészként <b>' + v('ugyesz') + '×</b> <small>(elítélést ért el: ' + v('ugyeszSiker') + '×)</small></span>' +
+      '<span class="ps-role">🛡️ Védőként <b>' + v('vedo') + '×</b> <small>(felmentést ért el: ' + v('vedoSiker') + '×)</small></span>' +
+      '<span class="ps-role">👨‍⚖️ Bíróként <b>' + v('biro') + '×</b></span>' +
+      '<span class="ps-role">🧑‍💼 Tanúként <b>' + v('tanu') + '×</b></span>' +
+    '</div>' +
+    '<div class="ps-actions"><button type="button" id="btnProfileEdit" class="btn">✎ PROFIL MÓDOSÍTÁSA</button></div>';
+  const edit = $('#btnProfileEdit');
+  if (edit) edit.addEventListener('click', () => { if (window.kbEditProfile) window.kbEditProfile(); });
 }
 
 // A saját (fiókhoz tartozó) kártyával lépünk be: a szobában a profil szövegei látszanak.
