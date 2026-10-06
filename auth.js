@@ -277,7 +277,7 @@ function createAuth(options={}) {
     const url=new URL(PROVIDERS[provider].authorize);
     for(const [key,value] of Object.entries({client_id:configs[provider].clientId,response_type:'code',
       redirect_uri:origin+'/api/auth/'+provider+'/callback',scope:PROVIDERS[provider].scope,
-      state:nonce,prompt:provider==='google'?'select_account':'consent'})) url.searchParams.set(key,value);
+      state:nonce,prompt:provider==='google'?'select_account':'none'})) url.searchParams.set(key,value);
     if(provider==='google') {
       url.searchParams.set('code_challenge',crypto.createHash('sha256').update(verifier).digest('base64url'));
       url.searchParams.set('code_challenge_method','S256');
