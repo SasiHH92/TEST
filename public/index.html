@@ -230,6 +230,37 @@
     </div>
   </div>
 
+  <!-- Barátlista: barátok + online állapot, kérések, hozzáadás -->
+  <div id="friendsModal" class="avatar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="friendsTitle">
+    <div class="avatar-panel shop-panel friends-panel">
+      <div class="shop-head">
+        <h2 id="friendsTitle">Barátok</h2>
+        <button id="friendsClose" type="button" class="btn small ghost">BEZÁR ✕</button>
+      </div>
+      <div class="shop-tabs" role="tablist">
+        <button id="frTabFriends" type="button" role="tab" class="shop-tab" aria-selected="true">👥 BARÁTOK <i id="frCount" class="shop-badge fr-count hidden"></i></button>
+        <button id="frTabRequests" type="button" role="tab" class="shop-tab" aria-selected="false">📨 KÉRÉSEK <i id="frReqBadge" class="shop-badge hidden"></i></button>
+        <button id="frTabAdd" type="button" role="tab" class="shop-tab" aria-selected="false">＋ HOZZÁADÁS</button>
+      </div>
+      <div id="friendsBody" class="shop-body"></div>
+      <div class="fr-foot">
+        <label for="frPresence">Láthatóságom:</label>
+        <select id="frPresence" class="fr-select">
+          <option value="all">👁️ Online vagyok, és látják, melyik szobában</option>
+          <option value="online">🟢 Csak az látszik, hogy online vagyok</option>
+          <option value="hidden">👻 Láthatatlan (offline-nak látszom)</option>
+        </select>
+      </div>
+      <p id="friendsMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+  <button id="friendsFab" type="button" class="friends-fab hidden" aria-label="Barátok" title="Barátok">
+    <span class="fab-ico" aria-hidden="true">👥</span><span class="fab-text">BARÁTOK</span>
+    <b id="friendsFabOnline" class="fab-online hidden" title="Online barátok"></b>
+    <i id="friendsFabBadge" class="shop-badge hidden" title="Új barátkérés"></i>
+  </button>
+  <div id="inviteStack" class="invite-stack" aria-live="polite"></div>
+
   <!-- Vendég-sáv: csak a nem bejelentkezett játékosnak (a fiókos a profiljánál találja a Kijelentkezést) -->
   <div id="accountDock" class="account-dock hidden">
     <button id="accountSignIn" type="button" class="btn small ghost hidden">BEJELENTKEZÉS / REGISZTRÁCIÓ</button>
@@ -425,5 +456,6 @@
   <script src="/client.js"></script>
   <script src="/auth.js"></script>
   <script src="/shop.js"></script>
+  <script src="/friends.js"></script>
 </body>
 </html>

@@ -394,6 +394,11 @@ function createAuth(options={}) {
     });
   };
   const expectedOrigin=req=>origin||req.protocol+'://'+req.get('host');
-  return {router,session,mutate,expectedOrigin};
+  // Csak olvasásra: a barátlista (social.js) ebből keresi a fiókokat azonosító és név alapján.
+  const directory={
+    byId:id=>(store&&typeof id==='string'?store.state.users.find(u=>u.id===id):null)||null,
+    byName:name=>(store&&typeof name==='string'?store.state.users.find(u=>normalize(u.username)===normalize(name)):null)||null
+  };
+  return {router,session,mutate,expectedOrigin,directory};
 }
 module.exports={createAuth,loadAuthEnvironment};

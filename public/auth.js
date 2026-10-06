@@ -95,6 +95,8 @@
     if(account) sessionStorage.removeItem('kb_guest');else sessionStorage.setItem('kb_guest','1');
     IDENTITY_READY=true;
     if(window.kbShop) window.kbShop.forget();
+    if(window.kbFriends) window.kbFriends.forget();
+    identifySocket(); // a socket a belépett fiókkal (vagy vendégként) azonosítja magát: barátlista, bolt-tárgyak
     $('#btnNewSuspect').textContent=account?'SAJÁT NÉVVEL JÁTSZOM':'ÚJ GYANÚSÍTOTT (vendég vagyok)';
     document.querySelector('.new-suspect-box').classList.toggle('hidden',!!account);
     $('#guestName').value=account?.username||'';
@@ -238,6 +240,8 @@
       clearRoomIdentity();account=null;IDENTITY_READY=false;
       LS.removeItem('kb_accountId');sessionStorage.removeItem('kb_guest');
       if(window.kbShop) window.kbShop.forget();
+      if(window.kbFriends) window.kbFriends.forget();
+      identifySocket(); // a socket vendég lesz: a barátok offline-nak látják
       show('auth');tab('login');message('#authStatus','Sikeresen kijelentkeztél.');
     } catch(error) {message('#accountMessage',error.message);openProfile();}
     finally {leaving=false;}

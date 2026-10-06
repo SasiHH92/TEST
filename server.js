@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const {createAuth,loadAuthEnvironment} = require('./auth');
 const {createShop} = require('./shop');
+const {createSocial} = require('./social');
 const {budapestDate} = require('./quests');
 loadAuthEnvironment(path.join(__dirname,'.env'));
 
@@ -63,6 +64,18 @@ app.use('/api/auth',authApi.router);
 // Bolt + napi küldetések (pogácsa). A küldetések haladását a nyilvántartás napi számlálói adják.
 const shopApi = createShop({auth:authApi,dailyCounts:(name)=>dailyCountsFor(name)});
 app.use('/api/shop',shopApi.router);
+// Barátlista: kapcsolatok a fiókban, online állapot a socketekből (a `rooms`/`sockets` térképek lentebb jönnek létre,
+// de csak futás közben használjuk őket).
+const socialApi = createSocial({
+  auth: authApi,
+  roomOf: (socketId) => {
+    const sess = sockets.get(socketId);
+    const game = sess && rooms.get(sess.code);
+    return game ? { code: sess.code, phase: game.phase === PHASES.LOBBY ? 'lobby' : 'game', full: game.activePlayers().length >= 8 } : null;
+  },
+  emit: (userId, event, payload) => io.to('u:' + userId).emit(event, payload)
+});
+app.use('/api/friends',socialApi.router);
 
 // Statikus fájlok: a html/js/css ETag/Last-Modified fejléccel (nem cache-el hosszan),
 // a rajzok (assets/) hosszan cache-elhetők, mert ritkán változnak.
@@ -259,15 +272,19 @@ function cleanProfile(profile) {
   const s = (v) => String(v == null ? '' : v).slice(0, 150);
   return { titulus: s(profile.titulus), priusz: s(profile.priusz), jelveny: s(profile.jelveny) };
 }
-// A profil + a fiók felvett kozmetikumai. A cosm mezőt csak a szerver tölti ki, a bejelentkezett fiók
-// munkamenete alapján, és csak akkor, ha a játékos a fiókja nevével lép be (a kliens nem hamisíthatja).
+// A profil + a fiók felvett kozmetikumai. A cosm és az acct mezőt csak a szerver tölti ki, a socket
+// azonosított fiókja alapján (identify), és csak akkor, ha a játékos a fiókja nevével lép be
+// (a kliens nem hamisíthatja). Az acct jelzi a többieknek, hogy a játékos bejelentkezett fiók (barátnak jelölhető).
 function profileFor(socket, name, rawProfile) {
   let profile = cleanProfile(rawProfile);
   try {
-    const user = authApi.session(socket.request);
+    const userId = socialApi.userOf(socket.id);
+    const user = userId ? authApi.directory.byId(userId) : null;
     if (user && String(user.username).toLowerCase() === String(name || '').toLowerCase()) {
+      profile = profile || { titulus: '', priusz: '', jelveny: '' };
+      profile.acct = true;
       const cosm = shopApi.cosmeticsFor(user);
-      if (cosm) { profile = profile || { titulus: '', priusz: '', jelveny: '' }; profile.cosm = cosm; }
+      if (cosm) profile.cosm = cosm;
     }
   } catch (e) { /* a profil a kozmetikum nélkül is érvényes */ }
   return profile;
@@ -349,6 +366,15 @@ function attachStats(game) {
   for (const p of game.players.values()) {
     if (p.profile) p.profile._stats = statsForName(p.name);
   }
+  // Ha a szoba lobbiból játékba (vagy vissza) váltott, a benne lévő fiókok barátai új állapotot látnak.
+  if (game._presencePhase !== game.phase) {
+    game._presencePhase = game.phase;
+    for (const [socketId, sess] of sockets) {
+      if (sess.code !== game.code) continue;
+      const uid = socialApi.userOf(socketId);
+      if (uid) socialApi.touch(uid);
+    }
+  }
 }
 
 io.on('connection', (socket) => {
@@ -364,6 +390,34 @@ io.on('connection', (socket) => {
       console.error('HIBA a(z) "' + evt + '" eseménykezelőben:', err);
       try { socket.emit('host_warning', { message: '⚠️ Belső hiba történt (“' + evt + '”). Próbáld újra!' }); } catch (e2) { /* */ }
     }
+  });
+
+  // ---- Fiók-azonosítás: a kliens a /api/friends/ticket jegyével jelzi, melyik fiók (vagy vendég) a socket ----
+  // (A süti a socket létrejöttekor rögzül, ezért bejelentkezés/kijelentkezés után nem lehetne arra támaszkodni.)
+  const presenceChanged = () => { const uid = socialApi.userOf(socket.id); if (uid) socialApi.touch(uid); };
+  safeOn('identify', (payload, ack) => {
+    const ticket = payload && typeof payload.ticket === 'string' ? payload.ticket.slice(0, 80) : '';
+    const userId = ticket ? socialApi.consumeTicket(ticket) : null;
+    const prev = socialApi.userOf(socket.id);
+    if (prev !== userId) {
+      if (prev) { socket.leave('u:' + prev); socialApi.disconnect(socket.id); }
+      if (userId) { socket.join('u:' + userId); socialApi.connect(userId, socket.id); }
+    }
+    if (typeof ack === 'function') ack({ ok: true, account: !!userId });
+  });
+
+  // ---- Meghívás a saját szobámba (csak barátnak, csak lobbiból) ----
+  safeOn('friend_invite', ({ friendId } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const userId = socialApi.userOf(socket.id);
+    const user = userId ? authApi.directory.byId(userId) : null;
+    if (!user) return reply({ error: 'A meghíváshoz be kell jelentkezned.' });
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    if (!game) return reply({ error: 'Előbb hozz létre vagy lépj be egy szobába.' });
+    if (game.phase !== PHASES.LOBBY) return reply({ error: 'Meghívni csak a lobbiból lehet.' });
+    if (typeof friendId !== 'string' || friendId.length > 64) return reply({ error: 'Érvénytelen kérés.' });
+    reply(socialApi.invite(user, friendId, sess.code));
   });
 
   // ---- Nyilvántartási kártyák a névválasztóhoz ----
@@ -408,6 +462,7 @@ io.on('connection', (socket) => {
     socket.leave(pidRoom(prev.playerId, prev.code));
     const game=rooms.get(prev.code);
     if (game && ![...sockets.values()].some((x)=>x.code===prev.code&&x.playerId===prev.playerId)) game.handleLeave(prev.playerId);
+    presenceChanged();
   }
 
   // ---- Szoba létrehozása ----
@@ -427,6 +482,7 @@ io.on('connection', (socket) => {
     sockets.set(socket.id, { code, playerId: pid });
     ack && ack({ code, playerId: pid, sessionToken: game.getPlayer(pid).sessionToken, state: game.publicState(pid), appearances: APPEARANCES });
     game.broadcast();
+    presenceChanged();
   });
 
   // ---- Csatlakozás kóddal (visszacsatlakozás is ez) ----
@@ -476,6 +532,7 @@ io.on('connection', (socket) => {
     if (returning) game.handleReconnect(pid);
     ack && ack({ code: norm, playerId: pid, sessionToken: meP.sessionToken, state: game.publicState(pid), appearances: APPEARANCES });
     game.broadcast();
+    presenceChanged();
   });
 
   // ---- Botok (teszteléshez) ----
@@ -699,10 +756,12 @@ io.on('connection', (socket) => {
     socket.leave(sess.code);
     socket.leave(pidRoom(sess.playerId, sess.code));
     if (game) game.handleLeave(sess.playerId);
+    presenceChanged();
     ack && ack({ ok: true });
   });
   safeOn('disconnect', () => {
     rateWindows.delete(socket.id); // rate-limit ablak felszabadítása
+    socialApi.disconnect(socket.id); // offline lett (a barátai frissítik a listájukat)
     const sess = sockets.get(socket.id);
     if (!sess) return;
     const game = rooms.get(sess.code);

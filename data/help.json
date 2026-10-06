@@ -70,6 +70,14 @@
       ]
     },
     {
+      "heading": "BARÁTOK",
+      "list": [
+        "Bejelentkezett fiókkal a jobb alsó 👥 BARÁTOK gombbal (és a profilnál) nyílik a barátlista. Barátot a HOZZÁADÁS fülön a felhasználónevével jelölhetsz be, vagy a lobbiban a bejelentkezett játékostársak plakátján a ＋ BARÁT gombbal. A kérést a másiknak el kell fogadnia a KÉRÉSEK fülön.",
+        "A listában látod, ki van online, ki van lobbiban (a szoba kódjával) és ki van tárgyaláson. A CSATLAKOZOM gombbal egyből a barátod szobájába léphetsz. Ha te vagy lobbiban, a MEGHÍVOM gombbal meghívhatod őket: a barátod a képernyő sarkában kap egy kártyát a csatlakozás gombbal.",
+        "Láthatóság (a lista alján): mindenki látja, hogy online vagy és melyik szobában, vagy csak az látszik, hogy online vagy, vagy teljesen láthatatlan vagy (offline-nak látszol). Az ELTÁVOLÍT (✕) és a LETILT (⛔) gombbal rendezheted a listát: a letiltott nem küldhet neked kérést vagy meghívót, és nem tudja meg, hogy letiltottad."
+      ]
+    },
+    {
       "heading": "KILÉPÉS ÉS KÖVETKEZŐ JÁTÉK",
       "body": [
         "Véletlen kapcsolatvesztésnél 20 másodpercig megtartod a szereped. Utána egy nem szereplő esküdt veszi át ugyanazokkal a kártyákkal és a hátralévő idővel, legalább 15 másodperccel. Késői visszatéréskor esküdtként folytatod. A házigazda joga 30 másodperces kiesés után a legrégebben bent lévő játékosé. A szándékos kilépés és kirúgás azonnali; három fő alatt a játék visszatér a lobbyba.",

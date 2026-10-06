@@ -101,6 +101,14 @@ Nyisd meg a `data/cards.json` fájlt, és írd az új szöveget a megfelelő mó
 - **Biztonság:** a vásárlás, felvétel és jutalom-átvétel a szerveren dől el (`shop.js`); a többi játékoshoz csak a ténylegesen megvásárolt, felvett tárgy jut el, a szerver a bejelentkezett fiók alapján teszi a profilra.
 - **Tesztek:** `npm run test:shop` (a `test/rules.js` is futtatja).
 
+### Barátlista
+
+- **Kapcsolatok:** a fiókban (`user.social`: barátok, beérkező/elküldött kérések, letiltottak, láthatóság). A fiókfájllal együtt mentődnek (és kerülnek a külső adatbázisba), a kérések offline állapotban is megmaradnak.
+- **Online állapot:** memóriában (`social.js`), a socketekből. A socket a bejelentkezett fiókjával egy rövid életű, egyszer használható jeggyel azonosítja magát (`POST /api/friends/ticket`, majd `identify` socket-esemény), mert a süti a socket létrejöttekor rögzül. Ugyanez adja a bolt-tárgyak és a `profile.acct` jelző hitelességét. A barát állapota a láthatósági beállítása szerint szűkített: `all` (online + szoba), `online` (csak online), `hidden` (offline-nak látszik).
+- **Valós idejű frissítés:** `friends_refresh` socket-esemény a barátoknak, ha valaki online lesz/kilép/szobát vált; `friend_invite` a szobai meghívó (csak lobbiból, csak barátnak, 15 mp-es korlát).
+- **Végpontok:** `/api/friends/` `state`, `ticket`, `request`, `accept`, `decline`, `cancel`, `remove`, `block`, `unblock`, `settings` (mind bejelentkezést kér, JSON + eredet-ellenőrzés, sebességkorlát). Limitek: 100 barát, 30 függő kérés, 100 letiltott.
+- **Tesztek:** `npm run test:social` (valódi szerver, HTTP + socket); a `test/rules.js` is futtatja.
+
 ### Védőügyvéd
 
 5 vagy több játékosnál a körben megjelenik a **védőügyvéd**: 2 titkos trükkkártyát kap, a vádlott után **45 mp-et** beszél, és **ártatlan ítéletnél ő is pontot kap** a vádlottal együtt.

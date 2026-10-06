@@ -1172,6 +1172,7 @@ function renderProfileStats(me) {
   const played = v('jatek') > 0 || v('korok') > 0;
   const shopState = window.kbShop ? window.kbShop.state() : null;
   const ready = window.kbShop ? window.kbShop.readyCount() : 0;
+  const friendReq = window.kbFriends ? window.kbFriends.requestCount() : 0;
   if (window.kbShop) window.kbShop.refresh(); // (a névválasztó megnyitásakor frissíti a pénztárcát és a küldetéseket)
   box.innerHTML =
     '<div class="ps-head"><h3>STATISZTIKA</h3>' +
@@ -1201,8 +1202,11 @@ function renderProfileStats(me) {
       '<button type="button" id="btnProfileEdit" class="btn">✎ PROFIL MÓDOSÍTÁSA</button>' +
       '<button type="button" id="btnShopOpen" class="btn">🛒 BOLT</button>' +
       '<button type="button" id="btnQuestsOpen" class="btn">📜 NAPI KÜLDETÉSEK' + (ready ? ' <i class="shop-badge">' + ready + '</i>' : '') + '</button>' +
+      '<button type="button" id="btnFriendsOpen" class="btn">👥 BARÁTOK' + (friendReq ? ' <i class="shop-badge">' + friendReq + '</i>' : '') + '</button>' +
       '<button type="button" id="btnLogout" class="btn ghost ps-logout">⎋ KIJELENTKEZÉS</button>' +
     '</div>';
+  const friendsBtn = $('#btnFriendsOpen');
+  if (friendsBtn) friendsBtn.addEventListener('click', () => window.kbFriends && window.kbFriends.open());
   const logoutBtn = $('#btnLogout');
   if (logoutBtn) logoutBtn.addEventListener('click', () => { if (window.kbLogout) window.kbLogout(); });
   const edit = $('#btnProfileEdit');
@@ -1234,8 +1238,17 @@ function chooseSuspect(name, isProfile) {
   autoConnectAfterName();
 }
 
+let PENDING_ROOM = ''; // barát szobakódja, amihez a karakterválasztás után csatlakozunk
 function autoConnectAfterName() {
-  if (!IDENTITY_READY || INTENTIONAL_LEAVE || KICKED_FROM_ROOM) return;
+  if (!IDENTITY_READY) return;
+  if (PENDING_ROOM) { // egy barát szobájába szólt a hívás, amikor még nem volt karakterünk
+    const code = PENDING_ROOM;
+    PENDING_ROOM = '';
+    $('#codeInput').value = code;
+    joinRoom(code);
+    return;
+  }
+  if (INTENTIONAL_LEAVE || KICKED_FROM_ROOM) return;
   const roomParam = new URLSearchParams(location.search).get('room');
   if (roomParam) {
     $('#codeInput').value = roomParam.toUpperCase();
@@ -1302,10 +1315,10 @@ $('#btnCreate').addEventListener('click', () => {
   if (!socket.connected) socket.connect();
   if (!MY.playerId) MY.playerId = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   LS.setItem('kb_playerId', MY.playerId);
-  socket.emit('create_room', { name: MY.name, avatar: MY.avatar, playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload() }, (res) => {
+  afterIdentified(() => socket.emit('create_room', { name: MY.name, avatar: MY.avatar, playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload() }, (res) => {
     if (res && res.error) { $('#menuError').textContent = res.error; return; }
     enterLobby(res);
-  });
+  }));
 });
 
 $('#btnJoin').addEventListener('click', () => {
@@ -1321,7 +1334,7 @@ function joinRoom(code) {
   if (!socket.connected) socket.connect();
   if (!MY.playerId) MY.playerId = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   LS.setItem('kb_playerId', MY.playerId);
-  socket.emit('join_room', { code, name: MY.name, avatar: MY.avatar, playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload() }, (res) => {
+  afterIdentified(() => socket.emit('join_room', { code, name: MY.name, avatar: MY.avatar, playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload() }, (res) => {
     if (res && res.error) {
       $('#menuError').textContent = res.error;
       show('menu');
@@ -1329,8 +1342,29 @@ function joinRoom(code) {
       return;
     }
     enterLobby(res);
-  });
+  }));
 }
+
+// Csatlakozás egy barát szobájába (barátlista / meghívó). Ha még nincs kiválasztott karakter,
+// megjegyezzük a kódot (PENDING_ROOM), és a karakterválasztás után lépünk be.
+window.kbJoinFriendRoom = (rawCode) => {
+  const code = String(rawCode || '').trim().toUpperCase();
+  if (code.length !== 4) return false;
+  if (MY.code && S && S.phase) {
+    if (MY.code === code) return true;
+    showToast('Előbb lépj ki a mostani szobából, utána csatlakozhatsz a barátodhoz.');
+    return false;
+  }
+  if (!CHOSEN || !MY.name) {
+    PENDING_ROOM = code;
+    showToast('Válaszd ki a karaktered: utána egyből a barátod szobájába lépsz.');
+    return true;
+  }
+  $('#codeInput').value = code;
+  joinRoom(code);
+  return true;
+};
+window.kbInRoom = () => ({ code: MY.code || '', lobby: !!(MY.code && S && S.phase === 'lobby') });
 
 function enterLobby(res) {
   if (!res || res.error || INTENTIONAL_LEAVE) return;
@@ -1510,6 +1544,10 @@ function posterHtml(p, idx) {
   const kickBtn = canKick
     ? '<button class="poster-kick" data-kickpid="' + p.id + '" data-kickname="' + escapeHtml(p.name) + '">KIRÚG</button>'
     : '';
+  // Barátnak jelölés: csak bejelentkezett fiókos (a szerver által igazolt) játékostársnál, ha még nem barát.
+  const friendBtn = (!isBot && prof.acct && p.id !== MY.playerId && window.kbFriends && window.kbFriends.canAdd(p.name))
+    ? '<button type="button" class="poster-friend" data-add-friend="' + escapeHtml(p.name) + '" title="Barátnak jelölöm">＋ BARÁT</button>'
+    : '';
   const tilt = tiltFor(p.id || p.name);
   const pname = String(p.name || '').replace(/\s*\[[^\]]+\]\s*/, '').trim();
   const portrait = !isBot && AVATAR_ID_RE.test(p.avatar || '')
@@ -1526,7 +1564,7 @@ function posterHtml(p, idx) {
     '<span class="p-priors">' + escapeHtml(priusz) + '</span>' +
     '<span class="p-reward">' + bountyText(p.score) + '</span>' +
     '<span class="p-record">' + record + '</span>' +
-    stamp + kickBtn +
+    stamp + friendBtn + kickBtn +
     (p.connected ? '' : '<div class="p-offline"><span>KIESETT</span></div>') +
     '</div>';
 }
@@ -3013,8 +3051,38 @@ function hideConnBar() {
   if (bar) bar.classList.remove('visible');
 }
 
+// ---- Fiók-azonosítás a socketen ----
+// A süti a socket létrejöttekor rögzül, ezért bejelentkezés/kijelentkezés után (és minden újracsatlakozáskor)
+// egy rövid életű jeggyel (POST /api/friends/ticket) mondjuk meg a szervernek, melyik fiók (vagy vendég) a socket.
+// Ettől függ a barátlista, az online állapot és a bolt-tárgyak megjelenése a többieknél.
+let identSeq = 0;
+let identPromise = Promise.resolve();
+function identifySocket() {
+  const seq = ++identSeq;
+  const wantId = window.kbAccount ? window.kbAccount.id : null;
+  identPromise = (async () => {
+    let ticket = '';
+    if (wantId) {
+      try {
+        const r = await fetch('/api/friends/ticket', {
+          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: '{}', signal: AbortSignal.timeout(8000)
+        });
+        if (r.ok) ticket = (await r.json()).ticket || '';
+      } catch (_) { /* a socket vendégként marad, a következő csatlakozáskor újrapróbáljuk */ }
+    }
+    if (seq !== identSeq || !socket.connected) return; // közben újabb azonosítás indult, vagy megszakadt a kapcsolat
+    await new Promise((resolve) => socket.timeout(5000).emit('identify', { ticket }, () => resolve()));
+    if (seq === identSeq && window.kbFriends) window.kbFriends.refresh(true);
+  })();
+  return identPromise;
+}
+// Szoba-műveletek az azonosítás után (különben a szerver még vendégnek látná a játékost).
+const afterIdentified = (fn) => identPromise.then(fn, fn);
+
 socket.on('connect', () => {
   hideConnBar();
+  identifySocket();
   if (INTENTIONAL_LEAVE || KICKED_FROM_ROOM) return;
   if (!everConnected) { everConnected = true; return; }
   if (!IDENTITY_READY) return;
@@ -3022,7 +3090,7 @@ socket.on('connect', () => {
   clearTimeout(rejoinTimer);
   rejoinTimer = setTimeout(() => {
     if (!IDENTITY_READY || !MY.code || INTENTIONAL_LEAVE || KICKED_FROM_ROOM) return; // nem voltunk szobában – nincs teendő
-    socket.emit('join_room', {
+    afterIdentified(() => socket.emit('join_room', {
       code: MY.code, name: MY.name, avatar: MY.avatar,
       playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload()
     }, (res) => {
@@ -3037,7 +3105,7 @@ socket.on('connect', () => {
         showToast('⚠️ ' + res.error);
       }
       // Sikeres válasz esetén a socket.on('state') handler rajzolja újra a játékot.
-    });
+    }));
   }, 400);
 });
 
