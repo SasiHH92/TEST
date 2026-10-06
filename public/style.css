@@ -3144,7 +3144,6 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 @media (max-width: 700px) {
   .shop-layout { grid-template-columns: 1fr; }
   .shop-preview-col { position: static; gap: 4px; }
-  .shop-preview { zoom: 0.68; }
   .shop-hint { font-size: 11.5px; margin: 0; }
   .shop-head h2 { font-size: 22px; }
 }
@@ -3200,6 +3199,49 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
   transform: rotate(6deg); pointer-events: none; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 .poster .cos-stamp { top: auto; bottom: -11px; right: auto; left: 50%; max-width: 88%; white-space: nowrap; transform: translateX(-50%) rotate(-2deg); }
+
+/* ============================================================
+   BOLT: ELŐNÉZETI ABLAK
+   ============================================================ */
+
+.shop-panel { position: relative; }
+.shop-pop {
+  position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  padding: 14px; border-radius: inherit; overflow: auto; background: rgba(8, 5, 2, 0.88); backdrop-filter: blur(2px);
+}
+.shop-pop.hidden { display: none; }
+.pop-box {
+  display: flex; align-items: center; justify-content: center; gap: 26px; width: min(720px, 100%); max-height: 100%;
+  padding: 18px 22px; border-radius: 16px; border: 2px solid #8a6420; color: #f3e7c9;
+  background: linear-gradient(180deg, #2f2012, #1b110a); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+}
+.pop-box.r-ritka { border-color: #3b6fd1; }
+.pop-box.r-epikus { border-color: #9b5de5; }
+.pop-box.r-legendas { border-color: #f2c14e; box-shadow: 0 0 26px rgba(242, 193, 78, 0.35), 0 16px 40px rgba(0, 0, 0, 0.7); }
+.pop-card { flex: none; width: 240px; }
+.pop-card .shop-preview { max-width: 240px; }
+.pop-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.pop-info h3 { font-family: var(--font-disp); font-weight: 500; font-size: 26px; letter-spacing: 1px; color: #fff3d0; }
+.pop-info p { font-size: 14px; color: #d8cdb2; line-height: 1.45; }
+.pop-price { font-size: 13px; }
+.pop-price b { color: #ffe08a; }
+.pop-info .it-act { margin-top: 2px; }
+.pop-info .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+.pop-nav { display: flex; align-items: center; gap: 12px; margin-top: 4px; font-size: 13px; color: #b6a780; }
+.pop-msg { min-height: 18px; margin: 0; }
+.it-preview { align-self: flex-start; }
+.it-act { gap: 6px; }
+.it-act .btn { width: 100%; text-align: center; white-space: nowrap; letter-spacing: 1px; padding-left: 8px; padding-right: 8px; }
+.it-need { color: #ff9d96; }
+
+@media (max-width: 700px) {
+  .shop-preview-col { display: none; }
+  .pop-box { flex-direction: column; gap: 14px; padding: 14px; }
+  .pop-card, .pop-card .shop-preview { width: 100%; max-width: 230px; }
+  .pop-info { align-items: stretch; text-align: center; }
+  .pop-info .it-top { justify-content: center; gap: 10px; }
+  .pop-nav { justify-content: center; }
+}
 
 /* ============================================================
    BARÁTLISTA
