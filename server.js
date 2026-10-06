@@ -17,6 +17,8 @@ const { Server } = require('socket.io');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 const {createAuth,loadAuthEnvironment} = require('./auth');
+const {createShop} = require('./shop');
+const {budapestDate} = require('./quests');
 loadAuthEnvironment(path.join(__dirname,'.env'));
 
 // Tartós tárolás: ha van DATABASE_URL, a fiókok / statisztika / avatárok az adatbázisból töltődnek vissza,
@@ -56,7 +58,11 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 
 // Reverse proxy (Render) mögött a kliens IP-je a proxy fejlécéből jön.
 app.set('trust proxy', 1);
-app.use('/api/auth',createAuth({persist:()=>storage.push('accounts'),reservedNames:()=>REGISTRY.map((r)=>r.nev),onRename:renameStats}).router);
+const authApi = createAuth({persist:()=>storage.push('accounts'),reservedNames:()=>REGISTRY.map((r)=>r.nev),onRename:renameStats});
+app.use('/api/auth',authApi.router);
+// Bolt + napi küldetések (pogácsa). A küldetések haladását a nyilvántartás napi számlálói adják.
+const shopApi = createShop({auth:authApi,dailyCounts:(name)=>dailyCountsFor(name)});
+app.use('/api/shop',shopApi.router);
 
 // Statikus fájlok: a html/js/css ETag/Last-Modified fejléccel (nem cache-el hosszan),
 // a rajzok (assets/) hosszan cache-elhetők, mert ritkán változnak.
@@ -161,7 +167,17 @@ function bumpStat(name, key, by = 1) {
   if (!STAT_KEYS.includes(key)) return;
   const r = recordFor(name);
   r[key] += by;
+  // Napi számláló (Budapest szerinti nap): a napi küldetések haladása ebből jön.
+  const day = budapestDate();
+  if (!r.daily || r.daily.date !== day) r.daily = { date: day, counts: {} };
+  r.daily.counts[key] = (r.daily.counts[key] || 0) + by;
   saveStats();
+}
+
+// A mai nap számlálói (a régi napé már nem számít).
+function dailyCountsFor(name) {
+  const r = STATS[name];
+  return r && r.daily && r.daily.date === budapestDate() ? r.daily.counts : {};
 }
 
 function statsForName(name) {
@@ -177,6 +193,12 @@ function renameStats(oldName, newName) {
   if (!oldName || !newName || oldName === newName || !STATS[oldName]) return;
   const from = recordFor(oldName), to = recordFor(newName);
   for (const k of STAT_KEYS) to[k] += from[k];
+  // a mai napi számlálók is átkerülnek
+  const day = budapestDate();
+  if (from.daily && from.daily.date === day) {
+    if (!to.daily || to.daily.date !== day) to.daily = { date: day, counts: {} };
+    for (const [k, v] of Object.entries(from.daily.counts || {})) to.daily.counts[k] = (to.daily.counts[k] || 0) + v;
+  }
   delete STATS[oldName];
   saveStats();
 }
@@ -236,6 +258,19 @@ function cleanProfile(profile) {
   if (!profile || typeof profile !== 'object') return null;
   const s = (v) => String(v == null ? '' : v).slice(0, 150);
   return { titulus: s(profile.titulus), priusz: s(profile.priusz), jelveny: s(profile.jelveny) };
+}
+// A profil + a fiók felvett kozmetikumai. A cosm mezőt csak a szerver tölti ki, a bejelentkezett fiók
+// munkamenete alapján, és csak akkor, ha a játékos a fiókja nevével lép be (a kliens nem hamisíthatja).
+function profileFor(socket, name, rawProfile) {
+  let profile = cleanProfile(rawProfile);
+  try {
+    const user = authApi.session(socket.request);
+    if (user && String(user.username).toLowerCase() === String(name || '').toLowerCase()) {
+      const cosm = shopApi.cosmeticsFor(user);
+      if (cosm) { profile = profile || { titulus: '', priusz: '', jelveny: '' }; profile.cosm = cosm; }
+    }
+  } catch (e) { /* a profil a kozmetikum nélkül is érvényes */ }
+  return profile;
 }
 function cleanAvatar(avatar) {
   return typeof avatar === 'string' ? avatar.slice(0, 40) : '';
@@ -385,7 +420,7 @@ io.on('connection', (socket) => {
     const game = new Game(code, io);
     rooms.set(code, game);
     game.addPlayer(pid, name, cleanAvatar(avatar), true);
-    game.getPlayer(pid).profile = cleanProfile(profile);
+    game.getPlayer(pid).profile = profileFor(socket, name, profile);
     game.getPlayer(pid).sessionToken = crypto.randomBytes(24).toString('hex');
     socket.join(code);
     socket.join(pidRoom(pid, code));
@@ -433,7 +468,7 @@ io.on('connection', (socket) => {
       meP.kickedOut = false; // lobbyban a házigazda visszahívhatta
       game.kickedIds.delete(pid);
     }
-    meP.profile = cleanProfile(profile);
+    meP.profile = profileFor(socket, name, profile);
     if (!meP.sessionToken) meP.sessionToken = crypto.randomBytes(24).toString('hex');
     socket.join(norm);
     socket.join(pidRoom(pid, norm));

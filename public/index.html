@@ -199,6 +199,12 @@
         <span class="profile-avatar-label">Avatár</span>
         <div id="pfAvatarGrid" class="avatar-grid profile-avatar-grid"></div>
       </div>
+      <div class="profile-account">
+        <span class="profile-avatar-label">Fiók</span>
+        <p id="accountEmail" class="profile-email"></p>
+        <div id="accountConnections" class="account-connections"></div>
+        <p id="accountMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+      </div>
       <p id="pfMessage" class="auth-form-message" role="status" aria-live="polite"></p>
       <div class="avatar-panel-foot">
         <button id="pfCancel" type="button" class="btn small ghost">MÉGSEM</button>
@@ -207,17 +213,27 @@
     </form>
   </div>
 
-  <div id="accountDock" class="account-dock hidden">
-    <details id="accountDetails">
-      <summary id="accountLabel">FIÓKOM</summary>
-      <div class="account-content">
-        <p id="accountEmail"></p>
-        <button id="accountProfile" type="button" class="btn small">✎ SAJÁT KÁRTYÁM SZERKESZTÉSE</button>
-        <div id="accountConnections" class="account-connections"></div>
-        <p id="accountMessage" role="status" aria-live="polite"></p>
-        <button id="accountLogout" type="button" class="btn small ghost">KIJELENTKEZÉS</button>
+  <!-- Bolt + napi küldetések -->
+  <div id="shopModal" class="avatar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+    <div class="avatar-panel shop-panel">
+      <div class="shop-head">
+        <h2 id="shopTitle">Bolt és napi küldetések</h2>
+        <div class="shop-wallet" title="A pogácsa a napi küldetésekből jár">🍪 <b id="shopWallet">0</b> <span>pogácsa</span></div>
+        <button id="shopClose" type="button" class="btn small ghost">BEZÁR ✕</button>
       </div>
-    </details>
+      <div class="shop-tabs" role="tablist">
+        <button id="shopTabQuests" type="button" role="tab" class="shop-tab" aria-selected="true">📜 NAPI KÜLDETÉSEK <i id="shopQuestBadge" class="shop-badge hidden"></i></button>
+        <button id="shopTabShop" type="button" role="tab" class="shop-tab" aria-selected="false">🛒 BOLT</button>
+      </div>
+      <div id="shopBody" class="shop-body"></div>
+      <p id="shopMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <!-- Fiók-sáv: ki vagy bejelentkezve + külön Kijelentkezés gomb (vendégnek: Bejelentkezés) -->
+  <div id="accountDock" class="account-dock hidden">
+    <span id="accountChip" class="account-chip hidden">👤 <b id="accountName"></b></span>
+    <button id="accountLogout" type="button" class="btn small ghost hidden">KIJELENTKEZÉS</button>
     <button id="accountSignIn" type="button" class="btn small ghost hidden">BEJELENTKEZÉS / REGISZTRÁCIÓ</button>
   </div>
 
@@ -410,5 +426,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/client.js"></script>
   <script src="/auth.js"></script>
+  <script src="/shop.js"></script>
 </body>
 </html>

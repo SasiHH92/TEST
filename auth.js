@@ -62,7 +62,8 @@ function newPassword(body) {
 }
 function cookies(req) {
   const result={};
-  for(const piece of (req.get('cookie')||'').split(';')) {
+  const header=(typeof req.get==='function'?req.get('cookie'):req.headers&&req.headers.cookie)||'';
+  for(const piece of header.split(';')) {
     const index=piece.indexOf('=');
     if(index<0) continue;
     try {result[piece.slice(0,index).trim()]=decodeURIComponent(piece.slice(index+1).trim());}
@@ -383,6 +384,16 @@ function createAuth(options={}) {
     console.error('Fiókkezelési hiba:',error.code||error.name);
     res.status(503).json({error:'A fiókkezelés most nem elérhető. Próbáld újra később.'});
   });
-  return {router};
+  // A bolt (shop.js) és a játék-szerver (hitelesített kozmetikumok) ezeket használja.
+  const mutate=(userId,edit)=>{
+    if(!store) fail(503,'A fiókkezelés most nem elérhető.');
+    return store.commit(data=>{
+      const user=data.users.find(u=>u.id===userId);
+      if(!user) fail(401,'Előbb jelentkezz be.');
+      return edit(user,data);
+    });
+  };
+  const expectedOrigin=req=>origin||req.protocol+'://'+req.get('host');
+  return {router,session,mutate,expectedOrigin};
 }
 module.exports={createAuth,loadAuthEnvironment};

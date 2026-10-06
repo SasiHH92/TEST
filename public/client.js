@@ -1005,6 +1005,25 @@ $('#btnLeaveGame').addEventListener('click', async () => {
 // ---- Névkártyák: közös építő a fix kártyákhoz, a saját kártyához és a profil-előnézethez ----
 let PERSONAL_STATS = { name: '', stats: null };
 
+// ---- Bolt-tárgyak megjelenítése (keret, háttér, névhatás: CSS osztály; pecsét, felirat: szöveg) ----
+const COS_ID_RE = /^[a-z]+_[a-z]+$/;
+function cosId(id) { return typeof id === 'string' && COS_ID_RE.test(id) ? id.replace(/^[a-z]+_/, '') : ''; }
+function cosmeticClasses(c) {
+  if (!c) return '';
+  let out = '';
+  if (cosId(c.frame)) out += ' cos-frame-' + cosId(c.frame);
+  if (cosId(c.bg)) out += ' cos-bg-' + cosId(c.bg);
+  if (cosId(c.nameFx)) out += ' cos-name-' + cosId(c.nameFx);
+  return out;
+}
+function cosmeticStampHtml(c) {
+  return c && c.stampText ? '<span class="cos-stamp">' + escapeHtml(c.stampText) + '</span>' : '';
+}
+// A saját, felvett tárgyaim (a bolt-ablak tölti be); nélküle null.
+function ownCosm() {
+  return (window.kbShop && window.kbShop.cosmetics && window.kbShop.cosmetics()) || null;
+}
+
 // Egy kártya belső HTML-je. o: { label, name, badge, title, stats, avatar, taken, pick, edit }
 function mugCardHtml(o) {
   const name = o.name || '';
@@ -1013,7 +1032,8 @@ function mugCardHtml(o) {
     ? '<span class="mug-mono mug-avatar"><img src="' + avatarSrc(o.avatar) + '" alt=""></span>'
     : '<span class="mug-mono" style="background:hsl(' + nameHue(name) + ',62%,44%)">' + escapeHtml(initial) + '</span>';
   const st = o.stats;
-  return '<span class="mug-label">' + escapeHtml(o.label || 'NYILVÁNTARTÁS') + '</span>' +
+  const cosm = o.cosm || null;
+  return cosmeticStampHtml(cosm) + '<span class="mug-label">' + escapeHtml((cosm && cosm.labelText) || o.label || 'NYILVÁNTARTÁS') + '</span>' +
     mono +
     '<span class="mug-name">' + escapeHtml(name) + '</span>' +
     (o.badge ? '<span class="mug-badge">' + escapeHtml(o.badge) + '</span>' : '') +
@@ -1076,9 +1096,10 @@ function renderMugGrid() {
       });
     }
     const taken = TAKEN_NAMES.includes(me.nev);
-    const card = mugCardShell(me.nev, taken, CHOSEN && CHOSEN.nev === me.nev, 'mug-me');
+    const cos = ownCosm();
+    const card = mugCardShell(me.nev, taken, CHOSEN && CHOSEN.nev === me.nev, 'mug-me' + cosmeticClasses(cos));
     card.innerHTML = mugCardHtml({
-      label: 'A TE KÁRTYÁD', name: me.nev, badge: me.jelveny, title: me.titulus,
+      label: 'A TE KÁRTYÁD', cosm: cos, name: me.nev, badge: me.jelveny, title: me.titulus,
       stats: PERSONAL_STATS.name === me.nev ? PERSONAL_STATS.stats : null,
       avatar: me.avatar, taken, pick: true, edit: true
     });
@@ -1143,18 +1164,25 @@ function renderProfileStats(me) {
   const v = (k) => (s && typeof s[k] === 'number' ? s[k] : 0);
   const pct = (a, b) => (b ? Math.round((100 * a) / b) + '%' : '–');
   const played = v('jatek') > 0 || v('korok') > 0;
+  const shopState = window.kbShop ? window.kbShop.state() : null;
+  const ready = window.kbShop ? window.kbShop.readyCount() : 0;
+  if (window.kbShop) window.kbShop.refresh(); // (a névválasztó megnyitásakor frissíti a pénztárcát és a küldetéseket)
   box.innerHTML =
     '<div class="ps-head"><h3>STATISZTIKA</h3>' +
       '<span class="ps-sub">' + (played ? 'A bűnügyi nyilvántartás szerint ennyit tettél eddig.' : 'Még nem játszottál végig egy játékot – az első után itt megjelennek a számaid.') + '</span></div>' +
     '<div class="st-grid">' +
       statTile('🎮', 'Lejátszott játék', v('jatek')) +
       statTile('🏆', 'Győzelem', v('gyozelem') + (v('jatek') ? ' <small>(' + pct(v('gyozelem'), v('jatek')) + ')</small>' : ''), 'gold') +
+      statTile('🍪', 'Pogácsa (pénztárca)', shopState ? shopState.wallet : '–', 'gold') +
       statTile('⭐', 'Összpontszám', v('pont')) +
       statTile('⚖️', 'Lejátszott kör', v('korok')) +
       statTile('🔨', 'Elítélve (vádlottként)', v('bunos') + '×', 'bad') +
       statTile('🕊️', 'Felmentve (vádlottként)', v('artatlan') + '×', 'good') +
       statTile('🏅', 'Díj', v('dijak')) +
       statTile('🎭', 'Teljesített kihívás', v('kihivas')) +
+      statTile('📈', 'Felmentési arány', pct(v('artatlan'), v('vadlott')), 'good') +
+      statTile('🗡️', 'Megnyert ügy (ügyész/védő)', v('ugyeszSiker') + v('vedoSiker')) +
+      statTile('🥠', 'Összes szerzett pogácsa', shopState ? shopState.earned : '–', 'gold') +
     '</div>' +
     '<div class="ps-roles">' +
       '<span class="ps-role">⚖️ Vádlottként <b>' + v('vadlott') + '×</b> <small>(felmentési arány ' + pct(v('artatlan'), v('vadlott')) + ')</small></span>' +
@@ -1163,9 +1191,16 @@ function renderProfileStats(me) {
       '<span class="ps-role">👨‍⚖️ Bíróként <b>' + v('biro') + '×</b></span>' +
       '<span class="ps-role">🧑‍💼 Tanúként <b>' + v('tanu') + '×</b></span>' +
     '</div>' +
-    '<div class="ps-actions"><button type="button" id="btnProfileEdit" class="btn">✎ PROFIL MÓDOSÍTÁSA</button></div>';
+    '<div class="ps-actions">' +
+      '<button type="button" id="btnProfileEdit" class="btn">✎ PROFIL MÓDOSÍTÁSA</button>' +
+      '<button type="button" id="btnShopOpen" class="btn">🛒 BOLT</button>' +
+      '<button type="button" id="btnQuestsOpen" class="btn">📜 NAPI KÜLDETÉSEK' + (ready ? ' <i class="shop-badge">' + ready + '</i>' : '') + '</button>' +
+    '</div>';
   const edit = $('#btnProfileEdit');
   if (edit) edit.addEventListener('click', () => { if (window.kbEditProfile) window.kbEditProfile(); });
+  const shopBtn = $('#btnShopOpen'), questBtn = $('#btnQuestsOpen');
+  if (shopBtn) shopBtn.addEventListener('click', () => window.kbShop && window.kbShop.open('shop'));
+  if (questBtn) questBtn.addEventListener('click', () => window.kbShop && window.kbShop.open('quests'));
 }
 
 // A saját (fiókhoz tartozó) kártyával lépünk be: a szobában a profil szövegei látszanak.
@@ -1471,9 +1506,11 @@ function posterHtml(p, idx) {
   const portrait = !isBot && AVATAR_ID_RE.test(p.avatar || '')
     ? '<img class="p-avatar" src="' + avatarSrc(p.avatar) + '" alt="">'
     : '<span class="p-avatar p-mono" style="background:hsl(' + nameHue(pname) + ',62%,44%)">' + (isBot ? '🤖' : escapeHtml((pname.replace(/[^\p{L}\p{N}]/gu, '')[0] || '?').toUpperCase())) + '</span>';
-  return '<div class="poster" style="--tilt:' + tilt + 'deg">' +
+  const cosm = !isBot && prof.cosm ? prof.cosm : null;
+  return '<div class="poster' + cosmeticClasses(cosm) + '" style="--tilt:' + tilt + 'deg">' +
+    cosmeticStampHtml(cosm) +
     portrait +
-    '<span class="p-wanted">' + (isBot ? 'HIVATALOS SZEMÉLYZET' : 'KÖRÖZÉS') + '</span>' +
+    '<span class="p-wanted">' + (isBot ? 'HIVATALOS SZEMÉLYZET' : ((cosm && cosm.labelText) || 'KÖRÖZÉS')) + '</span>' +
     '<span class="p-name">' + escapeHtml(p.name) + '</span>' +
     '<div class="p-badge-row">' + (prof.jelveny && !isBot ? '<span class="p-badge">' + escapeHtml(prof.jelveny) + '</span>' : '') + '</div>' +
     '<span class="p-title">' + escapeHtml(title) + '</span>' +
@@ -1833,7 +1870,7 @@ function renderStage() {
   });
   const juryMore = Math.max(0, jurors.length - juryPositions.length);
 
-  const key = entries.map((e) => e.role + ':' + e.pid + ':' + playerById(e.pid)?.name + ':' + playerById(e.pid)?.avatar).join('|') +
+  const key = entries.map((e) => e.role + ':' + e.pid + ':' + playerById(e.pid)?.name + ':' + playerById(e.pid)?.avatar + ':' + (playerById(e.pid)?.profile?.cosm?.frame || '')).join('|') +
     '#' + mobile + '+' + juryMore;
   if (stage.dataset.key !== key) {
     stage.dataset.key = key;
@@ -1869,10 +1906,11 @@ function renderStage() {
     return '<span class="plate-role" style="--role:'+roleColorOf(role)+'">'+roleLabel(role)+'</span><span class="plate-person"><span>'+avatarEmoji(p?.avatar)+'</span><b>'+escapeHtml(p?.name||(role==='judge'?'Bíró':''))+'</b></span>';
   };
   const plates=$('#stagePlates');
-  const plateKey=key+':judge:'+scene.currentJudgeId+':'+playerById(scene.currentJudgeId)?.name+':'+playerById(scene.currentJudgeId)?.avatar;
+  const plateKey=key+':judge:'+scene.currentJudgeId+':'+playerById(scene.currentJudgeId)?.name+':'+playerById(scene.currentJudgeId)?.avatar+':'+(playerById(scene.currentJudgeId)?.profile?.cosm?.frame||'');
   if(plates.dataset.key!==plateKey) {
     plates.dataset.key=plateKey;
-    plates.innerHTML='<div id="judgePlate" class="stage-plate judge-plate" data-role="judge">'+plateHtml('judge',scene.currentJudgeId)+'</div>'+entries.map(e=>'<div class="stage-plate" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'">'+plateHtml(e.role,e.pid)+'</div>').join('');
+    const plateFrame=pid=>{const f=cosId(playerById(pid)?.profile?.cosm?.frame);return f?' cos-frame-'+f:'';};
+    plates.innerHTML='<div id="judgePlate" class="stage-plate judge-plate'+plateFrame(scene.currentJudgeId)+'" data-role="judge">'+plateHtml('judge',scene.currentJudgeId)+'</div>'+entries.map(e=>'<div class="stage-plate'+plateFrame(e.pid)+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'">'+plateHtml(e.role,e.pid)+'</div>').join('');
   }
   [...plates.children].forEach((el,i)=>{
     const e=i===0?{role:'judge',ji:0}:entries[i-1],p=scenePosition(e.role,e.ji||0,g);

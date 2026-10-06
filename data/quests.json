@@ -1,0 +1,64 @@
+{
+  "_megjegyzes": "Napi küldetések: minden napra 3 darab (könnyű + közepes + nehéz). A kiválasztás a dátumból számolódik (determinisztikus véletlen), így minden játékosnak ugyanaz a három küldetése van aznap, és bármelyik napra (365 napra előre is) kiszámolható. A 'stat' a bűnügyi nyilvántartás számlálója (jatek, korok, pont, gyozelem, vadlott, bunos, artatlan, ugyesz, ugyeszSiker, vedo, vedoSiker, biro, tanu, kihivas, dijak), a 'target' a napi cél.",
+  "penznem": "pogácsa",
+  "bonusJutalom": 50,
+  "szintek": [
+    {
+      "id": "konnyu",
+      "nev": "KÖNNYŰ",
+      "jutalom": 40,
+      "kuldetesek": [
+        { "id": "k_korok3", "stat": "korok", "target": 3, "text": "Játssz le 3 kört" },
+        { "id": "k_jatek1", "stat": "jatek", "target": 1, "text": "Játssz végig egy teljes játékot" },
+        { "id": "k_vadlott1", "stat": "vadlott", "target": 1, "text": "Ülj ki a vádlottak padjára" },
+        { "id": "k_ugyesz1", "stat": "ugyesz", "target": 1, "text": "Vádolj ügyészként" },
+        { "id": "k_vedo1", "stat": "vedo", "target": 1, "text": "Védj meg valakit védőügyvédként" },
+        { "id": "k_biro1", "stat": "biro", "target": 1, "text": "Viseld a kalapácsot: légy egyszer bíró" },
+        { "id": "k_tanu1", "stat": "tanu", "target": 1, "text": "Tégy vallomást tanúként" },
+        { "id": "k_kihivas1", "stat": "kihivas", "target": 1, "text": "Teljesíts egy titkos kihívást" },
+        { "id": "k_pont5", "stat": "pont", "target": 5, "text": "Szerezz 5 pontot" },
+        { "id": "k_korok4", "stat": "korok", "target": 4, "text": "Vegyél részt 4 tárgyaláson" },
+        { "id": "k_bunos1", "stat": "bunos", "target": 1, "text": "Kapj elítélő ítéletet (a hősök is elbuknak néha)" },
+        { "id": "k_artatlan1", "stat": "artatlan", "target": 1, "text": "Menekülj ki felmentéssel a vádlottak padjáról" }
+      ]
+    },
+    {
+      "id": "kozepes",
+      "nev": "KÖZEPES",
+      "jutalom": 70,
+      "kuldetesek": [
+        { "id": "m_korok8", "stat": "korok", "target": 8, "text": "Játssz le 8 kört" },
+        { "id": "m_jatek2", "stat": "jatek", "target": 2, "text": "Játssz végig 2 teljes játékot" },
+        { "id": "m_pont12", "stat": "pont", "target": 12, "text": "Szerezz 12 pontot" },
+        { "id": "m_kihivas2", "stat": "kihivas", "target": 2, "text": "Teljesíts 2 titkos kihívást" },
+        { "id": "m_artatlan1", "stat": "artatlan", "target": 1, "text": "Győzd meg a bíróságot: kapj felmentést vádlottként" },
+        { "id": "m_ugyeszsiker1", "stat": "ugyeszSiker", "target": 1, "text": "Ügyészként érj el elítélést" },
+        { "id": "m_vedosiker1", "stat": "vedoSiker", "target": 1, "text": "Védőként érj el felmentést" },
+        { "id": "m_ugyesz2", "stat": "ugyesz", "target": 2, "text": "Légy kétszer ügyész" },
+        { "id": "m_biro2", "stat": "biro", "target": 2, "text": "Légy kétszer bíró" },
+        { "id": "m_vadlott2", "stat": "vadlott", "target": 2, "text": "Kerülj kétszer a vádlottak padjára" },
+        { "id": "m_tanu2", "stat": "tanu", "target": 2, "text": "Légy kétszer a meglepetés tanú" },
+        { "id": "m_vedo2", "stat": "vedo", "target": 2, "text": "Légy kétszer védőügyvéd" }
+      ]
+    },
+    {
+      "id": "nehez",
+      "nev": "NEHÉZ",
+      "jutalom": 120,
+      "kuldetesek": [
+        { "id": "n_gyozelem1", "stat": "gyozelem", "target": 1, "text": "Nyerj meg egy játékot (a legtöbb pont nálad legyen)" },
+        { "id": "n_pont25", "stat": "pont", "target": 25, "text": "Szerezz 25 pontot egy nap alatt" },
+        { "id": "n_korok15", "stat": "korok", "target": 15, "text": "Játssz le 15 kört" },
+        { "id": "n_jatek3", "stat": "jatek", "target": 3, "text": "Játssz végig 3 teljes játékot" },
+        { "id": "n_kihivas4", "stat": "kihivas", "target": 4, "text": "Teljesíts 4 titkos kihívást" },
+        { "id": "n_ugyeszsiker2", "stat": "ugyeszSiker", "target": 2, "text": "Ügyészként érj el 2 elítélést" },
+        { "id": "n_vedosiker2", "stat": "vedoSiker", "target": 2, "text": "Védőként érj el 2 felmentést" },
+        { "id": "n_artatlan2", "stat": "artatlan", "target": 2, "text": "Kapj 2 felmentést vádlottként" },
+        { "id": "n_dijak1", "stat": "dijak", "target": 1, "text": "Szerezz díjat a játék végén" },
+        { "id": "n_gyozelem2", "stat": "gyozelem", "target": 2, "text": "Nyerj meg 2 játékot" },
+        { "id": "n_pont40", "stat": "pont", "target": 40, "text": "Szerezz 40 pontot egy nap alatt" },
+        { "id": "n_korok20", "stat": "korok", "target": 20, "text": "Játssz le 20 kört" }
+      ]
+    }
+  ]
+}

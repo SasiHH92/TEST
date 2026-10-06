@@ -94,6 +94,7 @@
     account=user||null;LS.setItem('kb_accountId',identity);
     if(account) sessionStorage.removeItem('kb_guest');else sessionStorage.setItem('kb_guest','1');
     IDENTITY_READY=true;
+    if(window.kbShop) window.kbShop.forget();
     $('#btnNewSuspect').textContent=account?'SAJÁT NÉVVEL JÁTSZOM':'ÚJ GYANÚSÍTOTT (vendég vagyok)';
     document.querySelector('.new-suspect-box').classList.toggle('hidden',!!account);
     $('#guestName').value=account?.username||'';
@@ -171,7 +172,6 @@
       showToast('✅ A kártyád mentve!');
     });
   });
-  $('#accountProfile').addEventListener('click',()=>{$('#accountDetails').open=false;openProfile();});
   // A játék többi része ezen keresztül éri el.
   window.kbEditProfile=openProfile;
   // Avatár-választás a saját kártyánál: a profilba is elmentjük (csendben).
@@ -190,12 +190,13 @@
     const target=screen==='name'?document.querySelector('.station-header'):
       screen==='menu'?document.querySelector('#screen-menu .wood-panel'):null;
     dock.classList.toggle('hidden',!target);
-    if(!target) {$('#accountDetails').open=false;return;}
+    if(!target) return;
     if(dock.parentNode!==target) target.appendChild(dock);
-    $('#accountDetails').classList.toggle('hidden',!account);
+    $('#accountChip').classList.toggle('hidden',!account);
+    $('#accountLogout').classList.toggle('hidden',!account);
     $('#accountSignIn').classList.toggle('hidden',!!account);
     if(!account) return;
-    $('#accountLabel').textContent='👤 '+account.username+' · FIÓKOM';
+    $('#accountName').textContent=account.username;
     $('#accountEmail').textContent=account.email;
     const connections=$('#accountConnections');connections.replaceChildren();
     for(const provider of ['google','discord']) {
@@ -250,8 +251,8 @@
         message('#authStatus','A belépésed lejárt. Az összekapcsoláshoz lépj be újra.');return;
       }
       if(link&&availability.user.id!==account?.id) {
-        enter(availability.user);message('#accountMessage','Másik fiókkal vagy bejelentkezve. Frissítettük a fiók menüjét.');
-        $('#accountDetails').open=true;return;
+        enter(availability.user);message('#accountMessage','Másik fiókkal vagy bejelentkezve. Frissítettük a fiókadataidat.');
+        openProfile();return;
       }
       const url=new URL('/api/auth/'+provider+'/start',location.origin);
       if(link) url.searchParams.set('link','1');
@@ -330,7 +331,7 @@
         // Az oldal betöltésekor MINDIG a bejelentkezés jön először; a megjegyzett fiókkal egy gombbal lehet folytatni.
         if(externalReturn) {
           enter(availability.user,true);
-          if(error) {message('#accountMessage',errors[error]||errors.provider);$('#accountDetails').open=true;}
+          if(error) {message('#accountMessage',errors[error]||errors.provider);openProfile();}
         } else showContinue(availability.user);
       }
       if(hash.startsWith('#reset=')&&!resetToken) message('#authStatus','A jelszó-visszaállító link érvénytelen. Kérj új linket.');

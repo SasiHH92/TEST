@@ -1,0 +1,44 @@
+{
+  "_megjegyzes": "A bolt katalógusa. Pénznem: pogácsa (napi küldetésekből). A 'slot' a felvehető hely (egy slotban egy tárgy lehet felvéve). A kinézetet a kliens a tárgy azonosítójából számolja (CSS osztály), a pecsét és felirat szövege a 'text' mező. Új tárgy hozzáadása: ide egy bejegyzés + (keret / háttér / névhatás esetén) egy CSS osztály a public/style.css végén (cos-frame-<id>, cos-bg-<id>, cos-name-<id>).",
+  "penznem": "pogácsa",
+  "slotok": [
+    { "id": "frame", "nev": "Kártyakeret", "leiras": "A kártyád és a körözési plakátod kerete" },
+    { "id": "bg", "nev": "Kártyahát", "leiras": "A kártyád háttere" },
+    { "id": "nameFx", "nev": "Névhatás", "leiras": "Ahogy a neved megjelenik a kártyán" },
+    { "id": "stamp", "nev": "Pecsét", "leiras": "Egy pecsét a kártyád sarkában" },
+    { "id": "label", "nev": "Felirat", "leiras": "A kártyád fejléce (alapból: A TE KÁRTYÁD)" }
+  ],
+  "ritkasagok": ["közönséges", "ritka", "epikus", "legendás"],
+  "targyak": [
+    { "id": "frame_silver", "slot": "frame", "nev": "Ezüst keret", "leiras": "Hideg, elegáns csillogás.", "ar": 100, "ritkasag": "közönséges" },
+    { "id": "frame_emerald", "slot": "frame", "nev": "Smaragd keret", "leiras": "Mély zöld, mint a tárgyalóterem lámpái.", "ar": 180, "ritkasag": "ritka" },
+    { "id": "frame_ruby", "slot": "frame", "nev": "Rubin keret", "leiras": "Bűnösség-piros. Csak bátraknak.", "ar": 180, "ritkasag": "ritka" },
+    { "id": "frame_sapphire", "slot": "frame", "nev": "Zafír keret", "leiras": "Nyugodt kék, mint egy ártatlan lelkiismeret.", "ar": 180, "ritkasag": "ritka" },
+    { "id": "frame_amethyst", "slot": "frame", "nev": "Ametiszt keret", "leiras": "Esküdtek lila fénye.", "ar": 220, "ritkasag": "ritka" },
+    { "id": "frame_neon", "slot": "frame", "nev": "Neon keret", "leiras": "Pulzáló neonfény, hogy mindenki lássa, ki érkezett.", "ar": 450, "ritkasag": "epikus" },
+    { "id": "frame_flame", "slot": "frame", "nev": "Lángoló keret", "leiras": "Tüzes keret a legnagyobb tűzfalaknak is.", "ar": 700, "ritkasag": "epikus" },
+    { "id": "frame_rainbow", "slot": "frame", "nev": "Szivárvány keret", "leiras": "Folyamatosan színt váltó, legendás keret.", "ar": 1000, "ritkasag": "legendás" },
+
+    { "id": "bg_night", "slot": "bg", "nev": "Éjszakai őrs", "leiras": "Sötétkék éjszaka, mint a rendőrségi nyilvántartásban.", "ar": 250, "ritkasag": "közönséges" },
+    { "id": "bg_court", "slot": "bg", "nev": "Tárgyalóterem", "leiras": "Meleg, mahagóni árnyalatok.", "ar": 300, "ritkasag": "ritka" },
+    { "id": "bg_velvet", "slot": "bg", "nev": "Bordó bársony", "leiras": "A bíró székének fényűző bársonya.", "ar": 350, "ritkasag": "ritka" },
+    { "id": "bg_sea", "slot": "bg", "nev": "Mélykék", "leiras": "Hűvös, óceánkék kártyahát.", "ar": 250, "ritkasag": "közönséges" },
+
+    { "id": "name_gold", "slot": "nameFx", "nev": "Aranyozott név", "leiras": "A neved csillogó arany betűkkel.", "ar": 300, "ritkasag": "ritka" },
+    { "id": "name_fire", "slot": "nameFx", "nev": "Tüzes név", "leiras": "Lángoló narancs-piros betűk.", "ar": 450, "ritkasag": "epikus" },
+    { "id": "name_ice", "slot": "nameFx", "nev": "Jeges név", "leiras": "Hideg, kékesfehér betűk.", "ar": 450, "ritkasag": "epikus" },
+    { "id": "name_royal", "slot": "nameFx", "nev": "Királyi név", "leiras": "Bíbor és arany, ahogy egy királyhoz illik.", "ar": 600, "ritkasag": "legendás" },
+
+    { "id": "stamp_pogacsa", "slot": "stamp", "nev": "Pogácsa-függő pecsét", "leiras": "Mindenki tudja, miért vagy itt.", "ar": 200, "ritkasag": "közönséges", "text": "POGÁCSA-FÜGGŐ" },
+    { "id": "stamp_suspect", "slot": "stamp", "nev": "Profi gyanúsított", "leiras": "Rutinos jelenléted a nyilvántartásban.", "ar": 280, "ritkasag": "ritka", "text": "PROFI GYANÚSÍTOTT" },
+    { "id": "stamp_innocent", "slot": "stamp", "nev": "Örök ártatlan", "leiras": "Neked mindig felmentés jár. Állítólag.", "ar": 280, "ritkasag": "ritka", "text": "ÖRÖK ÁRTATLAN" },
+    { "id": "stamp_judge", "slot": "stamp", "nev": "Szigorú bíró", "leiras": "A kalapácsod nem ismer kegyelmet.", "ar": 280, "ritkasag": "ritka", "text": "SZIGORÚ BÍRÓ" },
+    { "id": "stamp_king", "slot": "stamp", "nev": "A per királya", "leiras": "Egyetlen tárgyalás sem nélküled kezdődik.", "ar": 350, "ritkasag": "epikus", "text": "A PER KIRÁLYA" },
+    { "id": "stamp_legend", "slot": "stamp", "nev": "Legenda", "leiras": "A legendás tesztelők közé tartozol.", "ar": 500, "ritkasag": "legendás", "text": "LEGENDA" },
+
+    { "id": "label_chief", "slot": "label", "nev": "Főnyomozó", "leiras": "A kártyád fejléce: FŐNYOMOZÓ.", "ar": 220, "ritkasag": "közönséges", "text": "FŐNYOMOZÓ" },
+    { "id": "label_vip", "slot": "label", "nev": "VIP vendég", "leiras": "A kártyád fejléce: VIP VENDÉG.", "ar": 250, "ritkasag": "közönséges", "text": "VIP VENDÉG" },
+    { "id": "label_boss", "slot": "label", "nev": "A főnök", "leiras": "A kártyád fejléce: A FŐNÖK.", "ar": 300, "ritkasag": "ritka", "text": "A FŐNÖK" },
+    { "id": "label_hero", "slot": "label", "nev": "A bíróság hőse", "leiras": "A kártyád fejléce: A BÍRÓSÁG HŐSE.", "ar": 350, "ritkasag": "epikus", "text": "A BÍRÓSÁG HŐSE" }
+  ]
+}

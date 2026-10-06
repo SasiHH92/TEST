@@ -11,6 +11,7 @@
     "test:bots": "node test/e2e-bots.js",
     "test:browser": "node test/browser-check.js",
     "test:auth": "node test/auth.js",
+    "test:shop": "node test/shop.js && node test/quests.js",
     "test:storage": "node test/storage.js"
   },
   "engines": {

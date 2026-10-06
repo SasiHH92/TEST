@@ -62,6 +62,14 @@
       ]
     },
     {
+      "heading": "PROFIL, NAPI KÜLDETÉSEK ÉS BOLT",
+      "list": [
+        "Bejelentkezett fiókkal saját kártyád van: a nevedet, a titulusodat és a vicces szöveget (priusz) a PROFIL MÓDOSÍTÁSA gombbal bármikor átírhatod. A profilnál látod a statisztikádat is (játékok, győzelmek, elítélések, felmentések, szerepek szerinti bontás).",
+        "Napi küldetések: minden nap 3 új küldetés jár, egy könnyű (40 pogácsa), egy közepes (70) és egy nehéz (120). A teljesítést a játék magától számolja, a jutalmat a NAPI KÜLDETÉSEK ablakban kell átvenni. Ha mindhármat átvetted, +50 pogácsa napi bónusz jár. Az új küldetések éjfélkor (magyar idő szerint) érkeznek, a ki nem vett jutalom a nap végén elvész.",
+        "Bolt: a pogácsáért kártyakeretet, kártyahátteret, névhatást, pecsétet és feliratot vehetsz. Vásárlás előtt kipróbálhatod őket a kártyádon. A felvett tárgyak a többi játékos képernyőjén is látszanak a lobbiban és a tárgyaláson. Vendégként nincs pénztárca és bolt, ahhoz fiók kell."
+      ]
+    },
+    {
       "heading": "KILÉPÉS ÉS KÖVETKEZŐ JÁTÉK",
       "body": [
         "Véletlen kapcsolatvesztésnél 20 másodpercig megtartod a szereped. Utána egy nem szereplő esküdt veszi át ugyanazokkal a kártyákkal és a hátralévő idővel, legalább 15 másodperccel. Késői visszatéréskor esküdtként folytatod. A házigazda joga 30 másodperces kiesés után a legrégebben bent lévő játékosé. A szándékos kilépés és kirúgás azonnali; három fő alatt a játék visszatér a lobbyba.",

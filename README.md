@@ -93,6 +93,14 @@ Nyisd meg a `data/cards.json` fájlt, és írd az új szöveget a megfelelő mó
 - Indítsd újra a szervert (`npm start`) a módosítás után.
 - A szövegekben a `[játékos]` és `[vádlott]` helyőrzőket használhatod.
 
+### Napi küldetések és bolt
+
+- **Pénznem:** pogácsa 🍪, a fiók pénztárcájában (`user.shop` a fiókfájlban / az adatbázisban). Csak bejelentkezett fiók kaphat jutalmat.
+- **Küldetések:** `data/quests.json` (három szint: könnyű 40, közepes 70, nehéz 120 pogácsa, szintenként 12 sablon; a napi bónusz +50, a `bonusJutalom`). A `quests.js` a naptári nap (Europe/Budapest) alapján, determinisztikusan, a `2026-01-01` kezdőnaptól számolva választ: naponta 3 küldetés, bármelyik napra (365 napra és tovább) előre kiszámolható; a legrégebben használt sablon kerül sorra, így egyenletesen forognak, egymást követő napokon nincs ismétlés, és egy napon belül nincs két azonos mérőszám. A haladást a szerver a játékból számolja (`daily` számlálók a `stats.json`-ben).
+- **Bolt:** `data/shop.json` (tárgyak: kártyakeret, kártyaháttér, névhatás, pecsét, felirat; ár, ritkaság). Új tárgyhoz: vegyél fel egy bejegyzést a `targyak` tömbbe (a keretek, hátterek és névhatások CSS osztálya `cos-frame-<név>`, `cos-bg-<név>`, `cos-name-<név>` a `public/style.css`-ben; a pecsét és a felirat `text` mezője a megjelenő szöveg).
+- **Biztonság:** a vásárlás, felvétel és jutalom-átvétel a szerveren dől el (`shop.js`); a többi játékoshoz csak a ténylegesen megvásárolt, felvett tárgy jut el, a szerver a bejelentkezett fiók alapján teszi a profilra.
+- **Tesztek:** `npm run test:shop` (a `test/rules.js` is futtatja).
+
 ### Védőügyvéd
 
 5 vagy több játékosnál a körben megjelenik a **védőügyvéd**: 2 titkos trükkkártyát kap, a vádlott után **45 mp-et** beszél, és **ártatlan ítéletnél ő is pontot kap** a vádlottal együtt.
