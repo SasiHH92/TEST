@@ -4,7 +4,7 @@
   "description": "Online multiplayer party játék – hangalapú kamubíróság Discordon",
   "main": "server.js",
   "scripts": {
-    "start": "node hydrate.js && node server.js",
+    "start": "node server.js",
     "test": "node test/e2e.js",
     "test:rules": "node test/rules.js",
     "test:rooms": "node test/room-sockets.js",

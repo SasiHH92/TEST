@@ -18,6 +18,19 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const {createAuth,loadAuthEnvironment} = require('./auth');
 loadAuthEnvironment(path.join(__dirname,'.env'));
+
+// Tartós tárolás: ha van DATABASE_URL, a fiókok / statisztika / avatárok az adatbázisból töltődnek vissza,
+// MIELŐTT bármit beolvasnánk. Ez a szerver saját indítási lépése, ezért független attól, hogy a tárhely
+// `node server.js`-t vagy `npm start`-ot futtat. Ha az adatbázis nem érhető el, nem indulunk el üres adattal
+// (az első mentés különben felülírná az adatbázis tartalmát).
+if (process.env.DATABASE_URL) {
+  const hydrated = require('child_process').spawnSync(process.execPath, [path.join(__dirname, 'hydrate.js')],
+    { stdio: 'inherit', env: process.env, timeout: 150000 });
+  if (hydrated.status !== 0) {
+    console.error('Az adatbázis nem érhető el, a szerver nem indul el (adatvesztés elkerülése).');
+    process.exit(1);
+  }
+}
 const {storage} = require('./storage'); // tartós mentés külső adatbázisba (DATABASE_URL)
 
 const { Game, PHASES, ALL_MODES } = require('./game');
