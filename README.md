@@ -109,6 +109,19 @@ Nyisd meg a `data/cards.json` fájlt, és írd az új szöveget a megfelelő mó
 - **Végpontok:** `/api/friends/` `state`, `ticket`, `request`, `accept`, `decline`, `cancel`, `remove`, `block`, `unblock`, `settings` (mind bejelentkezést kér, JSON + eredet-ellenőrzés, sebességkorlát). Limitek: 100 barát, 30 függő kérés, 100 letiltott.
 - **Tesztek:** `npm run test:social` (valódi szerver, HTTP + socket); a `test/rules.js` is futtatja.
 
+### Fiók a legendás tesztelőknek (igénylő-link)
+
+Minden legendás tesztelő a saját kártyájához kapcsolt fiókot kaphat: egy egyszer használható **igénylő-linket** küldesz neki, megnyitja, a saját e-mail címével és jelszavával regisztrál, és a fiókja a legenda pontos nevén jön létre (a név, a keret, a háttér és a statisztika az övé). A jelszavakat te sem látod.
+
+1. **Titok beállítása a tárhelyen:** a Renderen egy új környezeti változó: `LEGEND_SECRET` = egy hosszú, véletlen szöveg (legalább 16 karakter). Ezt csak te ismered, ne commitold, ne oszd meg.
+2. **Linkek előállítása a gépeden** (ugyanazzal a titokkal):
+   ```powershell
+   $env:LEGEND_SECRET = '<a titok>'; node scripts/legend-links.js https://test-1-ndkt.onrender.com
+   ```
+   A szkript mind a 12 legendának kiír egy linket (`/?legend=<név>&claim=<kód>`). A kód a titokból és a névből számolt HMAC, a szerver újraszámolja, nincs tárolt kód.
+3. **A tesztelő** megnyitja a linkjét → a regisztrációs űrlapon a neve zárolva van, megadja az e-mailjét és jelszavát → kész. Egy legendát egyszer lehet igényelni. Az igényelt kártyát attól kezdve csak a gazdája használhatja (bejelentkezve); a névválasztón mások számára „A GAZDÁJÁÉ” felirattal zárolt. A neve nem módosítható, a vicces szövegei igen. Később Google/Discord is összekapcsolható a fiókhoz.
+4. **Tesztek:** `npm run test:claims`.
+
 ### Csevegő és névszabály
 
 - **Csevegő:** `chat_send` socket-esemény (csak szobában), a szoba tagjai `chat_msg`-ként kapják. A szerver az utolsó 80 üzenetet tartja a szoba memóriájában (`game.chatLog`), belépéskor/újracsatlakozáskor a join válasz `chat` mezője hozza. Szűrés: 280 karakter, vezérlő- és irány-átíró karakterek kiszedve, 4 üzenet / 6 mp, azonos üzenet 4 mp-en belül nem ismételhető. A kliens mindent szövegként (escape-elve) jelenít meg. A bejelentkezett játékos letiltottjának üzenete nem megy neki (élőben és az előzményben sem), az ilyen szűrés szerveren történik, a belső fiók-azonosító nem kerül ki.

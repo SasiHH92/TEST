@@ -134,7 +134,7 @@ function createAuth(options={}) {
   // A fix (alapító) kártyák nevei nem foglalhatók le fiókkal.
   const reserved=name=>(options.reservedNames?options.reservedNames():[]).some(r=>normalize(r)===normalize(name));
   const publicUser=user=>user?{id:user.id,username:user.username,email:user.email,
-    hasPassword:!!user.password,providers:Object.keys(user.providers||{}),
+    hasPassword:!!user.password,providers:Object.keys(user.providers||{}),legend:user.legend||'',
     profile:{titulus:'',priusz:'',jelveny:'',avatar:'',...(user.profile||{})}}:null;
   const session=req=>{
     if(!store) return null;
@@ -215,12 +215,23 @@ function createAuth(options={}) {
     passwordReset:mailEnabled && !storageError}));
   router.use((req,res,next)=>storageError?res.status(503).json({error:'A fiókkezelés most nem elérhető. Próbáld újra később.'}):next());
   router.post('/register',wrap(async(req,res)=>{
-    const address=email(req.body.email),name=username(req.body.username),password=newPassword(req.body);
+    // Legendás kártya igénylése: érvényes igénylő-kóddal a fiók a legenda pontos nevén jön létre (a név egyébként foglalt).
+    let legendName=null;
+    if(req.body.legend!==undefined && req.body.legend!=='') {
+      legendName=typeof req.body.legend==='string' && options.claimLegend?options.claimLegend(req.body.legend,req.body.claim):null;
+      if(!legendName) fail(403,'Ez az igénylő-link érvénytelen. Kérj újat attól, aki küldte.');
+    }
+    const address=email(req.body.email),name=legendName||username(req.body.username),password=newPassword(req.body);
     const record=await hash(password);
     const user=store.commit(data=>{
       if(data.users.some(u=>u.email===address)) fail(409,'Ezzel az e-mail címmel már van fiók.');
-      if(data.users.some(u=>normalize(u.username)===normalize(name)) || reserved(name)) fail(409,'Ez a felhasználónév már foglalt.');
+      if(data.users.some(u=>normalize(u.username)===normalize(name))) fail(409,legendName?'Ezt a legendás kártyát már igényelték. Jelentkezz be a fiókjával.':'Ez a felhasználónév már foglalt.');
+      if(!legendName && reserved(name)) fail(409,'Ez a felhasználónév már foglalt.');
       const user={id:crypto.randomUUID(),username:name,email:address,password:record,providers:{},createdAt:now()};
+      if(legendName) {
+        user.legend=legendName;
+        user.profile=cleanProfile(options.legendProfile?options.legendProfile(legendName):{});
+      }
       data.users.push(user);return user;
     });
     createSession(user,req,res);
@@ -245,6 +256,7 @@ function createAuth(options={}) {
       const user=data.users.find(u=>u.id===current.id);
       if(!user) fail(401,'Előbb jelentkezz be.');
       if(normalize(name)!==normalize(user.username)) {
+        if(user.legend) fail(400,'A legendás kártya neve nem módosítható.');
         if(reserved(name)) fail(409,'Ez a név az alapító karakterekhez tartozik, válassz másikat.');
         if(data.users.some(u=>u.id!==user.id && normalize(u.username)===normalize(name))) fail(409,'Ez a felhasználónév már foglalt.');
       }

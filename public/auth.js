@@ -258,7 +258,12 @@
     if(body.password!==body.confirmPassword) {
       message('#authRegisterMessage','A két jelszó nem egyezik.');$('#authRegisterConfirm').focus();return;
     }
-    submit(event.currentTarget,'#authRegisterMessage',async()=>enter((await api('register',body)).user,true));
+    if(legendClaim) {body.legend=legendClaim.name;body.claim=legendClaim.code;} // a szerver ellenőrzi a kódot
+    submit(event.currentTarget,'#authRegisterMessage',async()=>{
+      const user=(await api('register',body)).user;
+      if(legendClaim) finishLegendClaim();
+      enter(user,true);
+    });
   });
   async function oauth(provider,link=false) {
     if(busy||!availability?.providers[provider]) return;
@@ -327,6 +332,24 @@
     const token=hash.slice(7);
     if(/^[A-Za-z0-9_-]{43}$/.test(token)) resetToken=token;
   }
+  // Legendás kártya igénylő-link: /?legend=<név>&claim=<kód>. A regisztráció a legenda nevén történik, a kód a szervernél érvényesül.
+  let legendClaim=null;
+  if(query.get('legend')&&/^[A-Za-z0-9_-]{22}$/.test(query.get('claim')||'')) legendClaim={name:query.get('legend').slice(0,40),code:query.get('claim')};
+  function applyLegendClaim() {
+    if(!legendClaim) return;
+    const nameInput=$('#authRegisterName');
+    nameInput.value=legendClaim.name;nameInput.readOnly=true;nameInput.title='A legendás kártya neve nem módosítható';
+    const note=$('#authLegendNote');
+    note.textContent='🏆 Legendás kártya igénylése: '+legendClaim.name+'. Regisztrálj a saját e-mail címeddel és jelszavaddal, utána a kártya, a keret és a háttér a tiéd. A statisztikád megmarad.';
+    note.classList.remove('hidden');
+    show('auth');tab('register');
+  }
+  function finishLegendClaim() {
+    legendClaim=null;
+    $('#authRegisterName').readOnly=false;$('#authLegendNote').classList.add('hidden');
+    const q=new URLSearchParams(location.search);q.delete('legend');q.delete('claim');
+    history.replaceState(history.state,'',location.pathname+(q.toString()?'?'+q:'')+location.hash);
+  }
   const externalReturn=query.has('auth')||query.has('auth_error'); // külső (OAuth) belépésből érkeztünk vissza
   if(query.has('auth')||query.has('auth_error')||hash.startsWith('#reset=')) {
     query.delete('auth');query.delete('auth_error');
@@ -347,6 +370,8 @@
       $('#authRetry').classList.toggle('hidden',availability.available);
       message('#authStatus',error?(errors[error]||errors.provider):availability.available?'':'A fiókkezelés jelenleg nem elérhető.');
       if(resetToken) {show('auth');openRecovery(true);}
+      else if(legendClaim) applyLegendClaim(); // az igénylő-link a regisztrációs űrlapot nyitja
+      if(resetToken||legendClaim) { /* a belépett fiók gombja ilyenkor nem zavarja a folyamatot */ }
       else if(availability.user) {
         // Az oldal betöltésekor MINDIG a bejelentkezés jön először; a megjegyzett fiókkal egy gombbal lehet folytatni.
         if(externalReturn) {

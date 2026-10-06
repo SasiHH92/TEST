@@ -14,6 +14,8 @@
     "test:shop": "node test/shop.js && node test/quests.js",
     "test:social": "node test/social.js",
     "test:chat": "node test/chat.js",
+    "test:claims": "node test/claims.js",
+    "legend-links": "node scripts/legend-links.js",
     "test:storage": "node test/storage.js"
   },
   "engines": {

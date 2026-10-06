@@ -19,6 +19,7 @@ const QRCode = require('qrcode');
 const {createAuth,loadAuthEnvironment} = require('./auth');
 const {createShop} = require('./shop');
 const {createSocial} = require('./social');
+const {verifyLegendCode} = require('./legend-claims');
 const {budapestDate} = require('./quests');
 loadAuthEnvironment(path.join(__dirname,'.env'));
 
@@ -59,7 +60,25 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 
 // Reverse proxy (Render) mögött a kliens IP-je a proxy fejlécéből jön.
 app.set('trust proxy', 1);
-const authApi = createAuth({persist:()=>storage.push('accounts'),reservedNames:()=>REGISTRY.map((r)=>r.nev),onRename:renameStats});
+// Legendás kártya igénylése: a kódot a LEGEND_SECRET-ből számoljuk (a titkot a tulajdonos állítja be a tárhelyen, a kódban nincs).
+const LEGEND_SECRET = process.env.LEGEND_SECRET || '';
+const authApi = createAuth({
+  persist:()=>storage.push('accounts'),
+  reservedNames:()=>REGISTRY.map((r)=>r.nev),
+  onRename:renameStats,
+  // érvényes (név, kód) párra a legenda pontos nevét adja vissza, egyébként null
+  claimLegend:(name,code)=>{
+    const reg=REGISTRY.find((r)=>r.nev===name);
+    return reg&&verifyLegendCode(LEGEND_SECRET,reg.nev,code)?reg.nev:null;
+  },
+  // az igényelt fiók kártyája a legenda adataival indul (a hosszkorlátok a fiók-szabályokhoz igazítva)
+  legendProfile:(name)=>{
+    const reg=REGISTRY.find((r)=>r.nev===name)||{};
+    const avatar=PROFILE_AVATARS[name];
+    return {titulus:String(reg.titulus||'').slice(0,60),priusz:String(reg.priusz||'').slice(0,140),
+      jelveny:String(reg.jelveny||'').slice(0,8),avatar:AVATAR_ID_RE.test(avatar||'')?avatar:''};
+  }
+});
 app.use('/api/auth',authApi.router);
 // Bolt + napi küldetések (pogácsa). A küldetések haladását a nyilvántartás napi számlálói adják.
 const shopApi = createShop({auth:authApi,dailyCounts:(name)=>dailyCountsFor(name)});
@@ -295,7 +314,8 @@ function profileFor(socket, name, rawProfile) {
     const legend = REGISTRY.find((r) => r.nev === name);
     if (legend && legend.keret) {
       profile = profile || { titulus: '', priusz: '', jelveny: '' };
-      profile.cosm = { frame: legend.keret, ...(legend.hatter ? { bg: legend.hatter } : {}), labelText: LEGEND_LABEL };
+      // a legenda keret/háttér/felirata; a gazdája bolt-tárgyai (névhatás, pecsét) megmaradnak
+      profile.cosm = { ...(profile.cosm || {}), frame: legend.keret, ...(legend.hatter ? { bg: legend.hatter } : {}), labelText: LEGEND_LABEL };
     }
   } catch (e) { /* a profil a kozmetikum nélkül is érvényes */ }
   return profile;
@@ -536,7 +556,8 @@ io.on('connection', (socket) => {
       }
     }
     if (typeof ack === 'function') ack({
-      registry: REGISTRY.map((r) => ({ ...r, stats: statsForName(r.nev), avatar: PROFILE_AVATARS[r.nev] || '' })),
+      // claimed: a legenda kártyáját már igényelte egy fiók (attól kezdve csak a gazdája használhatja bejelentkezve)
+      registry: REGISTRY.map((r) => ({ ...r, stats: statsForName(r.nev), avatar: PROFILE_AVATARS[r.nev] || '', claimed: !!authApi.directory.byName(r.nev) })),
       vendegPriuszok: GUEST_PRIORS,
       takenNames: Array.from(taken)
     });

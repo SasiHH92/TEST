@@ -1061,7 +1061,16 @@ function mugCardHtml(o) {
     '</span>' +
     (o.pick && !o.taken ? '<span class="mug-pick">VÁLASZTOM <i aria-hidden="true">▸</i></span>' : '') +
     (o.edit && !o.taken ? '<button type="button" class="mug-edit" aria-label="Saját kártya szerkesztése">✎ SZERKESZTÉS</button>' : '') +
-    (o.taken ? '<div class="mug-taken"><span>ŐRIZETBEN</span></div>' : '');
+    (o.taken ? '<div class="mug-taken"><span>' + (o.locked ? 'A GAZDÁJÁÉ' : 'ŐRIZETBEN') + '</span></div>' : '');
+}
+
+// A legendás kártya gazdájának (bejelentkezve) a kártyáján a legenda díszei vannak; a bolt-tárgyak mellette megmaradnak.
+function legendCosFor(name, base) {
+  const acc = window.kbAccount;
+  if (!acc || !acc.legend || acc.legend !== name) return base;
+  const r = REGISTRY.find((x) => x.nev === name);
+  if (!r || !r.keret) return base;
+  return { ...(base || {}), frame: r.keret, ...(r.hatter ? { bg: r.hatter } : {}), labelText: 'LEGENDA' };
 }
 
 // A bejelentkezett fiók saját kártyájának adatai (a profilból).
@@ -1113,7 +1122,7 @@ function renderMugGrid() {
       });
     }
     const taken = TAKEN_NAMES.includes(me.nev);
-    const cos = ownCosm();
+    const cos = legendCosFor(me.nev, ownCosm()); // a legenda gazdájának a kártyáján ott a legenda-keret, -háttér és a LEGENDA felirat
     const card = mugCardShell(me.nev, taken, CHOSEN && CHOSEN.nev === me.nev, 'mug-me' + cosmeticClasses(cos));
     card.innerHTML = mugCardHtml({
       label: 'A TE KÁRTYÁD', cosm: cos, name: me.nev, badge: me.jelveny, title: me.titulus,
@@ -1150,7 +1159,10 @@ function renderMugGrid() {
   }
 
   REGISTRY.forEach((r) => {
-    const taken = TAKEN_NAMES.includes(r.nev);
+    // A legenda gazdájának a saját profil-szakaszban van a kártyája; másnak az igényelt kártya zárolt (csak a gazdája használhatja).
+    if (window.kbAccount && window.kbAccount.legend === r.nev) return;
+    const locked = !!r.claimed;
+    const taken = TAKEN_NAMES.includes(r.nev) || locked;
     // A [TAG] a jelvény: a névtábláról a jelvény-címkére kerül.
     const tagMatch = r.nev.match(/\[([^\]]+)\]/);
     const badge = r.jelveny || (tagMatch ? tagMatch[1] : '');
@@ -1159,7 +1171,7 @@ function renderMugGrid() {
     const legend = r.keret ? { frame: r.keret, ...(r.hatter ? { bg: r.hatter } : {}), labelText: 'LEGENDA' } : null;
     const card = mugCardShell(cleanName, taken, CHOSEN && CHOSEN.nev === r.nev, cosmeticClasses(legend).trim());
     card.innerHTML = mugCardHtml({
-      name: cleanName, badge, title: r.titulus, stats: r.stats, avatar: r.avatar, taken, pick: true, cosm: legend
+      name: cleanName, badge, title: r.titulus, stats: r.stats, avatar: r.avatar, taken, locked, pick: true, cosm: legend
     });
     if (!taken) {
       card.addEventListener('click', () => {
@@ -1972,7 +1984,9 @@ function renderStage() {
   judgeSlot.style.setProperty('--x',jp.x+'%');judgeSlot.style.setProperty('--b',jb+'%');judgeSlot.style.setProperty('--h',jh+'%');
   $('#accusationTicker').style.left=g.mobile?'50%':jp.x+'%';
   const bubble=$('#judgeBubble');
-  bubble.style.left=jp.x+'%';bubble.style.top=g.mobile?'27%':(jPlate+100*40/g.height)+'%';
+  // Telefonon a buborék a (néha több soros) vád-sáv ALATT marad, hogy ne takarják egymást.
+  const chargeBar=$('#accusationTicker'), chargeBottom=chargeBar&&!chargeBar.classList.contains('hidden')?chargeBar.getBoundingClientRect().bottom+6:0;
+  bubble.style.left=jp.x+'%';bubble.style.top=g.mobile?(chargeBottom>0.27*innerHeight?Math.round(chargeBottom)+'px':'27%'):(jPlate+100*40/g.height)+'%';
   const plateHtml=(role,pid)=>{
     const p=playerById(pid);
     return '<span class="plate-role" style="--role:'+roleColorOf(role)+'">'+roleLabel(role)+'</span><span class="plate-person"><span>'+avatarEmoji(p?.avatar)+'</span><b>'+escapeHtml(p?.name||(role==='judge'?'Bíró':''))+'</b></span>';
