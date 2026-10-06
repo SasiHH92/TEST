@@ -16,6 +16,23 @@ const { questsForDate, budapestDate, addDays, msUntilReset, BONUS } = require('.
 const CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'shop.json'), 'utf8'));
 const ITEMS = new Map(CATALOG.targyak.map((i) => [i.id, i]));
 const SLOTS = new Set(CATALOG.slotok.map((s) => s.id));
+const SEASONS = new Map((CATALOG.szezonok || []).map((s) => [s.id, s]));
+const GIFTS_PER_DAY = 5; // egy játékos naponta legfeljebb ennyi ajándékot küldhet
+
+// Egy szezonális tárgy állapota a megadott napra ("ÉÉÉÉ-HH-NN"): kapható-e most, meddig / mikortól.
+// A szezon minden évben ismétlődik (tol/ig: "HH-NN"); az évhatáron átnyúló szezon (pl. 12-15 … 01-06) is jó.
+function seasonInfo(item, date) {
+  const s = item.szezon && SEASONS.get(item.szezon);
+  if (!s) return null;
+  const year = Number(date.slice(0, 4));
+  const wraps = s.tol > s.ig;
+  const windows = [year - 1, year, year + 1].map((y) => ({ start: y + '-' + s.tol, end: (wraps ? y + 1 : y) + '-' + s.ig }));
+  const current = windows.find((w) => date >= w.start && date <= w.end);
+  const base = { id: s.id, nev: s.nev, emoji: s.emoji };
+  if (current) return { ...base, aktiv: true, zar: current.end };
+  const next = windows.find((w) => w.start > date);
+  return { ...base, aktiv: false, kezdodik: next ? next.start : null };
+}
 
 class ShopError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -47,9 +64,10 @@ function cosmeticsFor(user) {
   return Object.keys(out).length ? out : null;
 }
 
-function createShop({ auth, dailyCounts, today = () => budapestDate() }) {
+function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriends = () => false, onGift = () => {} }) {
   const router = express.Router();
   const calls = new Map(); // userId -> időbélyegek (egyszerű sebességkorlát)
+  const giftsToday = new Map(); // userId -> { date, count } (memóriában: újraindításkor nullázódik)
 
   router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   router.use(express.json({ limit: '4kb' }));
@@ -93,7 +111,11 @@ function createShop({ auth, dailyCounts, today = () => budapestDate() }) {
       wallet: shop.wallet, earned: shop.earned, owned: shop.owned, equipped: shop.equipped,
       quests,
       bonus: { reward: BONUS, claimed: claimed.includes('bonus'), available: allClaimed && !claimed.includes('bonus') },
-      catalog: { slotok: CATALOG.slotok, ritkasagok: CATALOG.ritkasagok, targyak: CATALOG.targyak }
+      // a szezonális tárgyaknál a mai állapot (kapható-e, meddig / mikortól) is jön
+      catalog: {
+        slotok: CATALOG.slotok, ritkasagok: CATALOG.ritkasagok, szezonok: CATALOG.szezonok || [],
+        targyak: CATALOG.targyak.map((i) => (i.szezon ? { ...i, szezon: seasonInfo(i, date) } : i))
+      }
     };
   }
 
@@ -148,6 +170,7 @@ function createShop({ auth, dailyCounts, today = () => budapestDate() }) {
     const user = requireUser(req); throttle(user);
     const item = ITEMS.get(String(req.body.itemId || ''));
     if (!item) fail(404, 'Ilyen tárgy nincs a boltban.');
+    assertAvailable(item);
     const updated = change(user, (s) => {
       if (s.owned.includes(item.id)) fail(409, 'Ez a tárgy már a tiéd.');
       if (s.wallet < item.ar) fail(402, 'Nincs elég pogácsád ehhez (' + item.ar + ' kell, ' + s.wallet + ' van).');
@@ -155,6 +178,45 @@ function createShop({ auth, dailyCounts, today = () => budapestDate() }) {
       s.owned.push(item.id);
     });
     res.json(stateFor(updated));
+  });
+
+  // Szezonális tárgy csak a szezonban vehető (és ajándékozható); a már megvett tárgyak szezonon kívül is felvehetők.
+  function assertAvailable(item) {
+    const season = seasonInfo(item, today());
+    if (season && !season.aktiv) {
+      fail(403, 'A(z) ' + item.nev + ' ' + season.nev + '-tárgy, most nem kapható' + (season.kezdodik ? ' (' + season.kezdodik + '-tól újra)' : '') + '.');
+    }
+  }
+
+  // Ajándék egy barátnak: a küldő fizet, a tárgy a barát tulajdonába kerül (egyetlen mentésben).
+  router.post('/gift', (req, res) => {
+    const user = requireUser(req); throttle(user);
+    const item = ITEMS.get(String(req.body.itemId || ''));
+    if (!item) fail(404, 'Ilyen tárgy nincs a boltban.');
+    const friendId = typeof req.body.friendId === 'string' ? req.body.friendId.slice(0, 64) : '';
+    if (!friendId || friendId === user.id) fail(400, 'Magadnak nem ajándékozhatsz, válassz egy barátot.');
+    if (!areFriends(user.id, friendId)) fail(403, 'Ajándékot csak a barátaidnak küldhetsz.');
+    assertAvailable(item);
+    const date = today();
+    const sent = giftsToday.get(user.id);
+    if (sent && sent.date === date && sent.count >= GIFTS_PER_DAY) fail(429, 'Ma már ' + GIFTS_PER_DAY + ' ajándékot küldtél. Holnap újra lehet.');
+    let recipient = null;
+    const updated = auth.mutate(user.id, (me, data) => {
+      const other = data.users.find((u) => u.id === friendId);
+      if (!other) fail(404, 'Nincs ilyen felhasználó.');
+      const mine = shopOf(me), theirs = shopOf(other);
+      if (theirs.owned.includes(item.id)) fail(409, 'Neki ez a tárgy már megvan.');
+      if (mine.wallet < item.ar) fail(402, 'Nincs elég pogácsád ehhez (' + item.ar + ' kell, ' + mine.wallet + ' van).');
+      mine.wallet -= item.ar;
+      theirs.owned.push(item.id);
+      me.shop = mine; other.shop = theirs;
+      recipient = { id: other.id, username: other.username };
+      return me;
+    });
+    giftsToday.set(user.id, { date, count: sent && sent.date === date ? sent.count + 1 : 1 });
+    if (giftsToday.size > 5000) giftsToday.delete(giftsToday.keys().next().value);
+    try { onGift(user, recipient, item); } catch (_) { /* az értesítés hibája nem teheti semmissé az ajándékot */ }
+    res.json({ ...stateFor(updated), gift: { to: recipient.username, item: item.nev } });
   });
 
   router.post('/equip', (req, res) => {
@@ -183,4 +245,4 @@ function createShop({ auth, dailyCounts, today = () => budapestDate() }) {
   return { router, cosmeticsFor };
 }
 
-module.exports = { createShop, cosmeticsFor, shopOf, CATALOG, ITEMS };
+module.exports = { createShop, cosmeticsFor, shopOf, seasonInfo, CATALOG, ITEMS, GIFTS_PER_DAY };

@@ -87,6 +87,7 @@
     }
     actions.push('<button type="button" class="fr-icon fr-dm' + (f.unread ? ' has-unread' : '') + '" data-dm="' + f.id + '" title="Privát üzenet" aria-label="Privát üzenet">💬' +
       (f.unread ? '<i class="shop-badge">' + f.unread + '</i>' : '') + '</button>');
+    actions.push('<button type="button" class="fr-icon" data-gift-to="' + f.id + '" title="Ajándék küldése a boltból" aria-label="Ajándék">🎁</button>');
     actions.push('<button type="button" class="fr-icon" data-remove="' + f.id + '" title="Eltávolítás a barátok közül" aria-label="Eltávolítás">✕</button>');
     actions.push('<button type="button" class="fr-icon" data-block="' + f.id + '" title="Letiltás" aria-label="Letiltás">⛔</button>');
     return '<div class="fr-row' + (f.status === 'offline' ? ' off' : '') + (f.unread ? ' unread' : '') + '">' + avatarHtml(f) +
@@ -324,6 +325,11 @@
     const t = e.target.closest('button');
     if (!t) return;
     const d = t.dataset;
+    if (d.giftTo) {
+      const f = state && state.friends.find((x) => x.id === d.giftTo);
+      if (f && window.kbShop) { close(); window.kbShop.openGift({ id: f.id, username: f.username }); }
+      return;
+    }
     if (d.dm) return openDm(d.dm);
     if (d.dmBack) { dm = { id: null, card: null, msgs: [] }; tab = 'friends'; setMessage(''); render(true); return; }
     if (d.join) { close(); return window.kbJoinFriendRoom && window.kbJoinFriendRoom(d.join); }

@@ -9,6 +9,10 @@
     { "id": "label", "nev": "Felirat", "leiras": "A kártyád fejléce (alapból: A TE KÁRTYÁD)" }
   ],
   "ritkasagok": ["közönséges", "ritka", "epikus", "legendás"],
+  "szezonok": [
+    { "id": "halloween", "nev": "Halloween", "emoji": "🎃", "tol": "10-20", "ig": "11-02" },
+    { "id": "karacsony", "nev": "Karácsony", "emoji": "🎄", "tol": "12-15", "ig": "01-06" }
+  ],
   "targyak": [
     { "id": "frame_silver", "slot": "frame", "nev": "Ezüst keret", "leiras": "Hideg, elegáns csillogás.", "ar": 100, "ritkasag": "közönséges" },
     { "id": "frame_emerald", "slot": "frame", "nev": "Smaragd keret", "leiras": "Mély zöld, mint a tárgyalóterem lámpái.", "ar": 180, "ritkasag": "ritka" },
@@ -39,6 +43,11 @@
     { "id": "label_chief", "slot": "label", "nev": "Főnyomozó", "leiras": "A kártyád fejléce: FŐNYOMOZÓ.", "ar": 220, "ritkasag": "közönséges", "text": "FŐNYOMOZÓ" },
     { "id": "label_vip", "slot": "label", "nev": "VIP vendég", "leiras": "A kártyád fejléce: VIP VENDÉG.", "ar": 250, "ritkasag": "közönséges", "text": "VIP VENDÉG" },
     { "id": "label_boss", "slot": "label", "nev": "A főnök", "leiras": "A kártyád fejléce: A FŐNÖK.", "ar": 300, "ritkasag": "ritka", "text": "A FŐNÖK" },
-    { "id": "label_hero", "slot": "label", "nev": "A bíróság hőse", "leiras": "A kártyád fejléce: A BÍRÓSÁG HŐSE.", "ar": 350, "ritkasag": "epikus", "text": "A BÍRÓSÁG HŐSE" }
+    { "id": "label_hero", "slot": "label", "nev": "A bíróság hőse", "leiras": "A kártyád fejléce: A BÍRÓSÁG HŐSE.", "ar": 350, "ritkasag": "epikus", "text": "A BÍRÓSÁG HŐSE" },
+
+    { "id": "frame_pumpkin", "slot": "frame", "nev": "Töklámpás keret", "leiras": "Narancs-lila, lüktető Halloween-keret. Csak szezonban kapható.", "ar": 400, "ritkasag": "epikus", "szezon": "halloween" },
+    { "id": "bg_haunted", "slot": "bg", "nev": "Kísértetház", "leiras": "Lila köd és pislákoló lámpás. Csak szezonban kapható.", "ar": 350, "ritkasag": "ritka", "szezon": "halloween" },
+    { "id": "frame_holly", "slot": "frame", "nev": "Izzósoros keret", "leiras": "Piros-zöld-arany karácsonyi izzósor a kártya körül. Csak szezonban kapható.", "ar": 400, "ritkasag": "epikus", "szezon": "karacsony" },
+    { "id": "bg_snowfall", "slot": "bg", "nev": "Havazás", "leiras": "Csendesen hulló hó a kártyádon. Csak szezonban kapható.", "ar": 350, "ritkasag": "ritka", "szezon": "karacsony" }
   ]
 }

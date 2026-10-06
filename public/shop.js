@@ -10,6 +10,7 @@
   let tab = 'quests';
   let slotFilter = 'all';
   let previewId = null;   // az éppen előnézetben nézett tárgy (csak előnézet, nincs megvéve)
+  let giftTo = null;      // ajándék-mód: { id, username } – ilyenkor a vásárlás helyett a barátnak küldünk
   let busy = false;
   let timer = null;
   let lastRefresh = 0;
@@ -97,7 +98,7 @@
     try {
       state = await call(method, route, body);
       fetchedAt = Date.now();
-      if (okText) setMessage(okText, true);
+      if (okText) setMessage(typeof okText === 'function' ? okText(state) : okText, true);
     } catch (error) { setMessage(error.message); }
     finally { busy = false; changed(prev); }
   }
@@ -137,23 +138,44 @@
 
   // Vásárlás / felvétel gomb egy tárgyhoz (a listában és az előnézeti ablakban is ez jelenik meg).
   // Ha nincs elég pogácsa, a gomb le van tiltva, és kiírjuk, mennyi hiányzik (a szerver is elutasítja a vásárlást).
+  // Szezonális tárgy felirata: mikortól / meddig kapható.
+  // "okt. 20" (a "-tól" / "-ig" rag közvetlenül jön utána: "okt. 20-tól", "nov. 2-ig")
+  const dateHu = (iso) => { const [, m, d] = iso.split('-').map(Number); return ['', 'jan.', 'febr.', 'márc.', 'ápr.', 'máj.', 'jún.', 'júl.', 'aug.', 'szept.', 'okt.', 'nov.', 'dec.'][m] + ' ' + d; };
+  function seasonText(sz) {
+    if (!sz) return '';
+    return sz.emoji + ' ' + sz.nev + ' · ' + (sz.aktiv ? 'kapható ' + dateHu(sz.zar) + '-ig' : (sz.kezdodik ? dateHu(sz.kezdodik) + '-tól kapható' : 'most nem kapható'));
+  }
+
   function actionHtml(i, s) {
+    const closed = i.szezon && !i.szezon.aktiv;
+    const closedBtn = '<button type="button" class="btn small" disabled title="Szezonon kívül nem kapható">⏳ NEM KAPHATÓ MOST</button>'; // (a szezon-felirat a kártyán / az előnézetben látszik)
+    const need = i.ar - s.wallet;
+    // Ajándék-mód: a tárgyat a kiválasztott barátnak küldjük (a saját tárgyaidtól függetlenül), a küldő fizet.
+    if (giftTo) {
+      if (closed) return closedBtn;
+      return need > 0
+        ? '<button type="button" class="btn small" data-gift="' + i.id + '" disabled title="Nincs elég pogácsád ehhez">🔒 AJÁNDÉK · ' + fmt(i.ar) + ' 🍪</button><small class="it-need">Nincs elég pogácsád: még ' + fmt(need) + ' kell</small>'
+        : '<button type="button" class="btn small" data-gift="' + i.id + '">🎁 AJÁNDÉKBA KÜLDÖM · ' + fmt(i.ar) + ' 🍪</button>';
+    }
     if (s.owned.includes(i.id)) {
       return s.equipped[i.slot] === i.id
         ? '<button type="button" class="btn small ghost" data-unequip="' + i.slot + '">LEVESZEM</button>'
         : '<button type="button" class="btn small" data-equip="' + i.id + '">FELVESZEM</button>';
     }
-    const need = i.ar - s.wallet;
+    if (closed) return closedBtn;
     return need > 0
       ? '<button type="button" class="btn small" data-buy="' + i.id + '" disabled title="Nincs elég pogácsád ehhez">🔒 MEGVESZEM · ' + fmt(i.ar) + ' 🍪</button>' +
         '<small class="it-need">Nincs elég pogácsád: még ' + fmt(need) + ' kell</small>'
       : '<button type="button" class="btn small" data-buy="' + i.id + '">MEGVESZEM · ' + fmt(i.ar) + ' 🍪</button>';
   }
 
+  // A szűrő szerint látható tárgyak (a lista, az előnézeti lapozás és a szűrő egyaránt ezt használja).
+  const visibleItems = () => items().filter((x) => slotFilter === 'all' || (slotFilter === 'szezon' ? !!x.szezon : x.slot === slotFilter));
+
   // Nagy előnézeti ablak: a saját kártyád a megnézett tárggyal, a tárgy adataival és a vásárlás gombbal.
   function previewHtml(i) {
     const s = state;
-    const list = items().filter((x) => slotFilter === 'all' || x.slot === slotFilter);
+    const list = visibleItems();
     const slotName = s.catalog.slotok.find((x) => x.id === i.slot).nev;
     const acc = window.kbAccount || {};
     const prof = acc.profile || {};
@@ -171,6 +193,8 @@
       '<div class="pop-card">' + card + '</div>' +
       '<div class="pop-info"><span class="it-top"><span class="it-slot">' + escapeHtml(slotName) + '</span><span class="it-rar">' + escapeHtml(i.ritkasag) + '</span></span>' +
       '<h3>' + escapeHtml(i.nev) + '</h3><p>' + escapeHtml(i.leiras) + '</p>' +
+      (i.szezon ? '<p class="it-season">' + escapeHtml(seasonText(i.szezon)) + '</p>' : '') +
+      (giftTo ? '<p class="gift-note">🎁 Ajándék neki: <b>' + escapeHtml(giftTo.username) + '</b></p>' : '') +
       '<p class="pop-price">Ára: <b>' + fmt(i.ar) + ' 🍪</b> · nálad: <b>' + fmt(s.wallet) + ' 🍪</b></p>' +
       '<div class="it-act">' + actionHtml(i, s) + '</div>' + nav +
       '<p id="shopPopMsg" class="auth-form-message pop-msg" role="status" aria-live="polite"></p>' +
@@ -202,7 +226,7 @@
   }
 
   function stepPreview(dir) {
-    const list = items().filter((x) => slotFilter === 'all' || x.slot === slotFilter);
+    const list = visibleItems();
     if (!list.length) return;
     const at = list.findIndex((x) => x.id === previewId);
     openPreview(list[(at + dir + list.length) % list.length].id);
@@ -211,9 +235,10 @@
   function shopHtml() {
     const s = state;
     const slots = s.catalog.slotok;
-    const filters = [{ id: 'all', nev: 'Összes' }, ...slots].map((f) =>
+    const hasSeason = items().some((x) => x.szezon);
+    const filters = [{ id: 'all', nev: 'Összes' }, ...slots, ...(hasSeason ? [{ id: 'szezon', nev: '⏳ Szezonális' }] : [])].map((f) =>
       '<button type="button" class="sf' + (slotFilter === f.id ? ' active' : '') + '" data-filter="' + f.id + '">' + escapeHtml(f.nev) + '</button>').join('');
-    const list = items().filter((i) => slotFilter === 'all' || i.slot === slotFilter);
+    const list = visibleItems();
     const grid = list.map((i) => {
       const owned = s.owned.includes(i.id);
       const equipped = s.equipped[i.slot] === i.id;
@@ -222,8 +247,13 @@
       return '<div class="it-card r-' + i.ritkasag.replace(/[^a-z]/g, '') + (owned ? ' owned' : '') + (equipped ? ' equipped' : '') + '" data-preview="' + i.id + '" tabindex="0" role="button" aria-label="' + escapeHtml(i.nev) + ' előnézete">' +
         '<div class="it-top"><span class="it-slot">' + escapeHtml(slotName) + '</span><span class="it-rar">' + escapeHtml(i.ritkasag) + '</span></div>' +
         '<b class="it-name">' + escapeHtml(i.nev) + (equipped ? ' <em>✔ felvéve</em>' : owned ? ' <em>a tiéd</em>' : '') + '</b>' +
+        (i.szezon ? '<span class="it-season">' + escapeHtml(seasonText(i.szezon)) + '</span>' : '') +
         '<p class="it-desc">' + escapeHtml(i.leiras) + '</p><div class="it-act">' + previewBtn + actionHtml(i, s) + '</div></div>';
     }).join('');
+    const giftBanner = giftTo
+      ? '<div class="gift-banner"><span>🎁 Ajándék neki: <b>' + escapeHtml(giftTo.username) + '</b>. A tárgy árát te fizeted, a tárgy az övé lesz.</span>' +
+        '<button type="button" class="btn small ghost" data-gift-cancel="1">MÉGSE</button></div>'
+      : '';
     const acc = window.kbAccount || {};
     const prof = acc.profile || {};
     const cosm = ownCosmetics();
@@ -231,7 +261,7 @@
       label: 'A TE KÁRTYÁD', cosm, name: acc.username || 'Neved', badge: prof.jelveny || '',
       title: prof.titulus || 'Új gyanúsított', avatar: AVATARS.includes(prof.avatar) ? prof.avatar : '', pick: false
     }) + '</div>';
-    return '<div class="shop-layout"><div class="shop-preview-col"><span class="profile-preview-label">A JELENLEGI KÁRTYÁD</span>' + preview +
+    return giftBanner + '<div class="shop-layout"><div class="shop-preview-col"><span class="profile-preview-label">A JELENLEGI KÁRTYÁD</span>' + preview +
       '<p class="shop-hint">Bármelyik tárgynál az <b>👁 ELŐNÉZET</b> gombbal megnézheted, hogyan állna a kártyádon. Megvenni csak akkor lehet, ha van rá elég pogácsád.</p></div>' +
       '<div class="shop-items"><div class="shop-filters">' + filters + '</div><div class="item-grid">' + grid + '</div></div></div>';
   }
@@ -269,7 +299,16 @@
     $s('#shopModal').classList.add('hidden');
     clearInterval(timer);
     previewId = null;
+    giftTo = null; // az ajándék-mód a bolt bezárásával véget ér
     renderPop();
+  }
+
+  // Ajándék-mód: a barátlistáról nyílik, a kiválasztott barátnak küldhetsz tárgyat.
+  function openGift(friend) {
+    if (!friend || !friend.id) return;
+    giftTo = { id: friend.id, username: friend.username || '' };
+    slotFilter = 'all';
+    open('shop');
   }
 
   // Vásárlás / felvétel / levétel: a lista és az előnézeti ablak közös kezelője.
@@ -278,6 +317,13 @@
       const i = itemById(t.dataset.buy);
       if (i && state && state.wallet < i.ar) { setMessage('Nincs elég pogácsád ehhez (' + fmt(i.ar) + ' kell, ' + fmt(state.wallet) + ' van).'); return true; }
       act('POST', '/buy', { itemId: t.dataset.buy }, '🛍️ Megvetted: ' + (i ? i.nev : '') + '!');
+      return true;
+    }
+    if (t.dataset.gift && giftTo) {
+      const i = itemById(t.dataset.gift);
+      if (i && state && state.wallet < i.ar) { setMessage('Nincs elég pogácsád ehhez (' + fmt(i.ar) + ' kell, ' + fmt(state.wallet) + ' van).'); return true; }
+      const to = giftTo.username;
+      act('POST', '/gift', { friendId: giftTo.id, itemId: t.dataset.gift }, (d) => '🎁 Elküldted neki (' + (d.gift ? d.gift.to : to) + '): ' + (d.gift ? d.gift.item : (i ? i.nev : '')) + '!');
       return true;
     }
     if (t.dataset.equip) { const i = itemById(t.dataset.equip); act('POST', '/equip', { slot: i.slot, itemId: i.id }, '✨ Felvéve: ' + i.nev); return true; }
@@ -303,6 +349,7 @@
     if (t.dataset.claim) return act('POST', '/claim', { questId: t.dataset.claim }, '🍪 Jutalom átvéve!');
     if (t.dataset.claimBonus) return act('POST', '/claim-bonus', {}, '🎁 Napi bónusz átvéve!');
     if (itemAction(t)) return;
+    if (t.dataset.giftCancel) { giftTo = null; return render(); }
     if (t.dataset.filter) { slotFilter = t.dataset.filter; return render(); }
     if (t.dataset.preview) openPreview(t.dataset.preview);
   });
@@ -320,11 +367,19 @@
   });
 
   // A játék többi része ezen keresztül éri el.
+  // Egy barát ajándékot küldött: értesítés, a pénztárca és a tárgyak frissülnek.
+  socket.on('gift_received', ({ from, item } = {}) => {
+    if (!from || !item) return;
+    if (typeof showToast === 'function') showToast('🎁 ' + from.username + ' ajándékot küldött: ' + item.nev + '!');
+    if (window.kbSound) window.kbSound.ping();
+    refresh(true);
+  });
+
   window.kbShop = {
-    open, refresh, close,
+    open, refresh, close, openGift,
     state: () => state,
     cosmetics: ownCosmetics,
     readyCount,
-    forget: () => { state = null; previewId = null; }
+    forget: () => { state = null; previewId = null; giftTo = null; }
   };
 })();

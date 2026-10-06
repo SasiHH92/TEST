@@ -14,7 +14,7 @@ const http = require('http');
 const crypto = require('crypto');
 const express = require('express');
 const { createAuth } = require('../auth');
-const { createShop, CATALOG } = require('../shop');
+const { createShop, CATALOG, seasonInfo, GIFTS_PER_DAY } = require('../shop');
 const { questsForDate } = require('../quests');
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'kamu-shop-'));
@@ -32,7 +32,12 @@ async function boot() {
   const file = path.join(root, crypto.randomUUID() + '.json');
   const state = { date: '2026-10-07', counts: {} };
   const auth = createAuth({ file, env: { AUTH_BASE_URL: base }, maxAttempts: 500 });
-  const shop = createShop({ auth, today: () => state.date, dailyCounts: () => state.counts });
+  const pairs = new Set(), gifts = []; // barátságok (kézzel megadva) és a kiküldött ajándék-értesítések
+  const shop = createShop({
+    auth, today: () => state.date, dailyCounts: () => state.counts,
+    areFriends: (a, b) => pairs.has([a, b].sort().join('|')),
+    onGift: (from, to, item) => gifts.push({ from: from.username, to: to.username, item: item.id })
+  });
   app.use('/api/auth', auth.router);
   app.use('/api/shop', shop.router);
   const jar = () => new Map();
@@ -48,7 +53,7 @@ async function boot() {
     const text = await response.text(); let data = null; try { data = JSON.parse(text); } catch (_) { /* */ }
     return { status: response.status, data };
   }
-  return { base, file, req, jar, state, shop, auth };
+  return { base, file, req, jar, state, shop, auth, pairs, gifts };
 }
 
 const password = 'Egy hosszú titok 123!';
@@ -190,6 +195,84 @@ async function main() {
     const r = await api.req('GET', '/api/shop/state', undefined, { jar: other });
     assert.equal(r.data.wallet, 0);
     assert.deepEqual(r.data.owned, []);
+  });
+
+  await test('Szezonális tárgyak: a szezon minden évben ismétlődik, az évhatáron átnyúló is jó (pontos napok)', async () => {
+    const item = (id) => CATALOG.targyak.find((i) => i.id === id);
+    const at = (id, date) => seasonInfo(item(id), date);
+    assert.equal(seasonInfo(item('frame_silver'), '2026-10-25'), null, 'nem szezonális tárgy: nincs szezon-adat');
+    assert.deepEqual([at('frame_pumpkin', '2026-10-06').aktiv, at('frame_pumpkin', '2026-10-06').kezdodik], [false, '2026-10-20'], 'októberi szezon előtt');
+    assert.deepEqual([at('frame_pumpkin', '2026-10-19').aktiv, at('frame_pumpkin', '2026-10-20').aktiv], [false, true], 'a szezon első napján indul');
+    assert.deepEqual([at('frame_pumpkin', '2026-11-02').aktiv, at('frame_pumpkin', '2026-11-02').zar], [true, '2026-11-02'], 'az utolsó napon még kapható');
+    assert.deepEqual([at('frame_pumpkin', '2026-11-03').aktiv, at('frame_pumpkin', '2026-11-03').kezdodik], [false, '2027-10-20'], 'utána jövőre');
+    assert.deepEqual([at('frame_holly', '2026-12-14').aktiv, at('frame_holly', '2026-12-15').aktiv], [false, true], 'karácsony indul');
+    assert.equal(at('frame_holly', '2026-12-31').zar, '2027-01-06', 'az évhatáron átnyúlik');
+    assert.deepEqual([at('bg_snowfall', '2027-01-02').aktiv, at('bg_snowfall', '2027-01-06').aktiv, at('bg_snowfall', '2027-01-07').aktiv], [true, true, false]);
+    assert.equal(at('bg_snowfall', '2027-01-07').kezdodik, '2027-12-15');
+    assert.ok(CATALOG.targyak.filter((i) => i.szezon).length >= 4 && CATALOG.targyak.filter((i) => i.szezon).every((i) => seasonInfo(i, '2026-06-01')));
+  });
+
+  await test('A katalógus a szezonális tárgyaknál a mai állapotot adja; szezonon kívül nem vehető meg, szezonban igen, utána is megmarad', async () => {
+    const fresh = api.jar(); await register(api, fresh, 'Szezon Szilvi', 'szilvi@example.invalid');
+    const uid = JSON.parse(fs.readFileSync(api.file)).users.find((u) => u.email === 'szilvi@example.invalid').id;
+    api.auth.mutate(uid, (u) => { u.shop = { wallet: 5000, earned: 5000, owned: [], equipped: {}, claims: {} }; return u; });
+    const itemOf = (st, id) => st.data.catalog.targyak.find((i) => i.id === id);
+    api.state.date = '2026-10-06';
+    let st = await api.req('GET', '/api/shop/state', undefined, { jar: fresh });
+    assert.equal(itemOf(st, 'frame_pumpkin').szezon.aktiv, false);
+    assert.equal(itemOf(st, 'frame_pumpkin').szezon.kezdodik, '2026-10-20');
+    assert.equal(itemOf(st, 'frame_silver').szezon, undefined);
+    const early = await api.req('POST', '/api/shop/buy', { itemId: 'frame_pumpkin' }, { jar: fresh });
+    assert.equal(early.status, 403); assert.match(early.data.error, /most nem kapható/);
+    assert.equal((await api.req('GET', '/api/shop/state', undefined, { jar: fresh })).data.wallet, 5000, 'nem vont le pénzt');
+    api.state.date = '2026-10-25';
+    st = await api.req('GET', '/api/shop/state', undefined, { jar: fresh });
+    assert.equal(itemOf(st, 'frame_pumpkin').szezon.aktiv, true); assert.equal(itemOf(st, 'frame_pumpkin').szezon.zar, '2026-11-02');
+    const bought = await api.req('POST', '/api/shop/buy', { itemId: 'frame_pumpkin' }, { jar: fresh });
+    assert.equal(bought.status, 200); assert.equal(bought.data.wallet, 5000 - 400);
+    api.state.date = '2026-11-20'; // a szezon véget ért: a megvett tárgy megmarad és felvehető
+    const equip = await api.req('POST', '/api/shop/equip', { slot: 'frame', itemId: 'frame_pumpkin' }, { jar: fresh });
+    assert.equal(equip.status, 200); assert.equal(equip.data.equipped.frame, 'frame_pumpkin');
+    assert.equal((await api.req('POST', '/api/shop/buy', { itemId: 'bg_haunted' }, { jar: fresh })).status, 403, 'újat már nem vehet');
+    api.state.date = '2026-10-07';
+  });
+
+  await test('Ajándék: csak barátnak, a küldő fizet, a barát megkapja; hibás esetek (idegen, magának, kevés pénz, már megvan, szezonon kívüli)', async () => {
+    const A = api.jar(), B = api.jar(), C = api.jar();
+    await register(api, A, 'Ado Aniko', 'ado@example.invalid'); await register(api, B, 'Kapo Bela', 'kapo@example.invalid'); await register(api, C, 'Idegen Imre', 'idegen@example.invalid');
+    const users = JSON.parse(fs.readFileSync(api.file)).users;
+    const id = (mail) => users.find((u) => u.email === mail).id;
+    const [a, b, c] = [id('ado@example.invalid'), id('kapo@example.invalid'), id('idegen@example.invalid')];
+    api.auth.mutate(a, (u) => { u.shop = { wallet: 1000, earned: 1000, owned: [], equipped: {}, claims: {} }; return u; });
+    const gift = (jar, friendId, itemId) => api.req('POST', '/api/shop/gift', { friendId, itemId }, { jar });
+    assert.equal((await gift(A, b, 'frame_silver')).status, 403, 'nem barát: nem küldhet');
+    api.pairs.add([a, b].sort().join('|'));
+    assert.equal((await gift(guest, b, 'frame_silver')).status, 401, 'bejelentkezés nélkül nem');
+    assert.equal((await gift(A, a, 'frame_silver')).status, 400, 'magának nem');
+    assert.equal((await gift(A, '', 'frame_silver')).status, 400);
+    assert.equal((await gift(A, b, 'nincs_ilyen')).status, 404);
+    assert.equal((await gift(A, c, 'frame_silver')).status, 403, 'a másik fél nem barát');
+    assert.equal((await gift(A, b, 'frame_pumpkin')).status, 403, 'szezonon kívül nem ajándékozható');
+    assert.equal((await gift(A, b, 'frame_rainbow')).status, 200, 'a tárgy ára (1000) pont belefér a pénztárcába');
+    const state = (await api.req('GET', '/api/shop/state', undefined, { jar: A })).data;
+    assert.equal(state.wallet, 0, 'a küldő a teljes árat kifizette');
+    const theirs = (await api.req('GET', '/api/shop/state', undefined, { jar: B })).data;
+    assert.ok(theirs.owned.includes('frame_rainbow'), 'a barát megkapta'); assert.equal(theirs.wallet, 0, 'a barát pénze nem változik');
+    assert.deepEqual(api.gifts.at(-1), { from: 'Ado Aniko', to: 'Kapo Bela', item: 'frame_rainbow' }, 'az értesítés kiment');
+    assert.equal((await gift(A, b, 'frame_silver')).status, 402, 'kevés pénz');
+    api.auth.mutate(a, (u) => { u.shop.wallet = 500; return u; });
+    assert.equal((await gift(A, b, 'frame_rainbow')).status, 409, 'neki már megvan');
+    // a kapott tárgy a barát saját tárgya: felveheti
+    assert.equal((await api.req('POST', '/api/shop/equip', { slot: 'frame', itemId: 'frame_rainbow' }, { jar: B })).status, 200);
+    // ajándék-limit napi 5
+    api.auth.mutate(a, (u) => { u.shop.wallet = 9000; return u; });
+    const cheap = ['frame_silver', 'frame_emerald', 'frame_ruby', 'frame_sapphire', 'frame_amethyst'];
+    let sent = 1; // a rainbow már elment
+    for (const item of cheap) { const r = await gift(A, b, item); if (r.status === 200) sent++; else { assert.equal(r.status, 429, item); break; } }
+    assert.equal(sent, GIFTS_PER_DAY, 'naponta legfeljebb ' + GIFTS_PER_DAY + ' ajándék');
+    api.state.date = '2026-10-08';
+    assert.equal((await gift(A, b, 'frame_amethyst')).status, 200, 'másnap újra lehet');
+    api.state.date = '2026-10-07';
   });
 
   await test('A fióktárban tárolt adat: pénztárca, tárgyak, jutalom-jegyzet (jelszó nélkül a válaszban)', async () => {

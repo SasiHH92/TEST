@@ -372,6 +372,27 @@ function createSocial({ auth, roomOf = () => null, emit = () => {}, now = () => 
   }
   const dmPublic = (m) => ({ id: m.id, from: m.from, text: m.text, ts: m.ts });
 
+  // Egy privát üzenet tárolása és kézbesítése (a küldő többi lapjának is). A szöveg már megtisztított.
+  function deliverDm(from, toId, text) {
+    const entry = dms.add(from.id, toId, text);
+    dms.markRead(from.id, toId); // a saját üzeneted nem "olvasatlan" neked
+    emit(toId, 'dm_msg', { from: cardOf(from), message: dmPublic(entry) });
+    emit(from.id, 'dm_sent', { to: toId, message: dmPublic(entry) });
+    return dmPublic(entry);
+  }
+  // Rendszer-üzenet egy barátnak a küldő nevében (pl. "Ajándékot küldtem neked"): csak kölcsönös barátok között.
+  function sendDm(from, toId, text) {
+    if (!dms) return null;
+    const to = byId(toId);
+    if (!to || !socialOf(from).friends.includes(toId) || !socialOf(to).friends.includes(from.id)) return null;
+    const clean = cleanText(text, DM_MAX_LEN);
+    return clean ? deliverDm(from, toId, clean) : null;
+  }
+  const areFriends = (aId, bId) => {
+    const a = byId(aId), b = byId(bId);
+    return !!a && !!b && a.id !== b.id && socialOf(a).friends.includes(b.id) && socialOf(b).friends.includes(a.id);
+  };
+
   router.get('/dm/:userId', (req, res) => {
     const user = requireUser(req);
     if (!dms) fail(503, 'A privát üzenetek most nem érhetők el.');
@@ -391,11 +412,7 @@ function createSocial({ auth, roomOf = () => null, emit = () => {}, now = () => 
     if (t - (dmGap.get(key) || 0) < DM_GAP_MS) fail(429, 'Lassabban! Várj egy kicsit a következő üzenettel.');
     dmGap.set(key, t);
     if (dmGap.size > 5000) dmGap.delete(dmGap.keys().next().value);
-    const entry = dms.add(user.id, friend.id, text);
-    dms.markRead(user.id, friend.id); // a saját üzeneted nem "olvasatlan" neked
-    emit(friend.id, 'dm_msg', { from: cardOf(user), message: dmPublic(entry) });
-    emit(user.id, 'dm_sent', { to: friend.id, message: dmPublic(entry) }); // a többi saját eszköz/lap is látja
-    res.json({ message: dmPublic(entry) });
+    res.json({ message: deliverDm(user, friend.id, text) });
   });
 
   router.post('/dm/read', (req, res) => {
@@ -438,7 +455,7 @@ function createSocial({ auth, roomOf = () => null, emit = () => {}, now = () => 
     return !!viewer && socialOf(viewer).blocked.includes(senderId);
   }
 
-  return { router, connect, disconnect, userOf, touch, issueTicket, consumeTicket, invite, stateFor, presenceOf, hides };
+  return { router, connect, disconnect, userOf, touch, issueTicket, consumeTicket, invite, stateFor, presenceOf, hides, sendDm, areFriends, card: cardOf };
 }
 
 module.exports = { createSocial, socialOf, PRESENCE_MODES, MAX_FRIENDS };

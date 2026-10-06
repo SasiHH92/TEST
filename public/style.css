@@ -3810,6 +3810,42 @@ body.chat-docked #screen-lobby { padding-left: 372px; box-sizing: border-box; }
 .fr-dm .shop-badge { position: absolute; top: -7px; right: -7px; margin: 0; padding: 0 5px; font-size: 10px; }
 .fr-dm.has-unread { border-color: var(--gold); }
 
+/* szezonális tárgyak + ajándék-mód a boltban */
+.it-season { display: inline-block; align-self: flex-start; font-size: 11px; letter-spacing: 0.4px; padding: 2px 9px; border-radius: 999px; color: #ffd9a0; background: rgba(255, 140, 30, 0.14); border: 1px solid rgba(255, 140, 30, 0.45); }
+.gift-banner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 12px; padding: 10px 14px; border-radius: 12px;
+  font-size: 13.5px; color: #fff3d0; background: linear-gradient(180deg, rgba(126, 226, 255, 0.18), rgba(126, 226, 255, 0.06)); border: 1px solid #7ee2ff;
+}
+.gift-note { color: #aef2c0; }
+.fr-icon[data-gift-to]:hover { border-color: #7ee2ff; }
+
+/* szezon: Halloween (Töklámpás keret, Kísértetház) és Karácsony (Izzósoros keret, Havazás) */
+.cos-frame-pumpkin { --frame-c: #ff7a00; --frame-g: rgba(255, 122, 0, 0.6); --frame-anim: cos-glow 1.5s ease-in-out infinite alternate; --spin: 2.8s; }
+.cos-frame-pumpkin::after { background: conic-gradient(from var(--ang), transparent 0 150deg, rgba(255, 122, 0, 0.6) 240deg, #ffd27a 310deg, #9b3dff 340deg, transparent 360deg); }
+.cos-frame-holly { --frame-c: #e23b3b; --frame-g: rgba(226, 59, 59, 0.5); --frame-anim: cos-xmas 2.4s ease-in-out infinite; --spin: 9s; }
+.cos-frame-holly::after { background: repeating-conic-gradient(from var(--ang), #ff3b3b 0 9deg, #2fd37a 9deg 18deg, #ffe27a 18deg 27deg, transparent 27deg 36deg); }
+@keyframes cos-xmas {
+  0%, 100% { box-shadow: var(--frame-base), 0 0 22px rgba(255, 59, 59, 0.65), inset 0 0 0 1px var(--frame-c); }
+  33% { box-shadow: var(--frame-base), 0 0 22px rgba(47, 211, 122, 0.65), inset 0 0 0 1px var(--frame-c); }
+  66% { box-shadow: var(--frame-base), 0 0 22px rgba(255, 226, 122, 0.65), inset 0 0 0 1px var(--frame-c); }
+}
+.mug-card.cos-bg-haunted, .poster.cos-bg-haunted {
+  background:
+    radial-gradient(60% 40% at 50% 108%, rgba(255, 140, 30, 0.38), transparent 70%),
+    radial-gradient(45% 28% at calc(15% + var(--bgx) * 0.7) 30%, rgba(170, 120, 255, 0.2), transparent 72%),
+    radial-gradient(50% 30% at calc(90% - var(--bgx) * 0.7) 62%, rgba(120, 80, 200, 0.18), transparent 72%),
+    linear-gradient(180deg, #1a0d2b, #05020a) !important;
+  --bg-anim: cos-bgx 8s ease-in-out infinite alternate;
+}
+.mug-card.cos-bg-snowfall, .poster.cos-bg-snowfall {
+  background:
+    radial-gradient(2px 2px at 20% 30%, #fff, transparent 70%) 0 var(--bgl) / 100px 100px,
+    radial-gradient(1.4px 1.4px at 70% 60%, #dff3ff, transparent 70%) 0 calc(var(--bgl) * 2) / 50px 50px,
+    radial-gradient(3px 3px at 45% 80%, rgba(255, 255, 255, 0.9), transparent 70%) 0 calc(var(--bgl) * 0.5) / 100px 100px,
+    linear-gradient(180deg, #0e2447, #050f22) !important;
+  --bg-anim: cos-bgl 7s linear infinite;
+}
+
 /* ranglista */
 .rank-panel { width: min(640px, 100%); }
 .rank-metrics { margin-bottom: 0; }

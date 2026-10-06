@@ -84,7 +84,16 @@ const authApi = createAuth({
 });
 app.use('/api/auth',authApi.router);
 // Bolt + napi küldetések (pogácsa). A küldetések haladását a nyilvántartás napi számlálói adják.
-const shopApi = createShop({auth:authApi,dailyCounts:(name)=>dailyCountsFor(name)});
+const shopApi = createShop({
+  auth:authApi,
+  dailyCounts:(name)=>dailyCountsFor(name),
+  areFriends:(a,b)=>socialApi.areFriends(a,b),
+  // Ajándék: a barát privát üzenetet kap (megmarad, olvasatlanként látszik), és élő értesítést, ha online
+  onGift:(sender,recipient,item)=>{
+    socialApi.sendDm(sender,recipient.id,'🎁 Ajándékot küldtem neked: '+item.nev+'!');
+    io.to('u:'+recipient.id).emit('gift_received',{from:socialApi.card(sender),item:{id:item.id,nev:item.nev}});
+  }
+});
 app.use('/api/shop',shopApi.router);
 // Barátlista: kapcsolatok a fiókban, online állapot a socketekből (a `rooms`/`sockets` térképek lentebb jönnek létre,
 // de csak futás közben használjuk őket).
