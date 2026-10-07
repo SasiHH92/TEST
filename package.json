@@ -29,7 +29,8 @@
     "test:roles": "node test/avatar-roles.js",
     "test:gamestate": "node test/gamestate.js",
     "test:assets": "node test/asset-policy.js",
-    "test:flow": "node test/flow.js"
+    "test:flow": "node test/flow.js",
+    "test:cards": "node test/cards.js"
   },
   "engines": {
     "node": ">=18"

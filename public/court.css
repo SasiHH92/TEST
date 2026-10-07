@@ -316,7 +316,8 @@ body.court-intro-on .accusation-ticker { visibility: hidden; }
 .p-state-row { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 2px 0 4px; min-height: 20px; }
 .p-state-row .court-badge { font-size: 10px; padding: 1px 7px; }
 .p-notready { color: var(--court-text-dim); opacity: 0.8; }
-@media (max-width: 560px) { .lobby-mode { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  #screen-game .objection-phase .objection-waiting { text-align: center; } .lobby-mode { grid-template-columns: 1fr; } }
 
 /* ---------------- 14) KAPCSOLAT-SÁV, AVATÁRVÁLASZTÓ ---------------- */
 #connBar.ok { background: linear-gradient(180deg, #1f7a46, #14532d); border-color: #4ade80; }
@@ -328,3 +329,150 @@ body.court-intro-on .accusation-ticker { visibility: hidden; }
 @keyframes stamp-in { from { transform: translateX(-50%) rotate(-14deg) scale(1.8); opacity: 0; } to { transform: translateX(-50%) rotate(-6deg) scale(1); opacity: 1; } }
 .reduced-motion .avatar-stamp.stamp-in { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .avatar-stamp.stamp-in { animation: none !important; } }
+
+/* ============================================================
+   15) KOMPAKT FÁZISPANEL, SZEREP-FÜZET, Z-RÉTEGEK  –  "TARTÓS UI = SZÉLEKEN, KÖZÉP = JÁTÉKVILÁG"
+   A jelenet közepén és a karakterek előtt nincs tartós panel. Tartós: felső fázis-sáv (idő), bal felső szerep-füzet, bal alsó KÁRTYÁIM, jobb oldali ponttábla,
+   alul csak kompakt műveleti sáv. Átmeneti (rövid ideig, egyszerre egy): intro, bizonyíték, kihívás-kártya, ítélet.
+   Z-rétegek (játékképernyő), alulról felfelé:
+     0 jelenet (háttér, karakterek, névtáblák: a #stage saját rétegében) · 70 fázis-gombok (#scenePanel) · 74 KÁRTYÁIM + szerep-füzet · 76 HUD-sávok
+     85 ponttábla-oldalsáv, konfetti · 90 kártya-nagyító · 92 reakciók · 120–128 jelenet-overlayek (intro, ítélet, kihívás, bizonyíték) · 140 pont-felrepülés
+     150 értesítések, kapcsolat-sáv · 200 rendszer-ablakok (súgó, megerősítés)
+   ============================================================ */
+:root {
+  --z-panel: 70; --z-hand: 74; --z-hud: 76; --z-side: 85; --z-preview: 90; --z-reactions: 92;
+  --z-overlay: 125; --z-score-fly: 140; --z-toast: 150; --z-modal: 200;
+}
+.reaction-layer { z-index: var(--z-reactions); }
+
+/* üres panel nem rajzolódik (felkészülés, beszédfázisok nézőknek) */
+#screen-game .content-zone.is-empty { display: none; }
+/* nagy átmeneti overlay alatt a kapcsolódó műveleti sáv megvárja a végét (kihívás-bemutató, ítélet-pecsét): nincs két nagy felület egyszerre */
+body[data-court-major="challenge"] #screen-game[data-phase="challenge_review"] #scenePanel,
+body[data-court-major="verdict"] #screen-game[data-phase="verdict"] #scenePanel { visibility: hidden; }
+
+/* beszédfázis / tanú: csak a saját gombom, panel nélkül (a cím, a beszélő és az idő a felső sávban) */
+#screen-game .content-zone[data-layout="speech"] { width: auto; max-width: calc(100% - var(--hud-rail) - 32px); }
+#screen-game .content-zone[data-layout="speech"] .phase-content { background: none; border: 0; box-shadow: none; backdrop-filter: none; padding: 0; }
+#screen-game .content-zone[data-layout="speech"] .inline-actions .btn { min-width: 200px; min-height: 52px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); }
+/* vádemelés és szavazás: alacsony sáv */
+#screen-game .content-zone[data-layout="accusation"] .phase-content { padding: 8px 14px; gap: 4px; }
+#screen-game .content-zone[data-layout="accusation"] .btn.big { min-height: 46px; }
+#screen-game .content-zone[data-layout="verdict_vote"] { width: min(520px, calc(100% - var(--hud-rail) - 32px)); }
+#screen-game .content-zone[data-layout="verdict_vote"] .phase-content { padding: 8px 14px; gap: 4px; }
+#screen-game .content-zone[data-layout="verdict_vote"] .vote-btn { min-height: 52px; font-size: 20px; }
+#screen-game .content-zone[data-layout="verdict_vote"] .drumroll { font-size: 15px; letter-spacing: 3px; }
+
+/* KIHÍVÁS-ELLENŐRZÉS: egyetlen kompakt sáv alul, a karakterek alatt (a nagy kártya 2 mp után eltűnt) */
+#screen-game .content-zone[data-layout="challenge_review"] { width: min(700px, calc(100% - var(--hud-rail) - 32px)); }
+#screen-game .content-zone[data-layout="challenge_review"] .phase-content { padding: 9px 14px; gap: 0; }
+.rv-strip { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; align-items: center; width: 100%; }
+.rv-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rv-count { font: 800 11px var(--font-disp); letter-spacing: 1.5px; color: var(--role, var(--court-gold)); }
+.rv-who { font-size: 12px; color: #d6d8df; } .rv-who b { color: #fff; } .rv-who i { color: var(--court-amber); font-style: normal; }
+.rv-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; font: 700 15px/1.25 var(--font-body); color: #fff4dd; }
+.rv-noted { font-size: 11px; color: var(--court-green); }
+.rv-actions { display: flex; flex-direction: column; gap: 6px; min-width: 262px; }
+.rv-decide { display: flex; gap: 8px; }
+.rv-decide .btn { flex: 1; min-height: 42px; padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+.rv-wait, .rv-result { font-size: 12px; line-height: 1.3; color: #d6d8df; }
+.rv-result.ok { color: var(--court-green); font-weight: 800; } .rv-result.no { color: var(--court-red-bright); font-weight: 800; }
+.rv-fun { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--court-text-dim); }
+.rv-fun-label { font: 800 10px var(--font-disp); letter-spacing: 1.2px; }
+.rv-fun .btn.small { min-height: 30px; padding: 2px 10px; }
+
+/* ÍTÉLET: ítélet-szó + mondat + gombok; a szavazatok és kihívások lenyithatók (felfelé nyílnak) */
+#screen-game .content-zone[data-layout="result"] .phase-content[data-phase="verdict"] { overflow: visible; padding: 9px 14px; }
+.vd-details summary { cursor: pointer; padding: 3px 10px; list-style: none; border: 1px solid #d6b87388; border-radius: 999px; font: 800 10px var(--font-disp); letter-spacing: 1.2px; color: var(--court-gold); }
+.vd-details summary::-webkit-details-marker { display: none; }
+.vd-details summary:focus-visible { outline: 3px solid var(--court-gold); outline-offset: 2px; }
+.vd-body { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); z-index: 3; max-height: 34dvh; overflow: auto; padding: 10px; background: rgba(9, 12, 20, 0.97); border: 1px solid #d6b87388; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55); }
+.vd-strip .sentence-card { margin: 0; }
+.vd-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.vd-actions .btn { min-height: 40px; }
+
+/* KÖR VÉGE: a pontokat a jobb oldali ponttábla mutatja – széles képernyőn nincs második pontlista a jelenet előtt (kis kijelzőn, ahol a ponttábla lehúzható, marad) */
+@media (min-width: 901px) { #screen-game .phase-content[data-phase="round_results"] .score-table { display: none; } }
+#screen-game .content-zone[data-layout="result"] .phase-content[data-phase="round_results"] { padding: 9px 14px; }
+#screen-game .phase-content[data-phase="round_results"] .results-scroll { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+
+/* SZEREP-FÜZET (bal felső, a BÍRÓI FIGYELŐ általánosítva): a vád-sáv alatt, hogy ne takarja a vádat és a karaktereket */
+#screen-game .judge-watch-bar { top: 178px; width: 196px; max-width: 196px; }
+#screen-game .jw-label { font-size: 11px; letter-spacing: 0.8px; font-weight: 800; }
+.jw-sub { margin: 2px 0 3px; font: 800 10px var(--font-disp); letter-spacing: 1px; color: var(--court-gold); }
+.jw-brief { margin: 0 0 4px; padding-left: 16px; font-size: 12px; line-height: 1.38; color: #d6d8df; }
+@media (max-height: 650px) and (min-width: 701px) { #screen-game .judge-watch-bar { top: 150px; } }
+@media (max-width: 700px) {
+  #screen-game .judge-watch-bar { top: 150px; left: 6px; width: auto; max-width: 168px; }
+  #screen-game .judge-watch-bar .jw-head { min-height: 36px; }
+  #screen-game .jw-label { font-size: 10px; letter-spacing: 0.3px; }
+  #screen-game .jw-brief { font-size: 11px; }
+}
+
+/* nagy átmeneti overlay alatt a vád-sáv (tartós, felül) átmenetileg elhalványul, hogy ne ússzon rá a kártyára */
+body[data-court-major] #screen-game .accusation-ticker { opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
+
+/* ---------------- 16) A KOMPAKT SÁVOK ÉS A KÁRTYA-KÉZ EGYMÁS MELLETT ---------------- */
+/* széles képernyőn a bal alsó pakli mellett, a maradék sávban középre igazítva; keskeny képernyőn (lehúzható ponttábla) a pakli fölött */
+@media (min-width: 901px) {
+  body.has-hand #screen-game .content-zone:not([data-layout="speech"]) {
+    left: calc(244px + (100% - var(--hud-rail) - 244px) / 2); max-width: calc(100% - var(--hud-rail) - 268px); min-width: 0;
+  }
+  #screen-game .content-zone[data-layout="challenge_review"], #screen-game .content-zone[data-layout="result"] { width: min(640px, calc(100% - var(--hud-rail) - 32px)); }
+}
+@media (max-width: 900px) {
+  body.has-hand #screen-game .content-zone, body.has-hand #screen-game .content-zone[data-layout] { bottom: calc(54px + 62px + 8px); }
+}
+
+/* ---------------- 17) KOMPAKT SÁVOK: minden tartós panel ≤ ~125 px magas, hogy a vádlott és a terem ne legyen takarva ---------------- */
+.rv-actions { min-width: 214px; }
+.rv-decide .btn { padding: 6px 8px; font-size: 12.5px; }
+/* ítélet: ítélet-szó | mondat | gombok (a szavazatok és kihívások lenyithatók, felfelé nyílnak) */
+.vd-strip { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; width: 100%; }
+.vd-word { padding: 2px 12px; border-radius: 4px; font: 900 20px/28px var(--font-disp); letter-spacing: 2px; color: #fff; }
+.vd-word.guilty { background: #c81e2b; } .vd-word.not-guilty { background: #159447; }
+.vd-mid { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vd-strip .sentence-card { margin: 0; padding: 6px 10px; font-size: 14px; line-height: 1.3; display: block; }
+.vd-strip .sc-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+.vd-strip .sentence-stamp { display: none; }
+.vd-strip .favorite-note { margin: 0; padding: 0; font-size: 11px; }
+.vd-small { display: flex; gap: 6px; align-items: center; }
+.vd-small .btn { min-height: 30px; padding: 3px 10px; font-size: 11px; white-space: nowrap; }
+.vd-details summary { min-height: 30px; display: inline-flex; align-items: center; white-space: nowrap; }
+.vd-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+/* tiltakozás: szöveg balra, gombok jobbra – egy alacsony sor */
+#screen-game .objection-phase { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; }
+#screen-game .objection-phase > .objection-phase-sub, #screen-game .objection-phase > .objection-rule, #screen-game .objection-phase > .objection-instruction,
+#screen-game .objection-phase > .objection-waiting, #screen-game .objection-phase > .objection-result { grid-column: 1; margin: 0; }
+#screen-game .objection-phase > .objection-buttons, #screen-game .objection-phase > #iaDone { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+#screen-game .objection-phase .objection-phase-sub, #screen-game .objection-phase .objection-instruction { font-size: 13px; padding: 2px 4px; }
+#screen-game .objection-phase .objection-rule { font-size: 11px; }
+#screen-game .objection-phase .objection-buttons .btn, #screen-game .objection-phase #iaDone { min-height: 44px; font-size: 14px; }
+#screen-game .content-zone[data-layout="objection"] .phase-content { padding: 8px 14px; }
+#screen-game .content-zone[data-layout="objection"] { width: min(640px, calc(100% - var(--hud-rail) - 32px)); }
+/* kihívás-szavazás (esküdt-mód): a sorok két oszlopban, a felső sáv már kérdezi, hogy teljesítették-e */
+#screen-game .content-zone[data-layout="challenge_vote"] .phase-content { padding: 8px 12px; }
+.cv-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 6px 10px; width: 100%; }
+@media (max-width: 560px) {
+  .rv-strip, .vd-strip { grid-template-columns: minmax(0, 1fr); }
+  .rv-actions { min-width: 0; }
+  .vd-word { justify-self: start; }
+  #screen-game .objection-phase { grid-template-columns: minmax(0, 1fr); }
+  #screen-game .objection-phase > .objection-buttons, #screen-game .objection-phase > #iaDone { grid-column: 1; grid-row: auto; }
+}
+
+/* tiltakozás: a nem-bíróknak egyetlen sor várakozás (nincs keretes doboz) */
+#screen-game .objection-phase .objection-waiting { padding: 2px 4px; border: 0; background: none; box-shadow: none; font-size: 13px; text-align: left; }
+
+/* keskeny asztali kijelzőn (a ponttábla és a pakli mellett kevés a hely) az ítélet-sáv két oszlopos: fent az ítélet-szó, alatta a mondat és a gombok */
+
+@media (min-width: 561px) and (max-width: 1100px) {
+  /* három oszlop: ítélet-szó | egyhangú-jelzés | gombok (a gombok két sort töltenek ki); alattuk a mondat – nem nő a sáv */
+  .vd-strip { grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; }
+  .vd-word { grid-column: 1; grid-row: 1; justify-self: start; font-size: 14px; line-height: 20px; padding: 0 10px; }
+  .vd-strip .vd-mid { display: contents; }
+  .vd-strip .favorite-note { grid-column: 2; grid-row: 1; justify-self: start; align-self: center; font-size: 10px; }
+  .vd-strip .sentence-card { grid-column: 1 / span 2; grid-row: 2; }
+  .vd-strip .sc-text { -webkit-line-clamp: 3; }
+  .vd-actions { grid-column: 3; grid-row: 1 / span 2; justify-content: center; }
+}

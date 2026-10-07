@@ -146,13 +146,15 @@ SFX.paper = () => { noiseBurst(0.16, 0, 0.18, 2600); noiseBurst(0.1, 0.12, 0.12,
 SFX.stampHit = () => { noiseBurst(0.1, 0, 0.5, 600); tone(110, 0.14, 'sine', 0, 0.6, 60); };
 SFX.points = () => { tone(880, 0.1, 'triangle', 0, 0.28); tone(1320, 0.16, 'triangle', 0.08, 0.26); };
 SFX.tick = () => tone(1000, 0.05, 'square', 0, 0.14);
+SFX.cardSlide = () => { noiseBurst(0.12, 0, 0.14, 2200); tone(520, 0.07, 'triangle', 0.05, 0.14); };
 SFX.join = () => { tone(600, 0.08, 'sine', 0, 0.22); tone(900, 0.1, 'sine', 0.07, 0.2); };
 SFX.ready = () => tone(1046, 0.1, 'triangle', 0, 0.26);
 let chatSound = LS.getItem('kb_chat_sound') !== '0';
 // Hang-hívások néven (a court.js és a többi modul ezen át szólaltat meg): ismeretlen név vagy hiba esetén csend.
 const SOUND_HOOKS = {
   gavel: 'gavel', intro: 'intro', 'intro-open': 'openCourt', evidence: 'paper', challenge: 'stampHit', points: 'points', countdown: 'tick',
-  'verdict-guilty': 'guilty', 'verdict-acquitted': 'acquit', join: 'join', ready: 'ready', vote: 'vote', objection: 'objection', ding: 'ding'
+  'verdict-guilty': 'guilty', 'verdict-acquitted': 'acquit', join: 'join', ready: 'ready', vote: 'vote', objection: 'objection', ding: 'ding',
+  'card-open': 'paper', 'card-new': 'cardSlide', 'card-select': 'tick'
 };
 window.kbSound = {
   ping() { if (chatSound) { ensureAudio(); SFX.dm(); } },
@@ -796,11 +798,6 @@ function layoutStagePlates() {
   const g=sceneGeometry(), base=stage.getBoundingClientRect();
   const panel=$('#scenePanel');
   const cards=$('#myCardsBar');
-  if(cards && !panel.contains(cards) && !cards.classList.contains('hidden')) {
-    cards.style.bottom='';
-    const c=cards.getBoundingClientRect(),r=panel.getBoundingClientRect();
-    if(c.right>r.left-8 && c.bottom>r.top && c.top<r.bottom) cards.style.bottom=(base.bottom-r.top+12)+'px';
-  }
   const barriers=[panel,$('#accusationTicker'),$('.info-bar'),$('#roleBanner'),$('#judgeWatchBar'),$('#judgeBubble'),$('#stageSlots .stage-jury-more'),cards]
     .filter(el=>el && !el.classList.contains('hidden') && el.getClientRects().length)
     .map(el=>el.getBoundingClientRect());
@@ -1954,77 +1951,29 @@ $('#btnRemoveBot').addEventListener('click', () => {
 // ============================================================
 
 // ============================================================
-// KÁRTYÁIM – állandó kompakt sáv (ügyész, vádlott, védőügyvéd)
-// Az ügyész a bizonyítékait, a vádlott az alibijét, a védőügyvéd az ügyész bizonyítékait ("AZ ÜGYÉSZ BIZONYÍTÉKAI")
-// és a trükkjeit, mindenki a saját kihívását látja, a felkészüléstől az ítéletig. Nem tolja ki a visszaszámlálót
-// és a gombokat: külön, alacsony sáv a tartalom fölött (mobilon összecsukható).
+// KÁRTYÁIM – fizikai kártyapakli (cards.js)
+// A leírókat a SZERVER által NEKEM küldött privát adatból építjük (S.evidence / S.alibi / S.tricks / S.witnessCard / S.myChallenge): más játékos titkos kártyája
+// a kliensre sem érkezik meg, így a DOM-ban sincs. A kliens nem dönt a láthatóságról, csak megjeleníti, amit kapott.
+// Az ügyész a bizonyítékait, a vádlott az alibijét, a védőügyvéd az ügyész bizonyítékait és a trükkjeit, a tanú a tanúkártyáját, a szereplők a kihívásukat látják.
 // ============================================================
-
-// Asztali gépen alapból nyitva (végig látszanak a kártyák), telefonon összecsukva (kevés a hely).
-const cardsDefaultCollapsed = () => matchMedia('(max-width:700px)').matches;
-let myCardsCollapsed = cardsDefaultCollapsed();
 const CARD_VISIBLE_PHASES = ['prep', 'prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'verdict_vote', 'verdict', 'objection', 'challenge_review'];
-
+function hashStr(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+function myCardList() {
+  if (!S || !CARD_VISIBLE_PHASES.includes(S.phase)) return [];
+  const role = myRole(), cs = S.caseNo || '';
+  const list = [];
+  const add = (type, text, i, extra, numbered) => list.push({ id: type + ':' + cs + ':' + i + ':' + hashStr(String(text)), type, content: String(text), visibility: 'private', caseNumber: cs, number: numbered ? i + 1 : 0, ...extra });
+  if (Array.isArray(S.evidence) && (role === 'prosecutor' || role === 'defender')) S.evidence.forEach((e, i) => add('evidence', e, i, { subtitle: role === 'prosecutor' ? 'A titkos bizonyítékaid' : 'Az ügyész bizonyítékai' }, true));
+  if (Array.isArray(S.tricks) && role === 'defender') S.tricks.forEach((t, i) => add('trick', t, i, { subtitle: 'A titkos trükkjeid' }, true));
+  if (S.alibi && role === 'defendant') add('alibi', S.alibi, 0, { subtitle: 'A titkos alibid' });
+  if (S.witnessCard && role === 'witness') add('witness', S.witnessCard, 0, {});
+  if (S.myChallenge && (role === 'prosecutor' || role === 'defender' || role === 'defendant')) add('challenge', S.myChallenge, 0, { subtitle: 'Teljesítsd a beszéded közben!' });
+  return list;
+}
 function renderMyCardsBar() {
-  const bar = $('#myCardsBar');
-  if (!bar) return;
-  const role = myRole();
-  const chips = [];
-  const inPhase = CARD_VISIBLE_PHASES.includes(S.phase);
-
-  if (inPhase && S.evidence && (role === 'prosecutor' || role === 'defender')) {
-    const head = role === 'prosecutor' ? 'A TITKOS BIZONYÍTÉKAID' : 'AZ ÜGYÉSZ BIZONYÍTÉKAI';
-    chips.push('<span class="mcb-head" style="--role:' + ROLE_COLOR.prosecutor + '">' + head + '</span>');
-    S.evidence.forEach((e) => chips.push(
-      '<span class="mcb-card" style="--role:' + ROLE_COLOR.prosecutor + '">' +
-      '<span class="mcb-type">BIZONYÍTÉK</span><span class="mcb-text">' + escapeHtml(e) + '</span></span>'));
-  }
-  if (inPhase && S.tricks && role === 'defender') {
-    chips.push('<span class="mcb-head" style="--role:' + ROLE_COLOR.defender + '">A TITKOS TRÜKKJEID</span>');
-    S.tricks.forEach((t) => chips.push(
-      '<span class="mcb-card" style="--role:' + ROLE_COLOR.defender + '">' +
-      '<span class="mcb-type">TRÜKK</span><span class="mcb-text">' + escapeHtml(t) + '</span></span>'));
-  }
-  if (inPhase && S.alibi && role === 'defendant') {
-    chips.push('<span class="mcb-head" style="--role:' + ROLE_COLOR.defendant + '">A TITKOS ALIBID</span>');
-    chips.push('<span class="mcb-card" style="--role:' + ROLE_COLOR.defendant + '">' +
-      '<span class="mcb-type">ALIBI</span><span class="mcb-text">' + escapeHtml(S.alibi) + '</span></span>');
-  }
-  if (inPhase && S.witnessCard && role === 'witness') {
-    chips.push('<span class="mcb-head" style="--role:' + ROLE_COLOR.witness + '">A TITKOS TANÚKÁRTYÁD</span>');
-    chips.push('<span class="mcb-card" style="--role:' + ROLE_COLOR.witness + '">' +
-      '<span class="mcb-type">TANÚ</span><span class="mcb-text">' + escapeHtml(S.witnessCard) + '</span></span>');
-  }
-  if (inPhase && S.myChallenge && (role === 'prosecutor' || role === 'defender' || role === 'defendant')) {
-    chips.push('<span class="mcb-card" style="--role:' + roleColorOf(role) + '">' +
-      '<span class="mcb-type">🎬 KIHÍVÁS</span><span class="mcb-text">' + escapeHtml(S.myChallenge) + '</span></span>');
-  }
-
-  const prepHtml=S.phase==='prep'?(role==='defender'?chips.join(''):secretCardsHtml()+challengeHtmlIfMine()):'';
-  if(prepHtml && renderMyCardsBar.lastPhase!=='prep') myCardsCollapsed=false;
-  if(S.phase!=='prep' && renderMyCardsBar.lastPhase==='prep') myCardsCollapsed=cardsDefaultCollapsed();
-  renderMyCardsBar.lastPhase=S.phase;
-  if ((!prepHtml && chips.length === 0) || S.phase === 'lobby' || S.phase === 'game_over') {
-    bar.classList.add('hidden');
-    bar.innerHTML = '';
-    delete bar.dataset.html;
-    return;
-  }
-
-  bar.classList.remove('hidden');
-  const body = '<div class="mcb-body' + (myCardsCollapsed ? ' collapsed' : '') + '">' + (prepHtml||chips.join('')) + '</div>';
-  const head = '<button class="mcb-toggle" id="mcbToggle" type="button" aria-label="Kártyák összecsukása">' +
-    '<span class="mcb-only-you">CSAK TE LÁTOD</span>' +
-    '<span class="mcb-cards-ico">🎴 KÁRTYÁIM</span><span class="mcb-caret">' + (myCardsCollapsed ? '▸' : '▾') + '</span></button>';
-  const html = head + body;
-  if (bar.dataset.html !== html) {
-    bar.innerHTML = html;
-    bar.dataset.html = html;
-    const t = $('#mcbToggle');
-    if (t) t.addEventListener('click', () => { myCardsCollapsed = !myCardsCollapsed; renderMyCardsBar(); scheduleSceneLayout(); });
-  }
-  if(matchMedia('(max-width:700px)').matches && S.phase==='prep') $('#phaseContent').appendChild(bar);
-  scheduleSceneLayout();
+  if (!window.kbCards) return;
+  const show = S && S.phase !== 'lobby' && S.phase !== 'game_over';
+  window.kbCards.update(show ? myCardList() : [], { phase: S ? S.phase : '' });
 }
 
 // A jelenet-rendezőnek (court.js) átadott KIVONAT a szerver állapotából: csak megjelenítéshez, a kliens semmit nem dönt el belőle.
@@ -2293,44 +2242,64 @@ function renderStage() {
 
 let jwCollapsed = true;
 let jwLastNowText = '';
+let jwKey = '';
+
+// A fázis-panelből kikerült szerep-útmutatók egyetlen helye. A bíró füzete (BÍRÓI FIGYELŐ) végig megvan; a többi szerep rövid útmutatója a felkészülés elején
+// magától kinyílik, utána összecsukható. Ugyanaz az információ nem jelenik meg a jelenet közepén is.
+const ROLE_BRIEF = {
+  judge:      { title: '⚖ BÍRÓI FIGYELŐ', sub: 'Ebben a körben te vagy a bíró', bullets: ['Figyeld a feleket.', 'Jegyezd meg a kihívásokat.', 'A kör végén te értékelsz.'], always: true },
+  juror:      { title: 'ESKÜDT', sub: 'Kávészünet az esküdteknek', bullets: ['A felek most készülnek.', 'Figyeljetek a reakciókra.'], phases: ['prep'] },
+  prosecutor: { title: 'ÜGYÉSZ', sub: 'Készülj a vádbeszédre', bullets: ['Ezekre építsd a vádbeszédet!', 'A kártyáidat a többiek nem látják.'], phases: ['prep'] },
+  defendant:  { title: 'VÁDLOTT', sub: 'Készülj a védekezésre', bullets: ['Erre építsd a védekezésed!', 'A kártyáidat a többiek nem látják.'], phases: ['prep'] },
+  defender:   { title: 'VÉDŐÜGYVÉD', sub: 'Készülj a védőbeszédre', bullets: ['Ezekkel erősítsd a védőbeszédedet!', 'A kártyáidat a többiek nem látják.'], phases: ['prep'] },
+  witness:    { title: 'TANÚ', sub: 'Te vagy a meglepetés tanú', bullets: ['Ez alapján tegyél vallomást!', 'Te döntöd el, kinek segítesz…'], phases: ['prep', 'witness'] }
+};
+const BRIEF_HIDDEN_PHASES = ['lobby', 'game_over', 'round_results', 'verdict'];
 
 function renderJudgeWatchBar() {
   const bar = $('#judgeWatchBar');
   if (!bar) return;
-  if (!S.judgeWatch || S.judgeWatch.length === 0) {
+  const role = myRole();
+  const brief = ROLE_BRIEF[role];
+  const watch = Array.isArray(S.judgeWatch) ? S.judgeWatch : [];
+  const show = !!brief && !BRIEF_HIDDEN_PHASES.includes(S.phase) && (brief.always || (brief.phases || []).includes(S.phase));
+  if (!show && !watch.length) {
     bar.classList.add('hidden');
     jwLastNowText = '';
     return;
   }
-  // Új "most figyeld" kihívásnál nyíljon ki magától.
-  if (S.watchNow && S.watchNow.text !== jwLastNowText) {
-    jwLastNowText = S.watchNow.text;
-    jwCollapsed = true;
-  }
+  // új útmutató-kulcs (szerep + fázis): a nem-bírónak a felkészülésnél nyitva, egyébként összecsukva indul
+  const key = role + ':' + S.phase + ':' + (S.caseNo || '');
+  if (key !== jwKey) { jwKey = key; jwCollapsed = !(brief && !brief.always && S.phase === 'prep' && matchMedia('(min-width:701px)').matches); }
+  // Új "most figyeld" kihívásnál a jelzés látszik (a füzet összecsukva marad).
+  if (S.watchNow && S.watchNow.text !== jwLastNowText) { jwLastNowText = S.watchNow.text; jwCollapsed = true; }
   const notes = S.judgeNotes || {};
   const iAmJudge = !!S.currentJudgeId && S.currentJudgeId === MY.playerId;
   const caret = jwCollapsed ? '▸' : '▾';
-  let html = '<button class="jw-head" id="jwHead" type="button">' +
-    '<span class="jw-label">👨‍⚖️ BÍRÓI FIGYELŐ • ' + (iAmJudge ? 'EBBEN A KÖRBEN TE VAGY A BÍRÓ' :
-      ('A KÖR BÍRÓJA: ' + (S.judgeName || '?').toUpperCase())) +
-    ' (' + S.judgeWatch.length + ')</span><span class="jw-caret">' + caret + '</span></button>';
+  const title = brief ? brief.title : '⚖ BÍRÓI FIGYELŐ';
+  let html = '<button class="jw-head" id="jwHead" type="button" aria-expanded="' + String(!jwCollapsed) + '" aria-controls="jwBody">' +
+    '<span class="jw-label">' + escapeHtml(title) + (watch.length ? ' (' + watch.length + ')' : '') + '</span><span class="jw-caret">' + caret + '</span></button>';
   if (S.watchNow) {
     const col = SPEAKER_OF[S.phase] ? ROLE_COLOR[SPEAKER_OF[S.phase]] : '#f2c14e';
     html += '<span class="jw-now" style="--role:' + col + '">Most figyeld: <b>„' + escapeHtml(S.watchNow.text) + '”</b>' +
       (S.watchNow.difficulty ? ' <i class="jw-hard">NEHEZÍTÉS</i>' : '') +
       '<button class="jw-note' + (notes[S.watchNow.who] ? ' on' : '') + '" data-jnote="' + S.watchNow.who + '">Észrevettem ✓</button></span>';
   }
-  html += '<div class="jw-body' + (jwCollapsed ? ' collapsed' : '') + '">';
-  html += '<div class="jw-list">' + S.judgeWatch.map((c) =>
-    '<span class="jw-item' + (notes[c.who] ? ' noted' : '') + '"><b>' + escapeHtml(c.name) + '</b> (' + WHO_LABEL[c.who] + '): ' +
-    escapeHtml(c.text) + (c.difficulty ? ' <i class="jw-hard">NEHEZÍTÉS</i>' : '') + '</span>'
-  ).join('') + '</div>';
+  html += '<div class="jw-body' + (jwCollapsed ? ' collapsed' : '') + '" id="jwBody">';
+  if (brief) {
+    html += '<div class="jw-sub">' + escapeHtml(iAmJudge && brief.always ? 'EBBEN A KÖRBEN TE VAGY A BÍRÓ' : brief.sub.toUpperCase()) + '</div>' +
+      '<ul class="jw-brief">' + brief.bullets.map((b) => '<li>' + escapeHtml(b) + '</li>').join('') + '</ul>';
+  }
+  if (watch.length) {
+    html += '<div class="jw-list">' + watch.map((c) =>
+      '<span class="jw-item' + (notes[c.who] ? ' noted' : '') + '"><b>' + escapeHtml(c.name) + '</b> (' + WHO_LABEL[c.who] + '): ' +
+      escapeHtml(c.text) + (c.difficulty ? ' <i class="jw-hard">NEHEZÍTÉS</i>' : '') + '</span>').join('') + '</div>';
+  }
   html += '</div>';
   bar.innerHTML = html;
   bar.classList.remove('hidden');
   bar.classList.toggle('collapsed', jwCollapsed);
   const head = $('#jwHead');
-  head.setAttribute('aria-expanded', String(!jwCollapsed));
   if (head) head.addEventListener('click', () => { jwCollapsed = !jwCollapsed; renderJudgeWatchBar(); });
   bar.querySelectorAll('[data-jnote]').forEach((b) => {
     b.addEventListener('click', () => socket.emit('judge_note', { who: b.dataset.jnote }));
@@ -2525,43 +2494,20 @@ function renderRoleBanner() {
     : '';
   // A HUD alcíme és a hátralévő idő: a szöveg a court.js egyetlen fázis-leképezéséből, az idő a szerver által adott lejáratból (phaseEndsAt).
   const ui = window.kbCourt ? window.kbCourt.phaseUi(S.phase, { objection: S.objectionData ? { phase: S.objectionData.phase } : null }) : null;
-  const timed = !!S.phaseEndsAt && HUD_TIMED.includes(S.phase);
+  const endsAt = hudEndsAt();
   el.innerHTML = '<div class="rb-title">' + title + '</div>' +
     (speakerId ? '<div class="rb-speaker"><span class="rb-avatar">' + avatarEmoji(avatarOf(speakerId)) + '</span>' +
       escapeHtml(nameOf(speakerId)) + '</div>' : '') +
     (ui && ui.sub ? '<div class="rb-sub">' + escapeHtml(ui.sub) + '</div>' : '') +
-    (timed ? '<div class="rb-time" id="rbTime" role="timer" aria-label="Hátralévő idő">' + fmtTime(Math.max(0, S.phaseEndsAt - (Date.now() + serverOffset))) + '</div>' : '') + judgeLine;
+    (endsAt ? '<div class="rb-time" id="rbTime" role="timer" aria-label="Hátralévő idő">' + fmtTime(Math.max(0, endsAt - (Date.now() + serverOffset))) + '</div>' : '') + judgeLine;
 }
 const HUD_TIMED = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'prep', 'verdict_vote', 'challenge_vote'];
 
-const RING_R = 52;
-const RING_C = 2 * Math.PI * RING_R;
-let timerTotalCache = { endsAt: 0, ms: 0 };
-
-function timerHtml() {
-  if (!S.phaseEndsAt) return '';
-  const rem = Math.max(0, S.phaseEndsAt - (Date.now() + serverOffset));
-  if (timerTotalCache.endsAt !== S.phaseEndsAt) timerTotalCache = { endsAt: S.phaseEndsAt, ms: Math.max(rem, 1000) };
-  const frac = Math.max(0, Math.min(1, rem / timerTotalCache.ms));
-  const secs = rem / 1000;
-  const cls = secs <= 10 ? 'danger' : secs <= 20 ? 'warn' : '';
-  return '<div class="timer-ring ' + cls + '" id="timerBox" data-total="' + timerTotalCache.ms + '">' +
-    '<svg viewBox="0 0 118 118"><circle class="tr-bg" cx="59" cy="59" r="' + RING_R + '"/>' +
-    '<circle class="tr-fg" cx="59" cy="59" r="' + RING_R + '" stroke-dasharray="' + RING_C + '" stroke-dashoffset="' + (RING_C * (1 - frac)) + '"/></svg>' +
-    '<div class="tr-text">' + fmtTime(rem) + '</div></div>';
-}
-
-// Segédfüggvény a tiltakozás fázisaihoz: külön gyűrű alakban.
-function timerRingHtml(remaining, total, color) {
-  const frac = Math.max(0, Math.min(1, remaining / total));
-  const secs = remaining / 1000;
-  const cls = secs <= 10 ? 'danger' : secs <= 20 ? 'warn' : '';
-  return '<div id="timerBox" data-total="' + total + '" class="timer-ring ' + cls + '" style="--ring-color:' + color + '">' +
-    '<svg viewBox="0 0 118 118"><circle class="tr-bg" cx="59" cy="59" r="' + RING_R + '"/>' +
-    '<circle class="tr-fg" cx="59" cy="59" r="' + RING_R + '" stroke-dasharray="' + RING_C + '" ' +
-    'stroke-dashoffset="' + (RING_C * (1 - frac)) + '" ' +
-    'style="stroke:' + color + '"/></svg>' +
-    '<div class="tr-text">' + fmtTime(remaining) + '</div></div>';
+// A HUD-ban mutatott lejárat (a SZERVER ideje): időzített fázisokban a phaseEndsAt, a tiltakozásnál a megfelelő szakasz lejárata. Más fázisban 0 (nincs idő).
+function hudEndsAt() {
+  if (!S) return 0;
+  if (S.phase === 'objection') { const od = S.objectionData || {}; return od.phase === 'defense' ? (od.defenderEndsAt || 0) : od.phase === 'judge' ? (od.judgeEndsAt || 0) : 0; }
+  return HUD_TIMED.includes(S.phase) ? (S.phaseEndsAt || 0) : 0;
 }
 
 function startTimerLoop() {
@@ -2569,8 +2515,9 @@ function startTimerLoop() {
   timerInterval = setInterval(() => {
     const countdown = $('#autoCountdown');
     if (countdown && S?.autoAdvance) countdown.textContent = countdown.dataset.label + ': ' + Math.max(0, Math.ceil((S.autoAdvance.endsAt - Date.now() - serverOffset) / 1000));
-    if (!S || !S.phaseEndsAt) return;
-    const rem = Math.max(0, S.phaseEndsAt - (Date.now() + serverOffset));
+    const endsAt = hudEndsAt();
+    if (!endsAt) return;
+    const rem = Math.max(0, endsAt - (Date.now() + serverOffset));
     // HUD-idő: figyelmeztetés 10 mp-től (sárga), 5 mp-től (piros, lüktet); az utolsó 3 mp-ben a nagy 3-2-1 (court.js). Csak a szerver idejét mutatja.
     const hud = $('#rbTime');
     if (hud) {
@@ -2579,63 +2526,7 @@ function startTimerLoop() {
       hud.className = 'rb-time' + (left <= 5 ? ' danger' : left <= 10 ? ' warn' : '');
     }
     if (window.kbCourt) window.kbCourt.tick(rem, S.phase);
-    const box = $('#timerBox');
-    if (!box) return;
-    const total = +box.dataset.total || 1;
-    const frac = Math.max(0, Math.min(1, rem / total));
-    const fg = box.querySelector('.tr-fg');
-    if (fg) fg.style.strokeDashoffset = RING_C * (1 - frac);
-    const txt = box.querySelector('.tr-text');
-    if (txt) txt.textContent = fmtTime(rem);
-    const secs = rem / 1000;
-    box.className = 'timer-ring ' + (secs <= 10 ? 'danger' : secs <= 20 ? 'warn' : '');
   }, 250);
-}
-
-function secretCardsHtml() {
-  const role = myRole();
-  const you = '<span class="only-you">CSAK TE LÁTOD</span>';
-  const cardHtml = (type, cls, text, i) =>
-    '<div class="secret-card reveal" style="animation-delay:' + (i * 0.09) + 's">' +
-    '<span class="card-type ' + cls + '">' + type + '</span>' +
-    '<span class="card-text">' + escapeHtml(text) + '</span>' +
-    '<span class="card-stamp">ÜGYIRAT</span></div>';
-
-  if (S.phase === 'prep' && role === 'prosecutor' && S.evidence) {
-    return '<div class="cards-heading t-head-evidence">🔐 A TITKOS BIZONYÍTÉKAID</div><div class="role-chip" style="--role:' + ROLE_COLOR.prosecutor + '">ÜGYÉSZ</div>' + you + '<div class="cards-row">' +
-      S.evidence.map((e, i) => cardHtml('BIZONYÍTÉK', 't-evidence', e, i)).join('') +
-      '</div><p class="next-step">Ezekre építsd a vádbeszédet! A többiek nem látják.</p>';
-  }
-  if (S.phase === 'prep' && role === 'defendant' && S.alibi) {
-    return '<div class="cards-heading t-head-alibi">🔐 A TITKOS ALIBID</div><div class="role-chip" style="--role:' + ROLE_COLOR.defendant + '">VÁDLOTT</div>' + you + '<div class="cards-row">' +
-      cardHtml('ALIBI', 't-alibi', S.alibi, 0) + '</div>' +
-      '<p class="next-step">Erre építsd a védekezésed! A többiek nem látják.</p>';
-  }
-  if (S.phase === 'prep' && role === 'defender' && S.tricks) {
-    return '<div class="cards-heading t-head-trick">🔐 A TITKOS TRÜKKJEID</div><div class="role-chip" style="--role:' + ROLE_COLOR.defender + '">VÉDŐÜGYVÉD</div>' + you + '<div class="cards-row">' +
-      S.tricks.map((t, i) => cardHtml('TRÜKK', 't-trick', t, i)).join('') +
-      '</div><p class="next-step">Ezekkel erősítsd a védőbeszédedet! A többiek nem látják.</p>';
-  }
-  if (S.phase === 'prep' && role === 'witness' && S.witnessCard) {
-    return '<div class="cards-heading t-head-witness">🔐 A TITKOS TANÚKÁRTYÁD</div><div class="cards-row">' +
-      cardHtml('TANÚ', 't-witness', S.witnessCard, 0) + '</div>';
-  }
-  return '';
-}
-
-function challengeHtmlIfMine() {
-  const role = myRole();
-  // A kihívás a FELKÉSZÜLÉS alatt mindenkinek megjelenik; a beszédfázisokban
-  // az ügyész és a védőügyvéd folyamatosan látja (a vádlotténál a szerver
-  // a felkészülés után is elküldi – a KÁRTYÁIM sávban marad).
-  const phasesOk = S.phase === 'prep';
-  if (S.myChallenge && phasesOk) {
-    const lbl = roleLabel(role);
-    return '<div class="secret-card single reveal"><span class="card-type t-challenge">🎬 A TITKOS KIHÍVÁSOD</span><span class="card-text">' + escapeHtml(S.myChallenge) +
-      '</span><span class="role-chip" style="--role:' + roleColorOf(role) + '">' + lbl + '</span><span class="card-stamp">ÜGYIRAT</span></div>' +
-      '<p class="next-step">Ez a te titkos kihívásod – teljesítsd a beszéded közben!</p>';
-  }
-  return '';
 }
 
 function autoCountdownHtml() {
@@ -2655,10 +2546,9 @@ function revealedCardsHtml() {
   return '<details class="revealed-cards"><summary>🎴 AZ ÖSSZES KÁRTYA FELFEDÉSE</summary><div class="revealed-panel">' + items.map(x=>'<p>' + escapeHtml(x) + '</p>').join('') + '</div></details>';
 }
 
+let vdOpen = false; // az ítélet-részletek lenyitva maradnak a state-frissítések közt
 function renderPhaseContent() {
   const el = $('#phaseContent');
-  const cardsBar=$('#myCardsBar');
-  if(el.contains(cardsBar)) $('.game-main').appendChild(cardsBar);
   const role = myRole();
   stopDrumroll();
   let html = '';
@@ -2670,44 +2560,18 @@ function renderPhaseContent() {
       break;
     }
     case 'prep': {
-      // Kompakt sor: a visszaszámláló MELLETT a titkos kártyák (flex-wrap).
-      // A kihívás is itt derül ki mindenki számára (felkészülés alatt látszik).
-      html = '<div class="prep-row"><div class="prep-clock">'+timerHtml()+'</div><p class="next-step">Felkészülés – olvasd át a titkos kártyáidat.</p></div>';
-      if (role === 'juror') html += '<p class="next-step">Kávészünet az esküdteknek – a felek most készülnek, figyeljetek a reakciókra…</p>';
-      else if (role === 'judge' || (S.currentJudgeId && S.currentJudgeId === MY.playerId)) {
-        html += '<p class="next-step">👨‍⚖️ Te vagy ebben a körben a BÍRÓ – figyelj a felekre, a kihívásokat később Te értékeled!</p>';
-      }
+      // Felkészülés: az idő a felső fázis-sávban, a kártyák a KÁRTYÁIM-ban, a szerep-útmutató a bal felső füzetben – a jelenet közepe szabad (nincs panel).
+      html = '';
       break;
     }
     case 'prosecution':
     case 'defense':
-    case 'defender': {
-      // A fázis neve és a beszélő a fázis-sávban szerepel – itt nincs dupla cím.
-      const label = S.phase === 'prosecution' ? 'Figyeljetek a vádbeszédre!'
-        : S.phase === 'defense' ? 'Figyeljetek a védekezésre!' : 'Figyeljetek a védőügyvédre!';
-      html = '<div class="speech-row">' + timerHtml() + inlineActions() + '</div>' +
-        challengeHtmlIfMine();
-      if (role !== (S.phase === 'prosecution' ? 'prosecutor' : S.phase === 'defense' ? 'defendant' : 'defender')) {
-        html += '<p class="next-step">' + label + '</p>';
-      }
-      break;
-    }
-    case 'witness': {
-      html = '<div class="speech-row">' + timerHtml() + inlineActions() + '</div>';
-      if (S.witnessCard && role === 'witness') {
-        html += '<div class="cards-heading t-head-witness">🔐 A TITKOS TANÚKÁRTYÁD</div>' +
-          '<div class="secret-card single reveal"><span class="card-type t-witness">TANÚ</span><span class="card-text">' + escapeHtml(S.witnessCard) + '</span><span class="role-chip" style="--role:' + ROLE_COLOR.witness + '">TANÚ</span><span class="card-stamp">ÜGYIRAT</span></div>' +
-          '<p class="next-step">Ez alapján tegyél vallomást! Te döntöd el, kinek segítesz…</p>';
-      } else {
-        html += '<p class="next-step">Figyeljünk – vajon kinek segít a tanú?</p>';
-      }
-      break;
-    }
+    case 'defender':
+    case 'witness':
     case 'final_prosecution':
     case 'final_defense': {
-      // A "ZÁRÓSZÓ – X" cím és a beszélő neve a fázis-sávban van, itt nem ismételjük.
-      html = '<div class="speech-row">' + timerHtml() + inlineActions() + '</div>' +
-        challengeHtmlIfMine();
+      // Beszédfázis: a cím, a beszélő és az idő a felső sávban; itt csak a saját gombom (VÉGEZTEM / TILTAKOZOM) látszik, ha van.
+      html = inlineActions();
       break;
     }
     case 'verdict_vote': {
@@ -2718,11 +2582,9 @@ function renderPhaseContent() {
         html = '<div class="vote-buttons">' +
           '<button class="vote-btn guilty ' + (v.myVote === 'guilty' ? 'chosen' : '') + (voted && v.myVote !== 'guilty' ? ' faded' : '') + '" id="voteGuilty" ' + (voted ? 'disabled' : '') + '>BŰNÖS</button>' +
           '<button class="vote-btn not-guilty ' + (v.myVote === 'not_guilty' ? 'chosen' : '') + (voted && v.myVote !== 'not_guilty' ? ' faded' : '') + '" id="voteNotGuilty" ' + (voted ? 'disabled' : '') + '>ÁRTATLAN</button>' +
-          '</div><p class="next-step">Titkosan szavazol: bűnös vagy ártatlan?</p>';
+          '</div>';
       } else {
-        html = '<div class="drumroll">DOBPERGÉS…</div>' +
-          '<p class="next-step">' + (role === 'defendant' ? 'Most derül ki, meggyőzött-e a védekezésed…'
-            : 'Az esküdtek szavaznak…') + '</p>';
+        html = '<div class="drumroll">DOBPERGÉS…</div>' + (role === 'defendant' ? '<p class="next-step">Most derül ki, meggyőzött-e a védekezésed…</p>' : '');
       }
       if (typeof v.votedCount === 'number') {
         html += '<div class="vote-status">Szavazatok: ' + v.votedCount + ' / ' + v.voterCount + '</div>';
@@ -2746,9 +2608,8 @@ function renderPhaseContent() {
         const remaining = Math.max(0, od.defenderEndsAt - (Date.now() + serverOffset));
         html = '<div class="objection-phase">' +
           '<div class="objection-phase-sub">' + objectorName + ' (' + (speakerIsPros ? 'VÁDLOTT' : 'VÉDŐ') + ') tiltakozik ' + speakerName + '-on (' + (speakerIsPros ? 'ÜGYÉSZ' : 'VÁDLOTT') + ')</div>' +
-          '<div class="objection-timer">' + timerRingHtml(remaining, 20000, ROLE_COLOR.defendant) + '</div>' +
           '<div class="objection-instruction">' + speakerName + ', 20 másodperced van, hogy megvédjed magad a Discordon!</div>' +
-          '<button class="btn big green" id="iaDone">VÉGEZTEM ✓</button>' +
+          (od.speakerId === MY.playerId ? '<button class="btn big green" id="iaDone">VÉGEZTEM ✓</button>' : '') +
           '</div>';
       } else if (od.phase === 'judge') {
         hideObjectionOverlay(); // a döntési szakaszban semmi nem takarhatja a gombokat
@@ -2756,11 +2617,10 @@ function renderPhaseContent() {
         const remaining = Math.max(0, od.judgeEndsAt - (Date.now() + serverOffset));
         const iAmJudge = S.currentJudgeId === MY.playerId;
         html = '<div class="objection-phase">' +
-          '<div class="objection-phase-sub">A bíró döntsön: jogos volt-e ' + objectorName + '-nak tiltakozni?</div>' +
-          '<div class="objection-rule">JOGOS: +30 mp a tiltakozónak a következő beszédéhez · NEM JOGOS: −30% a tiltakozó következő beszédéből</div>' +
-          '<div class="objection-timer">' + timerRingHtml(remaining, 15000, '#f2c14e') + '</div>';
+          '<div class="objection-phase-sub">A bíró döntsön: jogos volt-e ' + objectorName + '-nak tiltakozni?</div>';
         if (iAmJudge) {
-          html += '<div class="objection-buttons">' +
+          html += '<div class="objection-rule">JOGOS: +30 mp a tiltakozónak a következő beszédéhez · NEM JOGOS: −30% a tiltakozó következő beszédéből</div>' +
+            '<div class="objection-buttons">' +
             '<button class="btn big green" id="objAccept">JOGOS ✓</button>' +
             '<button class="btn big red" id="objReject">NEM JOGOS ✗</button>' +
             '</div>';
@@ -2781,44 +2641,36 @@ function renderPhaseContent() {
       break;
     }
     case 'challenge_review': {
-      // KIHÍVÁS-ELLENŐRZÉS: a bíró dönt kártyánként; a többiek csak szórakoznak.
-      // (A fázis címe a fázis-sávban van – itt csak a számláló chip.)
+      // KIHÍVÁS-ELLENŐRZÉS: a bíró dönt kártyánként; a többiek csak szórakoznak. EGY kompakt sáv a jelenet alján (nem fed karaktert): a nagy kihívás-kártyát a
+      // court.js csak 2 mp-ig mutatta, aztán eltűnt – itt nincs második, teljes méretű kihívás-felület.
       const rev = S.challengeReview || { challenges: [] };
       const ch = rev.challenges[rev.current] || rev.challenges[0];
       if (!ch) { html = '<div class="drumroll">Nincs kihívás…</div>'; break; }
       const col = { prosecutor: ROLE_COLOR.prosecutor, defendant: ROLE_COLOR.defendant, defender: ROLE_COLOR.defender }[ch.who] || '#f2c14e';
-      html = '<div class="review-summary"><div class="review-counter"><span>' + (rev.current + 1) + ' / ' + rev.total + '</span></div>' +
-        '<div class="review-note">Ebben az ügyben <b>' + escapeHtml(ch.judgeName) + '</b> a bíró</div></div>' +
-        '<div class="review-card" style="--role:' + col + '">' +
-        '<span class="card-type" style="background:' + col + '">' + (WHO_LABEL[ch.who] || '').toUpperCase() + ' KIHÍVÁSA' +
-        (ch.difficulty ? ' – NEHEZÍTÉS (dupla pont)' : '') + '</span>' +
-        '<span class="review-text">„' + escapeHtml(ch.text) + '”</span>' +
-        '<span class="review-who">Kihívást kapott: <b>' + escapeHtml(ch.name) + '</b></span>' +
-        (ch.noted ? '<span class="review-noted">✔ A bíró beszéd közben jelölte: ÉSZREVETTEM</span>' : '') +
-        '<span class="card-stamp">ÜGYIRAT</span></div>';
-      if (ch.iAmJudge && !ch.judged) {
-        html += '<div class="review-buttons">' +
-          '<button class="btn big green" id="rvDone">TELJESÍTETTE ✓</button>' +
-          '<button class="btn big red" id="rvFail">NEM SIKERÜLT ✗</button></div>';
-      } else if (ch.judged) {
-        html += '<div class="review-result ' + (ch.done ? 'ok' : 'no') + '">' +
-          (ch.done ? 'A bíró szerint TELJESÍTETTE ✓ (+' + (ch.difficulty ? 4 : 2) + ' pont)' : 'A bíró szerint NEM sikerült ✘') + '</div>';
-      } else {
-        html += '<p class="next-step">⏳ <b>' + escapeHtml(ch.judgeName) + '</b> gondolkodik… (20 mp után automatikusan „nem sikerült”)</p>';
-      }
-      // Szórakoztató 😂/👎 szavazás – pontot nem ad.
       const myFun = (myFunVotes[ch.who] !== undefined);
-      html += '<div class="fun-vote">Szórakozásul: ' +
-        '<button class="btn small' + (myFun && myFunVotes[ch.who] === true ? ' green' : '') + '" data-fun="1" ' + (myFun ? 'disabled' : '') + '>😂</button>' +
-        '<button class="btn small' + (myFun && myFunVotes[ch.who] === false ? ' red' : '') + '" data-fun="0" ' + (myFun ? 'disabled' : '') + '>👎</button>' +
-        '<span class="fun-counts">😂 ' + ch.funYes + ' · 👎 ' + ch.funNo + '</span></div>';
+      html = '<div class="rv-strip" style="--role:' + col + '">' +
+        '<div class="rv-main"><span class="rv-count">KIHÍVÁS ' + (rev.current + 1) + ' / ' + rev.total + (ch.difficulty ? ' · NEHEZÍTÉS (dupla pont)' : '') + '</span>' +
+        '<span class="rv-who"><b>' + escapeHtml(ch.name) + '</b> · ' + (WHO_LABEL[ch.who] || '') + '</span>' +
+        '<span class="rv-text" title="' + escapeHtml(ch.text) + '">„' + escapeHtml(ch.text) + '”</span>' +
+        (ch.noted ? '<span class="rv-noted">✔ A bíró beszéd közben jelölte</span>' : '') + '</div>' +
+        '<div class="rv-actions">' +
+        (ch.iAmJudge && !ch.judged
+          ? '<span class="rv-decide"><button class="btn green" id="rvDone">✓ SIKERÜLT</button><button class="btn red" id="rvFail">✕ NEM SIKERÜLT</button></span>'
+          : ch.judged
+            ? '<span class="rv-result ' + (ch.done ? 'ok' : 'no') + '">' + (ch.done ? 'SIKERÜLT ✓ (+' + (ch.difficulty ? 4 : 2) + ' pont)' : 'NEM SIKERÜLT ✕') + '</span>'
+            : '<span class="rv-wait" title="20 mp után automatikusan „nem sikerült”">⏳ ' + escapeHtml(ch.judgeName) + ' bíró dönt…</span>') +
+        '<span class="rv-fun" role="group" aria-label="Szórakozás – pontot nem ad"><span class="rv-fun-label">SZÓRAKOZÁS</span>' +
+        '<button class="btn small' + (myFun && myFunVotes[ch.who] === true ? ' green' : '') + '" data-fun="1" ' + (myFun ? 'disabled' : '') + ' aria-label="Vicces volt (pontot nem ad)">😂</button>' +
+        '<button class="btn small' + (myFun && myFunVotes[ch.who] === false ? ' red' : '') + '" data-fun="0" ' + (myFun ? 'disabled' : '') + ' aria-label="Nem volt vicces (pontot nem ad)">👎</button>' +
+        '<span class="fun-counts">😂 ' + ch.funYes + ' · 👎 ' + ch.funNo + '</span></span></div></div>';
       break;
     }
     case 'challenge_vote': {
       const cv = S.challengeVote || {};
       // A fázis címe ("KIHÍVÁS-ELLENŐRZÉS") a fázis-sávban van – itt csak a kérdés.
-      html = '<p class="next-step">Teljesítették-e a kihívásaikat?</p>';
+      html = '';
       const whoLabel = { prosecutor: 'Az ügyész', defendant: 'A vádlott', defender: 'A védőügyvéd' };
+      html += '<div class="cv-rows">';
       (cv.challenges || []).forEach((ch, i) => {
         html += '<div class="challenge-results"><div class="cr"><b>' + whoLabel[ch.who] + ' kihívása' +
           (ch.difficulty ? ' (NEHEZÍTÉS – dupla pont!)' : '') + ':</b> ' + escapeHtml(ch.text) + '</div>';
@@ -2826,12 +2678,13 @@ function renderPhaseContent() {
           // A saját szavazatod kiemelve (a szerver myVotes-ban küldi vissza); módosítható.
           const mine = cv.myVotes ? cv.myVotes[ch.who] : undefined;
           const cvCls = (yes) => ' cv-btn' + (mine === yes ? ' chosen' : '') + (mine !== undefined && mine !== yes ? ' faded' : '');
-          html += '<div style="margin:6px 0">Teljesítette? ' +
+          html += '<div style="margin:0" class="cv-btns">' +
             '<button class="btn green' + cvCls(true) + '" id="cv' + i + 'Yes" aria-pressed="' + (mine === true) + '">IGEN</button> ' +
             '<button class="btn red' + cvCls(false) + '" id="cv' + i + 'No" aria-pressed="' + (mine === false) + '">NEM</button></div>';
         }
         html += '</div>';
       });
+      html += '</div>';
       if (!cv.canVote) html += '<p class="next-step">Az esküdtek döntenek…</p>';
       if (cv.voterCount) {
         const minCount = Math.min(...(cv.challenges || []).map((c) => (cv.counts || {})[c.who] || 0));
@@ -2851,30 +2704,25 @@ function renderPhaseContent() {
     case 'verdict': {
       const v = S.verdict || {};
       if (!v || v.guilty === undefined) { html = '<div class="drumroll">A BÍRÓSÁG GONDOLKOZIK…</div>'; break; }
-      // Egy képernyős ítélet: felül görgethető tartalom, alul fix TOVÁBB gombsor.
-      // A győztes oldal (BŰNÖS = piros / ÁRTATLAN = zöld) saját színben világít.
-      html = '<div class="verdict-scroll">' +
-        '<div class="verdict-title winner-glow ' + (v.guilty ? 'guilty' : 'not-guilty') + '">' + (v.guilty ? 'BŰNÖS!' : 'ÁRTATLAN!') + '</div>';
-      html += '<div class="case-row">' +
-        (S.modeName ? '<span class="mode-chip">' + escapeHtml(S.modeName) + '</span>' : '') + '</div>';
-      html += '<div class="vote-list">' + (v.votes || []).map((vv) =>
+      // Az ítéletet a court.js pecsét-kártyája hirdette ki; itt a tartós rész: ítélet-szó, a mondat, a gombok, a részletek (szavazatok, kihívások) lenyithatók.
+      const votes = '<div class="vote-list">' + (v.votes || []).map((vv) =>
         '<span class="vote-chip ' + (vv.verdict || '') + (vv.jurorPoint ? ' point-gain' : '') + '">' + avatarEmoji(avatarOf(vv.voterId)) + ' ' +
         escapeHtml(vv.voterName) + ': ' + (vv.verdict === 'guilty' ? 'BŰNÖS' : vv.verdict === 'not_guilty' ? 'ÁRTATLAN' : '—') +
         (vv.jurorPoint ? '<b class="juror-plus">+1</b>' : '') + '</span>'
       ).join('') + '</div>';
-      html += '<div class="sentence-card">' + escapeHtml(v.sentence) + '<span class="sentence-stamp">ÍTÉLET</span></div>';
-      if (v.unanimous) html += '<div class="favorite-note">EGYHANGÚ ÍTÉLET – bónusz pont!</div>';
-      if (Array.isArray(v.challengeResults) && v.challengeResults.length > 0) {
-        html += '<div class="challenge-results">' + v.challengeResults.map((c) =>
+      const results = Array.isArray(v.challengeResults) && v.challengeResults.length > 0
+        ? '<div class="challenge-results">' + v.challengeResults.map((c) =>
           '<div class="cr"><b>' + (WHO_LABEL[c.who] || c.who) + '</b> kihívása: „' + escapeHtml(c.text) + '” – ' +
           '<span class="' + (c.done ? 'ok' : 'no') + '">' + (c.done ? 'TELJESÍTETTE ✔ (+' + c.points + ' pont)' : 'NEM sikerült ✘') + '</span>' +
           (c.mode === 'judge' && c.judgeName ? ' <i>– bíró: ' + escapeHtml(c.judgeName) + '</i>' : ' (' + (c.yes || 0) + '/' + c.voterCount + ')') + '</div>'
-        ).join('') + '</div>';
-      }
-      html += '</div>'; // verdict-scroll vége
-      html += '<div class="fixed-actions">' +
-        '<button class="btn big" id="btnProceed" ' + (S.hostId === MY.playerId ? '' : 'disabled') + '>Tovább</button> ' +
-        '<button class="btn small ghost" id="btnRecord">Jegyzőkönyv letöltése</button></div>';
+        ).join('') + '</div>' : '';
+      const details = '<details class="vd-details"' + (vdOpen ? ' open' : '') + '><summary>RÉSZLETEK ▾</summary><div class="vd-body">' + votes + results + '</div></details>';
+      html = '<div class="vd-strip">' +
+        '<span class="vd-word ' + (v.guilty ? 'guilty' : 'not-guilty') + '">' + (v.guilty ? 'BŰNÖS' : 'ÁRTATLAN') + '</span>' +
+        '<div class="vd-mid"><div class="sentence-card" title="' + escapeHtml(v.sentence) + '">' + '<span class="sc-text">' + escapeHtml(v.sentence) + '</span><span class="sentence-stamp">ÍTÉLET</span></div>' +
+        (v.unanimous ? '<span class="favorite-note">EGYHANGÚ ÍTÉLET – bónusz pont!</span>' : '') + '</div>' +
+        '<div class="vd-actions"><button class="btn" id="btnProceed" ' + (S.hostId === MY.playerId ? '' : 'disabled') + '>Tovább</button>' +
+        '<span class="vd-small"><button class="btn small ghost" id="btnRecord">Jegyzőkönyv</button>' + details + '</span></div></div>';
       const flashKey = 'v:' + (S.caseNo || '') + ':' + (S.round || '') + ':' + (v.guilty ? 'g' : 'a');
       if (lastVerdictFlash !== flashKey) {
         lastVerdictFlash = flashKey;
@@ -2940,7 +2788,8 @@ function renderPhaseContent() {
       html = '<p>…</p>';
   }
   html += autoCountdownHtml();
-  // A kártyák (alibi, bizonyíték, trükk, tanúkártya, kihívás) a KÁRTYÁIM sávban végig látszanak.
+  // Üres panelt nem rajzolunk: a jelenet közepe és alja szabad marad (a kártyák a KÁRTYÁIM-ban, az idő a felső sávban, a szerep-útmutató a bal felső füzetben).
+  $('#scenePanel').classList.toggle('is-empty', !html.trim());
   el.dataset.phase = S.phase;
   el.innerHTML = html;
   el.classList.toggle('enter', S.phase !== lastRenderedPhase);
@@ -2984,6 +2833,9 @@ function renderPhaseContent() {
     });
   });
   // (a kihívás-szavazásgombok a challenge_vote ágban kötődnek meg)
+  const vdEl = el.querySelector('.vd-details');
+  if (vdEl) vdEl.addEventListener('toggle', () => { vdOpen = vdEl.open; });
+  if (S.phase !== 'verdict') vdOpen = false;
   const proceed = $('#btnProceed');
   if (proceed) proceed.addEventListener('click', () => socket.emit('proceed_after_verdict'));
   const recordBtn = $('#btnRecord');

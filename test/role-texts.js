@@ -23,31 +23,35 @@ const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
 
 console.log('1) Titkos kártyák: szerepenként a helyes cím + típus + tipp');
 // ÜGYÉSZ
-ok(client.includes('A TITKOS BIZONYÍTÉKAID'), 'ügyész címe: A TITKOS BIZONYÍTÉKAID');
-ok(/role === 'prosecutor'[^]*?BIZONYÍTÉK', 't-evidence/.test(client), 'ügyész kártyatípusa BIZONYÍTÉK (piros t-evidence)');
+// (a kártyák a KÁRTYÁIM kézben: client.js myCardList() adja a címet és a típust, cards.js / cards.css a megjelenést)
+const cardsJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'cards.js'), 'utf8');
+const cardsCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'cards.css'), 'utf8');
+ok(client.includes('A titkos bizonyítékaid'), 'ügyész címe: A titkos bizonyítékaid');
+ok(/role === 'prosecutor'[^]*?add\('evidence'/.test(client) && cardsCss.includes('.court-card.t-evidence') && cardsJs.includes("label: 'BIZONYÍTÉK'"), 'ügyész kártyatípusa BIZONYÍTÉK (piros t-evidence)');
 ok(client.includes('Ezekre építsd a vádbeszédet!'), 'ügyész tippe: "Ezekre építsd a vádbeszédet!"');
 // VÁDLOTT
-ok(client.includes('A TITKOS ALIBID'), 'vádlott címe: A TITKOS ALIBID');
-ok(/role === 'defendant'[^]*?'ALIBI', 't-alibi'/.test(client), 'vádlott kártyatípusa ALIBI (borostyán t-alibi)');
+ok(client.includes('A titkos alibid'), 'vádlott címe: A titkos alibid');
+ok(/role === 'defendant'[^]*?add\('alibi'/.test(client) && cardsCss.includes('.court-card.t-alibi') && cardsJs.includes("label: 'TITKOS ALIBI'"), 'vádlott kártyatípusa ALIBI (borostyán t-alibi)');
 ok(client.includes('Erre építsd a védekezésed!'), 'vádlott tippe: "Erre építsd a védekezésed!"');
 // VÉDŐÜGYVÉD
-ok(client.includes('A TITKOS TRÜKKJEID'), 'védőügyvéd címe: A TITKOS TRÜKKJEID');
-ok(!client.includes('A TITKOS TRÜKKJEID (védőügyvédként)'), 'nincs többé félrevezető "(védőügyvédként)" utótag');
-ok(client.includes("cardHtml('TRÜKK', 't-trick'"), 'védőügyvéd kártyatípusa TRÜKK (kék t-trick)');
+ok(client.includes('A titkos trükkjeid'), 'védőügyvéd címe: A titkos trükkjeid');
+ok(!client.includes('A titkos trükkjeid (védőügyvédként)') && !client.includes('A TITKOS TRÜKKJEID (védőügyvédként)'), 'nincs többé félrevezető "(védőügyvédként)" utótag');
+ok(client.includes("add('trick'") && cardsCss.includes('.court-card.t-trick') && cardsJs.includes("label: 'TITKOS TRÜKK'"), 'védőügyvéd kártyatípusa TRÜKK (kék t-trick)');
 ok(client.includes('Ezekkel erősítsd a védőbeszédedet!'), 'védő tippe: "Ezekkel erősítsd a védőbeszédedet!"');
 // A HIBA: a védőügyvéd kártyáján "vádlott" szöveg volt.
 // Ellenőrzés: a defender prep-ág blokkjában (a blokk elejétől a tipp-ig) nincs "vádlott".
 {
-  const start = client.indexOf("role === 'defender' && S.tricks");
-  const end = client.indexOf('Ezekkel erősítsd a védőbeszédedet!', start);
+  const start = client.indexOf("S.tricks) && role === 'defender'");
+  const end = client.indexOf('\n', start);
   const block = client.slice(start, end);
+  ok(start > 0, 'a védőügyvéd kártya-ága megvan');
   ok(!block.includes('vádlott'), 'A VÉDŐÜGYVÉD kártya-ágban NINCS "vádlott" szöveg (az eredeti hiba)');
 }
 // TANÚ
-ok(client.includes('A TITKOS TANÚKÁRTYÁD'), 'tanú címe: A TITKOS TANÚKÁRTYÁD');
+ok(cardsJs.includes('TITKOS TANÚKÁRTYA') && client.includes("add('witness'"), 'tanú címe: TITKOS TANÚKÁRTYA');
 ok(client.includes('Ez alapján tegyél vallomást!'), 'tanú tippe: "Ez alapján tegyél vallomást!"');
 // KIHÍVÁS
-ok(client.includes('A TITKOS KIHÍVÁSOD'), 'kihívás címe: A TITKOS KIHÍVÁSOD');
+ok(cardsJs.includes('KIHÍVÁSKÁRTYA') && client.includes("add('challenge'"), 'kihívás címe: KIHÍVÁSKÁRTYA');
 ok(!client.includes('(ügyész)\' : \' (vádlott)'), 'nincs többé rögzített (ügyész)/(vádlott) kihívás-címke');
 
 console.log('2) Szerepcímkék: teljes nevek mindenhol');

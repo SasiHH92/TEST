@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/court.css">
+  <link rel="stylesheet" href="/cards.css">
   <link rel="preload" href="/assets/terem-hatter.webp" as="image">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
 </head>
@@ -499,7 +500,7 @@
       <div id="judgeWatchBar" class="judge-watch-bar hidden"></div>
 
       <!-- KÁRTYÁIM sáv: az ügyész és a védőügyvéd folyamatos kártyái (kompakt, nem tolja a tartalmat) -->
-      <div id="myCardsBar" class="my-cards-bar hidden"></div>
+      <div id="myCardsBar" class="card-hand hidden" data-state="closed"></div>
 
       <!-- Áttetsző fázispanel: a tartalom fölött a jelenet továbbra is látszik. -->
       <div class="content-zone" id="scenePanel" aria-label="Tárgyalási műveletek">
@@ -562,5 +563,6 @@
   <script src="/ranking.js"></script>
   <script src="/avatar-roles.js"></script>
   <script src="/court.js"></script>
+  <script src="/cards.js"></script>
 </body>
 </html>

@@ -56,7 +56,8 @@ async function startServer() {
 function observer() {
   try { localStorage.setItem('kb_helpSeen', '1'); } catch (_) { /* nincs tár */ }
   if (window.__obs) return;
-  const rec = window.__obs = { phases: [], cam: {}, hud: [], cd: [], stamps: [], intro: [], evidence: [], challenge: [], flyMax: 0, floats: 0, snaps: {} };
+  const rec = window.__obs = { phases: [], cam: {}, hud: [], cd: [], stamps: [], intro: [], evidence: [], challenge: [], flyMax: 0, floats: 0, snaps: {}, ringsMax: 0, prepPanel: 0, majorMax: 0, hands: [], bodies: {} };
+  let lastHandSig = '';
   window.__loadMark = Math.random();
   let last = '', enter = 0;
   const vis = (el) => !!el && !el.classList.contains('hidden') && el.offsetParent !== null;
@@ -90,6 +91,20 @@ function observer() {
     if (ch && ch.classList.contains('show')) rec.challenge.push({ phase: S.phase, round: S.round, text: ch.innerText, mine: S.myChallenge || null });
     const fl = document.querySelectorAll('#reactionLayer .flying-emoji').length;
     if (fl > rec.flyMax) rec.flyMax = fl;
+    // időzítő-tisztítás: nincs nagy gyűrűs időzítő, a felkészülésnél nincs panel, egyszerre legfeljebb egy nagy overlay
+    const rings = document.querySelectorAll('.timer-ring, #timerBox').length;
+    if (rings > rec.ringsMax) rec.ringsMax = rings;
+    const sp = document.getElementById('scenePanel');
+    if (S.phase === 'prep' && sp && getComputedStyle(sp).display !== 'none') rec.prepPanel++;
+    const majors = ['courtIntro', 'courtEvidence', 'courtChallenge', 'courtVerdict'].filter((id) => { const e = document.getElementById(id); return e && e.classList.contains('show'); }).length;
+    if (majors > rec.majorMax) rec.majorMax = majors;
+    // KÁRTYÁIM: a kéz tartalma a szerver által nekem küldött privát adat mellett; és a képernyő szövege (privát kártyák kiszivárgásának ellenőrzéséhez)
+    const stage = document.getElementById('chStage');
+    const hand = stage ? [...stage.querySelectorAll('.court-card[data-i] .cf-text')].map((e) => e.textContent) : [];
+    const mine = [].concat(S.evidence || [], S.tricks || [], S.alibi ? [S.alibi] : [], S.witnessCard ? [S.witnessCard] : [], S.myChallenge ? [S.myChallenge] : []);
+    const sig = key + '|' + hand.join('|');
+    if (sig !== lastHandSig) { lastHandSig = sig; rec.hands.push({ key, phase: S.phase, role: myRole(), hand, mine }); }
+    if (now - enter > 1300 && !rec.bodies[key]) rec.bodies[key] = { phase: S.phase, text: document.body.innerText, mine, allowed: mine.concat((S.judgeWatch || []).map((c) => c.text), S.watchNow ? [S.watchNow.text] : []) };
   }, 100);
 }
 
@@ -366,6 +381,45 @@ function autoplay(players) {
         assert.equal(recs(A).length, 1, 'az A oldal nem töltődött újra');
       });
     }
+    await check('időzítő-tisztítás: nincs nagy gyűrűs időzítő sehol, a felkészülésnél nincs panel (a közép szabad), egyszerre legfeljebb egy nagy overlay – az idő a felső sávban él', async () => {
+      for (const p of all) {
+        assert.equal(Math.max(...recs(p).map((r) => r.ringsMax)), 0, p.label + ': időzítő-gyűrű volt a DOM-ban');
+        assert.equal(recs(p).reduce((n, r) => n + r.prepPanel, 0), 0, p.label + ': a felkészülés alatt panel látszott');
+        assert.ok(Math.max(...recs(p).map((r) => r.majorMax)) <= 1, p.label + ': egyszerre több nagy overlay');
+        assert.ok(allOf(p, 'hud').length > 40, p.label + ': a felső idő nem járt');
+      }
+    });
+    const CARD_PHASES = ['prep', 'prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'verdict_vote', 'verdict', 'objection', 'challenge_review'];
+    await check('KÁRTYÁIM: a kéz tartalma pontosan a szerver által NEKEM küldött kártyák (szerepenként); kártya nélküli szerepnek (bíró, esküdt) nincs kéz', async () => {
+      let withCards = 0;
+      for (const p of all) {
+        for (const e of allOf(p, 'hands')) {
+          if (!CARD_PHASES.includes(e.phase)) { assert.deepEqual(e.hand, [], p.label + ' ' + e.key + ': kéz a tiltott fázisban'); continue; }
+          assert.deepEqual(e.hand.slice().sort(), e.mine.slice().sort(), p.label + ' ' + e.key + ' (' + e.role + '): a kéz eltér a szerver adatától');
+          if (e.role === 'judge' || e.role === 'juror') assert.equal(e.hand.length, 0, p.label + ': ' + e.role + ' szerepnek van kártya-keze');
+          if (e.hand.length) withCards++;
+        }
+      }
+      assert.ok(withCards >= 3, 'a játékban alig volt kártya-kéz: ' + withCards);
+    });
+    await check('privát kártyák: más játékos titkos kártyája (alibi, tanúkártya, kihívás, trükk, bizonyíték) a kliens képernyőjén sem jelenik meg (kivéve a szerver által engedett: saját, a bíró figyelője, a védő látja az ügyész bizonyítékait)', async () => {
+      const PRIV = ['prep', 'prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'verdict_vote'];
+      const bodies = (p) => Object.assign({}, ...recs(p).map((r) => r.bodies));
+      let compared = 0;
+      for (const x of all) for (const y of all) {
+        if (x === y) continue;
+        const bx = bodies(x), by = bodies(y);
+        for (const key of Object.keys(bx)) {
+          if (!PRIV.includes(bx[key].phase) || !by[key]) continue;
+          for (const secret of by[key].mine) {
+            if (bx[key].allowed.includes(secret)) continue;
+            assert.ok(!bx[key].text.includes(secret), x.label + ' látja ' + y.label + ' titkos kártyáját (' + key + '): "' + secret.slice(0, 40) + '"');
+            compared++;
+          }
+        }
+      }
+      assert.ok(compared >= 5, 'alig volt összehasonlítható privát kártya: ' + compared);
+    });
     await check('szerep-képek: a színpadon raszter-kép áll (avatar_NN_<szerep>.webp vagy alap-avatár), törött kép és SVG nélkül; nincs 404-es asset', async () => {
       const r = await A.page.evaluate(async () => {
         const imgs = [...document.querySelectorAll('#stageSlots .stage-slot img, #judge img')];

@@ -133,12 +133,16 @@ console.log('7) Kliens statikus: KÁRTYÁIM sáv');
   const client = fs.readFileSync(path.join(__dirname, '..', 'public', 'client.js'), 'utf8');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
-  ok(html.includes('id="myCardsBar"'), 'index.html: #myCardsBar sáv megvan');
-  ok(client.includes('AZ ÜGYÉSZ BIZONYÍTÉKAI'), 'kliens: "AZ ÜGYÉSZ BIZONYÍTÉKAI" címke');
-  ok(client.includes('CSAK TE LÁTOD') && client.includes('mcb-toggle'), 'sáv: CSAK TE LÁTOD + összecsukó ikon');
+  // A régi lenyíló sáv helyett fizikai kártya-kéz (cards.js / cards.css): ugyanaz a láthatósági szabály, csak a megjelenítés új.
+  const cards = fs.readFileSync(path.join(__dirname, '..', 'public', 'cards.js'), 'utf8');
+  const cardsCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'cards.css'), 'utf8');
+  ok(html.includes('id="myCardsBar"'), 'index.html: #myCardsBar kéz megvan');
+  ok(client.includes('Az ügyész bizonyítékai'), 'kliens: "Az ügyész bizonyítékai" a védőügyvéd kártyáin');
+  ok(cards.includes('CSAK TE LÁTOD') && cards.includes('ch-toggle'), 'kéz: CSAK TE LÁTOD + a "KÁRTYÁIM" szalag');
   ok(!client.includes('A kártyáid elrejtve'), 'kliens: nincs többé "A kártyáid elrejtve" jelzés');
-  ok(client.includes('A TITKOS TANÚKÁRTYÁD'), 'kliens: tanúkártya a KÁRTYÁIM sávban');
-  ok(css.includes('.my-cards-bar'), 'stílus: .my-cards-bar');
+  ok(client.includes("add('witness'") && cards.includes('TITKOS TANÚKÁRTYA'), 'kliens: tanúkártya a KÁRTYÁIM kézben');
+  ok(cardsCss.includes('.card-hand'), 'stílus: .card-hand');
+  ok(/visibility: 'private'/.test(client), 'a kéz leírói privátként jelöltek');
   ok(game_judgeUnchanged(), 'bíró judgeWatch szabálya változatlan (publicState)');
 }
 

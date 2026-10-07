@@ -1754,73 +1754,11 @@ svg.pin-threads circle { fill: var(--red-dark); stroke: #7e1d1d; stroke-width: 1
    + "A kártyáid elrejtve" jelzés
    ============================================================ */
 
-.my-cards-bar {
-  flex: none;
-  display: flex; align-items: stretch; gap: 8px;
-  padding: 6px 12px;
-  background: rgba(9, 12, 20, 0.94);
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  max-height: 96px;
-  overflow: hidden;
-}
-.my-cards-bar.hidden { display: none; }
-.mcb-toggle {
-  flex: none; display: inline-flex; align-items: center; gap: 7px;
-  background: rgba(24, 30, 44, 0.9); border: 1px solid var(--line);
-  border-radius: 8px; padding: 4px 10px; cursor: pointer;
-  color: #dde3ef; font-family: var(--font-disp); font-size: 12px; letter-spacing: 1px;
-  align-self: center;
-}
-.mcb-only-you {
-  font-size: 9px; letter-spacing: 2px; font-weight: 700;
-  color: #ffb1b1; background: rgba(179, 53, 58, 0.16);
-  border: 1px dashed var(--red); border-radius: 999px; padding: 2px 8px;
-}
-.mcb-cards-ico { white-space: nowrap; }
-.mcb-caret { font-size: 11px; color: var(--gold); }
-.mcb-body {
-  display: flex; align-items: center; gap: 8px;
-  overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
-  min-width: 0; flex: 1;
-}
-.mcb-body.collapsed { display: none; }
-.mcb-head {
-  flex: none; font-family: var(--font-disp); font-size: 10.5px; letter-spacing: 1.2px;
-  color: #10131c; background: var(--role, var(--gold));
-  border-radius: 4px; padding: 3px 8px; align-self: center;
-  white-space: nowrap;
-}
-.mcb-card {
-  flex: none; display: inline-flex; align-items: center; gap: 7px;
-  max-width: 300px;
-  background: linear-gradient(180deg, #f7f0dd, var(--paper2));
-  border: 1px solid var(--role, var(--gold)); border-left-width: 4px;
-  border-radius: 6px; padding: 3px 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-}
-.mcb-type {
-  flex: none; font-family: var(--font-disp); font-size: 9.5px; letter-spacing: 1px;
-  color: #fff; background: var(--role, var(--gold));
-  border-radius: 3px; padding: 1px 6px;
-}
-.mcb-text {
-  font-size: 14.5px; font-weight: 600; color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px;
-}
 .cards-hidden-note {
   display: inline-block; margin: 8px auto 0;
   font-size: 13px; font-weight: 600; color: #aab2c5;
   background: rgba(24, 30, 44, 0.7); border: 1px dashed var(--line);
   border-radius: 999px; padding: 4px 14px;
-}
-
-@media (max-width: 700px) {
-  .my-cards-bar { padding: 5px 8px; max-height: 84px; }
-  .mcb-cards-ico { font-size: 11px; }
-  .mcb-only-you { display: none; } /* mobilon a toggle gombon csak a kártya-ikon */
-  .mcb-text { font-size: 13.5px; max-width: 150px; }
-  .mcb-card { max-width: 210px; }
 }
 
 /* ============================================================
@@ -2023,8 +1961,6 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
 .objection-phase-sub, .objection-instruction { font-size: clamp(12px, 2dvh, 17px); }
 .objection-buttons { display: flex; flex-wrap: nowrap; gap: 8px; }
 .objection-buttons .btn { min-width: 0; min-height: 42px; font-size: clamp(12px, 2dvh, 18px); padding: 8px 12px; }
-.my-cards-bar { position: relative; }
-.mcb-body { position: absolute; z-index: 64; top: 100%; left: 8px; right: 8px; max-height: 36dvh; overflow: auto; background: #151a26; border: 1px solid var(--gold-dark); padding: 10px; }
 .auto-countdown { flex: none; font-size: 14px; color: var(--gold); padding: 3px 8px; text-align: center; }
 .phase-content[data-phase="game_over"] .score-table.compact .score-row { padding: 3px 8px; margin-top: 1px; font-size: 13px; }
 .phase-content[data-phase="game_over"] .score-row .pts { font-size: 14px; }
@@ -2241,19 +2177,6 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
 #screen-game .verdict-flash { pointer-events:none; }
 #screen-game .revealed-panel { top:auto; bottom:100%; max-height:35dvh; }
 
-#screen-game .my-cards-bar { position:absolute; z-index:74; left:16px; bottom:16px; width:max-content; max-width:min(300px,calc((100% - var(--hud-rail)) * .25)); flex-direction:column; align-items:stretch; gap:0; margin:0; padding:0; max-height:38dvh; border:1px solid #d6b87366; border-radius:12px; background:rgba(9,12,20,.82); backdrop-filter:blur(8px); box-shadow:0 6px 20px #0005; }
-#screen-game .mcb-toggle { min-height:40px; padding:6px 10px; width:auto; font-size:12px; }
-#screen-game .mcb-only-you { display:none; }
-#screen-game .mcb-body { position:static; display:flex; flex-direction:column; align-items:stretch; width:100%; max-height:31dvh; overflow-y:auto; padding:10px; border:0; background:transparent; gap:6px; }
-#screen-game .mcb-body.collapsed { display:none; }
-#screen-game .mcb-card { flex:none; width:100%; max-width:100%; }
-#screen-game .mcb-text { max-width:none; white-space:normal; font-size:13px; }
-#screen-game .my-cards-bar .cards-heading { font-size:12px; letter-spacing:.6px; }
-#screen-game .my-cards-bar .only-you, #screen-game .my-cards-bar .role-chip, #screen-game .my-cards-bar .card-stamp { display:none; }
-#screen-game .my-cards-bar .cards-row { display:flex; flex-direction:column; gap:6px; }
-#screen-game .my-cards-bar .secret-card { flex:none; min-height:0; width:100%; margin:0; padding:18px 8px 8px; gap:4px; }
-#screen-game .my-cards-bar .card-type { top:3px; padding:1px 5px; font-size:9px; letter-spacing:.3px; }
-#screen-game .my-cards-bar .card-text { font-size:13px; line-height:1.3; }
 #screen-game .judge-watch-bar { position:absolute; z-index:74; top:96px; left:16px; width:18%; max-width:250px; margin:0; gap:5px; padding:6px; border-radius:10px; background:rgba(9,12,20,.82); border:1px solid #d6b87366; backdrop-filter:blur(8px); }
 #screen-game .jw-head { width:100%; min-height:34px; padding:2px; }
 #screen-game .jw-label { font-size:10px; letter-spacing:.3px; white-space:normal; }
@@ -2278,7 +2201,6 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
   #screen-game .score-sidebar.open { transform:none; }
   #screen-game .sb-toggle { display:block; position:static; height:38px; min-height:38px; width:100%; background:rgba(9,12,20,.72); color:var(--gold); border:0; padding:4px; }
   #screen-game .content-zone { bottom:48px; }
-  #screen-game .my-cards-bar { bottom:48px; }
 }
 @media (max-width:700px) {
   #screen-game { --hud-gap:8px; }
@@ -2341,11 +2263,6 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
   #screen-game .challenge-results .cr { margin:0; font-size:11px; line-height:1.25; max-height:4em; overflow:auto; }
   #screen-game .challenge-results > div:not(.cr) { display:flex; align-items:center; gap:4px; margin:0 !important; font-size:0 !important; }
   #screen-game .challenge-results .btn { min-width:48px; padding:4px 6px; }
-  #screen-game .my-cards-bar { left:8px; max-width:calc(100% - 16px); }
-  #screen-game .my-cards-bar .mcb-toggle { min-height:48px; }
-  #screen-game[data-phase="prep"] .my-cards-bar { position:static; width:100%; max-width:none; max-height:25dvh; background:transparent; box-shadow:none; backdrop-filter:none; }
-  #screen-game[data-phase="prep"] .my-cards-bar .mcb-body { max-height:18dvh; }
-  #screen-game .my-cards-bar .cards-row { gap:5px; }
   #screen-game .judge-watch-bar { top:180px; width:25%; max-width:110px; left:8px; }
   #screen-game .judge-watch-bar.collapsed .jw-now { display:none; }
   #screen-game .judge-watch-bar .jw-head { min-height:48px; }
@@ -2360,7 +2277,7 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
   #screen-game .score-sidebar { transform:translateY(calc(100% - 48px)); }
   #screen-game .score-sidebar.open { transform:none; }
   #screen-game .sb-toggle { height:48px; min-height:48px; }
-  #screen-game .content-zone, #screen-game .my-cards-bar { bottom:58px; }
+  #screen-game .content-zone { bottom:58px; }
   #screen-game .react-btn, #screen-game .sb-kick { min-width:48px; min-height:48px; }
   #screen-game .info-bar { min-height:56px; padding:4px 6px; }
   #screen-game .info-bar .btn { min-width:48px; min-height:48px; }
@@ -2371,8 +2288,6 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
   #screen-game .charge-file-head { margin-bottom:3px; }
   #screen-game .charge-expand-hint { margin-top:2px; }
   #screen-game .judge-bubble { top:27%; font-size:9px; line-height:12px; max-height:18px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; padding:2px 6px; }
-  #screen-game[data-phase="prep"] .my-cards-bar { max-height:calc(42dvh - clamp(80px,14dvh,150px) - 32px); }
-  #screen-game[data-phase="prep"] .my-cards-bar .mcb-body { max-height:calc(42dvh - clamp(80px,14dvh,150px) - 90px); }
 }
 #screen-game .content-zone[data-layout="result"] { width:min(640px,calc(100% - var(--hud-rail) - 32px)); }
 @media (max-width:700px) {

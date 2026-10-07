@@ -1,0 +1,186 @@
+/* ============================================================
+   KAMU BÍRÓSÁG – KÁRTYÁIM: fizikai kártyapakli / játékos-kéz (cards.js)
+   Csak HTML/CSS papír-kezelés: pergamen-színátmenetek, kopott szélek, hajtott sarok, ujjlenyomat-folt, kapocs, pecsét. Nincs SVG, nincs új artwork.
+   Állapotok: zárt (kompakt pakli a bal alsó sarokban) → nyitott (legyező felfelé és jobbra) → kijelölt (előre jön) + nagyító. Mobilon: tálca.
+   Az animáció csak transform / opacity (olcsó); csökkentett mozgásnál nincs átmenet.
+   ============================================================ */
+
+.card-hand {
+  --cw: 164px; --chh: 222px; --peek: 112px;
+  position: absolute; left: 12px; bottom: 10px; z-index: var(--z-hand, 74);
+  width: calc(var(--cw) + 76px); height: calc(var(--peek) + 6px);
+  pointer-events: none; /* csak a lapok, a szalag és a nagyító fogja a kattintást */
+}
+.card-hand.hidden { display: none; }
+/* A zárt pakli alsó része a "kéz" szélén levágódik; felfelé és oldalra a legyező szabadon kinyílhat. */
+.ch-stage { position: absolute; inset: 0; pointer-events: none; clip-path: inset(-560px -140px 0 -60px); }
+
+/* ---------------- CourtCard ---------------- */
+.court-card {
+  --paper: #f2e6c4; --paper2: #dcc796; --ink: #2a2118; --accent: #8a6420; --stampc: #b3353a;
+  position: absolute; left: 28px; bottom: 0; width: var(--cw); height: var(--chh);
+  display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; margin: 0; padding: 14px 12px 10px;
+  text-align: left; color: var(--ink); font-family: var(--font-body, system-ui, sans-serif); cursor: pointer; pointer-events: auto;
+  border: 0; border-radius: 3px 6px 4px 7px;
+  background:
+    radial-gradient(ellipse 15px 20px at 24% 88%, rgba(110, 76, 28, 0.15) 0 60%, transparent 62%),                         /* ujjlenyomat-folt */
+    repeating-radial-gradient(ellipse 15px 20px at 24% 88%, transparent 0 2px, rgba(110, 76, 28, 0.09) 2px 3px),          /* ujjlenyomat-vonalak */
+    radial-gradient(circle at 14% 8%, rgba(255, 255, 255, 0.55), transparent 42%),
+    linear-gradient(168deg, var(--paper), var(--paper2));
+  box-shadow: 0 0 0 1px rgba(86, 58, 20, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.35), inset 0 0 26px rgba(110, 76, 28, 0.32), 0 10px 22px rgba(0, 0, 0, 0.55);
+  transform-origin: 16% 100%;
+  transform: translate(var(--cx, 0px), calc(var(--cy, 0px) + var(--chh) - var(--peek))) rotate(var(--cr, 0deg));
+  transition: transform 0.32s var(--court-ease, ease), box-shadow 0.2s ease, filter 0.2s ease;
+  will-change: transform;
+}
+/* hajtott jobb alsó sarok */
+.court-card::after {
+  content: ''; position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; pointer-events: none;
+  background: linear-gradient(135deg, transparent 50%, rgba(60, 40, 10, 0.32) 50%, var(--paper2) 54%);
+  border-top-left-radius: 5px; box-shadow: -2px -2px 3px rgba(0, 0, 0, 0.16);
+}
+.court-card:focus-visible { outline: 3px solid var(--court-gold, #f2c14e); outline-offset: 3px; }
+
+.court-card.t-evidence  { --paper: #e8d095; --paper2: #c9a65f; --accent: #a3261f; }
+.court-card.t-witness   { --paper: #f2e7c8; --paper2: #dac891; --accent: #1f7a46; }
+.court-card.t-challenge { --paper: #f6ebd1; --paper2: #e2c887; --accent: #b3353a; --stampc: #8a6420; padding-top: 22px; }
+.court-card.t-alibi     { --accent: #bc5409; }
+.court-card.t-trick     { --accent: #26457a; }
+.court-card.t-role      { --paper: #4b4136; --paper2: #2b241d; --ink: #eadfc6; --accent: #e5484d; }  /* nincs ilyen kártya a játékban; előkészítve */
+.court-card.t-special   { --paper: #f8e8ac; --paper2: #dcab3c; --accent: #8a6420; --stampc: #8a6420; } /* ugyanígy */
+/* KIHÍVÁS: bohóc-szalag (piros-arany rombusz-csík) a lap tetején */
+.court-card.t-challenge::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 10px; border-radius: 3px 6px 0 0; pointer-events: none;
+  background: repeating-linear-gradient(45deg, #b3353a 0 8px, #f2c14e 8px 16px);
+}
+
+.cf-clip { display: none; position: absolute; top: -9px; left: 16px; width: 11px; height: 30px; border: 2px solid #8d949d; border-radius: 7px; pointer-events: none; }
+.cf-clip::after { content: ''; position: absolute; left: 1px; top: 8px; width: 3px; height: 18px; border: 2px solid #8d949d; border-top: 0; border-radius: 0 0 4px 4px; }
+.court-card.t-evidence .cf-clip { display: block; }
+
+.cf-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding-bottom: 5px; border-bottom: 2px solid var(--accent); }
+.cf-type { font: 900 12px var(--font-disp, inherit); letter-spacing: 1.3px; color: var(--accent); text-transform: uppercase; }
+.cf-no { font: 800 12px var(--font-disp, inherit); letter-spacing: 1px; opacity: 0.75; }
+.cf-sub { font: 700 9px var(--font-disp, inherit); letter-spacing: 1px; color: #6f5837; text-transform: uppercase; }
+.court-card.t-role .cf-sub { color: #b9ab8c; }
+.cf-text {
+  flex: 1 1 auto; min-height: 0; margin-top: 2px; font: 700 15px/1.28 var(--font-body, inherit); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden;
+}
+.cf-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 18px; font: 700 9px var(--font-disp, inherit); letter-spacing: 0.8px; color: #6b5638; }
+.court-card.t-role .cf-foot { color: #b9ab8c; }
+.cf-badge { padding: 2px 8px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 9px; letter-spacing: 1.2px; white-space: nowrap; }
+.cf-stamp {
+  position: absolute; right: 8px; bottom: 30px; transform: rotate(-9deg); padding: 1px 6px; pointer-events: none;
+  font: 900 11px var(--font-disp, inherit); letter-spacing: 2px; color: var(--stampc); border: 3px double var(--stampc); border-radius: 3px; opacity: 0.84; mix-blend-mode: multiply;
+}
+.cf-status { align-self: flex-start; padding: 1px 7px; border: 1px solid var(--accent); border-radius: 3px; font: 800 9px var(--font-disp, inherit); letter-spacing: 1px; color: var(--accent); }
+.cf-usable { align-self: stretch; padding: 4px 6px; text-align: center; background: var(--accent); color: #fff; border-radius: 4px; font: 900 11px var(--font-disp, inherit); letter-spacing: 1.5px; }
+.court-card.more { align-items: center; justify-content: center; background: linear-gradient(168deg, #3a2a1c, #1e150d); color: var(--court-gold, #f2c14e); box-shadow: 0 0 0 1px var(--court-gold-dark, #8a6420), 0 10px 22px rgba(0, 0, 0, 0.55); }
+.court-card.more::after { display: none; }
+.cf-more { font: 900 44px var(--font-disp, inherit); letter-spacing: 2px; }
+
+/* ---------------- CardHand: zárt pakli ⇄ nyitott legyező ---------------- */
+.card-hand[data-state="closed"] .ch-stage .court-card[data-hide-closed] { display: none; }
+.card-hand[data-state="open"] .ch-stage .court-card[data-hide-open] { display: none; }
+.card-hand[data-state="open"] .ch-stage .court-card {
+  transform: translate(var(--ox, 0px), calc(var(--oy, 0px) - 36px)) rotate(var(--or, 0deg));
+}
+/* hover (csak ahol van egér): a lap felemelkedik, kiegyenesedik; semmi fontos nincs csak hover mögött */
+@media (hover: hover) {
+  .card-hand[data-state="open"] .ch-stage .court-card:hover:not(.sel):not(.more) {
+    transform: translate(var(--ox, 0px), calc(var(--oy, 0px) - 52px)) rotate(calc(var(--or, 0deg) * 0.35)) scale(1.05); z-index: 20;
+    box-shadow: 0 0 0 1px rgba(86, 58, 20, 0.5), inset 0 0 26px rgba(110, 76, 28, 0.3), 0 16px 30px rgba(0, 0, 0, 0.62);
+  }
+  .card-hand[data-state="closed"] .ch-stage .court-card:hover { filter: brightness(1.06); }
+}
+/* kijelölt: előre jön, a többi hátrébb kerül */
+.card-hand[data-state="open"] .ch-stage .court-card.sel {
+  transform: translate(calc(var(--ox, 0px) + 4px), calc(var(--oy, 0px) - 68px)) rotate(0deg) scale(1.07); z-index: 25;
+  box-shadow: 0 0 0 2px var(--court-gold, #f2c14e), 0 0 22px rgba(242, 193, 78, 0.45), 0 18px 34px rgba(0, 0, 0, 0.65);
+}
+.card-hand.has-sel .ch-stage .court-card:not(.sel):not(.more) { filter: brightness(0.82); }
+
+/* a "KÁRTYÁIM" szalag: a pakli alján, a lapok fölött */
+.ch-toggle {
+  position: absolute; left: 28px; bottom: 0; z-index: 40; width: var(--cw); height: 30px; box-sizing: border-box; pointer-events: auto; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; padding: 0 9px; margin: 0;
+  font: 800 12px var(--font-disp, inherit); letter-spacing: 2px; color: var(--court-gold, #f2c14e); text-align: left;
+  background: linear-gradient(180deg, #3b2717, #1d130b); border: 1px solid var(--court-gold-dark, #8a6420); border-radius: 6px 6px 4px 4px;
+  box-shadow: 0 -5px 12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.ch-toggle:focus-visible { outline: 3px solid var(--court-gold, #f2c14e); outline-offset: 2px; }
+.ch-count { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: 999px; text-align: center; background: var(--court-gold, #f2c14e); color: #1a1208; font-size: 11px; letter-spacing: 0; }
+.ch-new {
+  display: none; position: absolute; left: 50%; top: -26px; transform: translateX(-50%); padding: 2px 10px; border-radius: 999px; white-space: nowrap;
+  background: var(--court-red-bright, #e5484d); color: #fff; font: 900 10px var(--font-disp, inherit); letter-spacing: 1.5px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.card-hand.has-new .ch-new { display: block; animation: ch-badge 0.45s var(--court-ease-bounce, ease) both; }
+.card-hand.has-new .ch-toggle { box-shadow: 0 0 0 2px var(--court-gold, #f2c14e), 0 0 20px rgba(242, 193, 78, 0.55); }
+@keyframes ch-badge { from { transform: translateX(-50%) translateY(8px) scale(0.6); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+/* ÚJ KÁRTYA: becsúszik a pakliba, rövid ragyogással (a translate/opacity külön tulajdonság, így nem ütközik a transform-mal) */
+.court-card.is-new { animation: ch-new 0.55s var(--court-ease-bounce, ease) both; box-shadow: 0 0 0 2px var(--court-gold, #f2c14e), 0 0 24px rgba(242, 193, 78, 0.65), 0 10px 22px rgba(0, 0, 0, 0.55); }
+@keyframes ch-new { from { translate: -34px 56px; opacity: 0; } to { translate: 0 0; opacity: 1; } }
+
+/* ---------------- CardPreview: nagyító a kéz fölött ---------------- */
+.card-preview {
+  position: absolute; left: 6px; bottom: calc(var(--chh) + 112px); z-index: 60; pointer-events: auto;
+  display: flex; flex-direction: column; gap: 0; width: min(318px, calc(100vw - 20px)); max-height: calc(100dvh - var(--chh) - 236px);
+}
+.card-preview.hidden { display: none; }
+.cp-bar { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 10px; background: rgba(20, 13, 9, 0.94); border: 1px solid var(--court-gold-dark, #8a6420); border-bottom: 0; border-radius: 7px 7px 0 0; font: 800 11px var(--font-disp, inherit); letter-spacing: 1.5px; color: var(--court-text-dim, #c9bca0); }
+.cp-private { margin-left: auto; color: var(--court-green, #22c55e); }
+.cp-x { width: 32px; height: 28px; padding: 0; cursor: pointer; border-radius: 5px; border: 1px solid var(--court-gold-dark, #8a6420); background: #2b1d12; color: var(--court-gold, #f2c14e); font-size: 15px; line-height: 1; }
+.cp-x:focus-visible, .cp-nav button:focus-visible { outline: 3px solid var(--court-gold, #f2c14e); outline-offset: 2px; }
+.court-card.big {
+  position: relative; left: auto; bottom: auto; width: 100%; height: auto; min-height: 190px; overflow: auto; cursor: default; transform: none; padding: 18px 16px 14px;
+  border-radius: 0 0 6px 6px; box-shadow: 0 0 0 1px rgba(86, 58, 20, 0.6), inset 0 0 30px rgba(110, 76, 28, 0.32), 0 18px 40px rgba(0, 0, 0, 0.65);
+}
+.court-card.big.t-challenge { padding-top: 24px; }
+.court-card.big .cf-text { display: block; overflow: visible; font-size: 19px; line-height: 1.32; -webkit-line-clamp: unset; }
+.court-card.big .cf-stamp { position: static; align-self: flex-end; transform: rotate(-7deg); margin-top: 6px; font-size: 13px; }
+.court-card.big .cf-head { gap: 10px; }
+.cp-nav { display: flex; justify-content: space-between; gap: 8px; padding-top: 6px; }
+.cp-nav button { flex: 1; min-height: 38px; cursor: pointer; border-radius: 6px; border: 1px solid var(--court-gold-dark, #8a6420); background: rgba(20, 13, 9, 0.94); color: var(--court-gold, #f2c14e); font-size: 22px; line-height: 1; }
+
+/* ---------------- méretek ---------------- */
+@media (max-width: 900px) { .card-hand { bottom: 54px; } } /* a lehúzható ponttábla sávja (38 px) fölött */
+@media (max-height: 820px) and (min-width: 701px) { .card-hand { --cw: 150px; --chh: 204px; --peek: 102px; } }
+@media (max-width: 1100px) and (min-width: 701px) { .card-hand { --cw: 140px; --chh: 190px; --peek: 96px; } .cf-text { font-size: 14px; } }
+/* mozgás: csökkentett mozgásnál nincs átmenet és animáció (a legyező azonnal nyílik) */
+.reduced-motion .court-card, .reduced-motion .card-hand .ch-badge { transition: none !important; }
+.reduced-motion .court-card.is-new, .reduced-motion .card-hand.has-new .ch-new { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .court-card { transition: none !important; }
+  .court-card.is-new, .card-hand.has-new .ch-new { animation: none !important; }
+}
+
+/* ---------------- mobil: kis pakli → alsó tálca (vízszintesen görgethető) → nagyító ---------------- */
+@media (max-width: 700px) {
+  .card-hand { --cw: 104px; --chh: 142px; --peek: 56px; left: 6px; bottom: 54px; width: calc(var(--cw) + 44px); }
+  .court-card { padding: 12px 8px 8px; left: 14px; }
+  .cf-text { font-size: 12.5px; -webkit-line-clamp: 4; }
+  .cf-type { font-size: 10px; }
+  .cf-sub, .cf-foot, .cf-no { display: none; }
+  .cf-stamp { right: 4px; bottom: 6px; font-size: 8px; border-width: 2px; letter-spacing: 1px; }
+  .ch-toggle { left: 14px; height: 28px; font-size: 10px; letter-spacing: 1px; }
+  .card-hand[data-state="open"] {
+    left: 0; right: 0; width: auto; height: 158px; bottom: 52px; pointer-events: auto;
+    background: linear-gradient(180deg, rgba(42, 28, 18, 0.97), rgba(23, 17, 14, 0.98)); border-top: 2px solid var(--court-gold-dark, #8a6420); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+  }
+  .card-hand[data-state="open"] .ch-stage { clip-path: none; display: flex; align-items: flex-end; gap: 10px; overflow-x: auto; overflow-y: hidden; padding: 12px 14px 12px; pointer-events: auto; scroll-snap-type: x proximity; }
+  .card-hand[data-state="open"] .ch-stage .court-card {
+    position: relative; left: auto; bottom: auto; flex: none; width: 124px; height: 132px; transform: none; scroll-snap-align: start;
+  }
+  .card-hand[data-state="open"] .ch-stage .court-card.sel { transform: translateY(-8px); box-shadow: 0 0 0 2px var(--court-gold, #f2c14e), 0 8px 18px rgba(0, 0, 0, 0.6); }
+  .card-hand[data-state="open"] .ch-stage .court-card[data-hide-open], .card-hand[data-state="open"] .ch-stage .court-card.more { display: flex; }
+  .card-hand[data-state="open"] .ch-stage .court-card.more { display: none; }
+  .card-hand[data-state="open"] .ch-stage .court-card[data-hide-open] { display: flex; }
+  .card-hand[data-state="open"] .ch-toggle { left: auto; right: 8px; top: -2px; bottom: auto; transform: translateY(-100%); width: auto; padding: 0 12px; }
+  .card-hand[data-state="open"] .ch-toggle .ch-label::after { content: ' ▾'; }
+  .card-preview { position: fixed; left: 8px; right: 8px; bottom: 208px; width: auto; max-height: calc(100dvh - 330px); }
+  .court-card.big .cf-sub, .court-card.big .cf-foot, .court-card.big .cf-no { display: flex; }
+  .court-card.big .cf-text { font-size: 17px; }
+  .court-card.big .cf-stamp { font-size: 11px; }
+}
+@media (max-width: 700px) and (max-height: 640px) { .card-hand[data-state="open"] { height: 138px; } .card-hand[data-state="open"] .ch-stage .court-card { height: 112px; } .card-preview { bottom: 188px; max-height: calc(100dvh - 280px); } }

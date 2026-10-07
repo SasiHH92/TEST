@@ -42,7 +42,7 @@
     game_over:         { sub: 'Megszületett a végső rangsor.',            cam: 'wide' }
   };
   const ROLE_WORD = { prosecutor: 'ÜGYÉSZ', defendant: 'VÁDLOTT', defender: 'VÉDŐÜGYVÉD', witness: 'TANÚ', judge: 'BÍRÓ', juror: 'ESKÜDT' };
-  const TIMED = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'prep', 'verdict_vote', 'challenge_vote'];
+  const TIMED = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'prep', 'verdict_vote', 'challenge_vote', 'objection'];
 
   // A tiltakozás védekezés-szakaszában a megtámadott beszélőre fókuszál a kamera, a döntésnél a bíróra.
   function phaseUi(phase, snap) {
@@ -65,7 +65,7 @@
   };
   const st = {
     cam: 'wide', camKey: '', lastCase: '', snap: null, intro: null, introActive: false, verdictActive: false, verdictKey: '',
-    scoreSeen: {}, scoreQueue: [], countdown: 0, evidenceKey: '', challengeKey: '', timers: new Set(), phase: '', cardFreeAt: 0
+    scoreSeen: {}, scoreQueue: [], countdown: 0, evidenceKey: '', challengeKey: '', timers: new Set(), phase: '', verdictObj: null
   };
   const later = (fn, ms) => { const t = setTimeout(() => { st.timers.delete(t); safe(fn)(); }, ms); st.timers.add(t); return t; };
   const cancel = (t) => { if (t) { clearTimeout(t); st.timers.delete(t); } };
@@ -93,19 +93,50 @@
     later(() => el.classList.remove('court-shake'), 520);
   };
 
+  // ---------------- OVERLAY-MENEDZSER ----------------
+  // Egyszerre legfeljebb EGY nagy (cinematic) overlay látszik a jelenet közepén: kör-intro, ítélet, kihívás-kártya, bizonyíték. Az intro és az ítélet KRITIKUS:
+  // azonnal átveszi a helyet (az éppen látszó átmeneti kártyát elengedi). A többi sorban vár (prioritás szerint), és ha várakozás közben fázis váltott, elmarad
+  // (elavult kártyát nem mutatunk). Ezek MIND átmenetiek: néhány másodperc után maguktól eltűnnek; tartós információ (kártyáim, idő, pontok) a széleken él.
+  const OVL = { intro: { critical: true, prio: 5 }, verdict: { critical: true, prio: 4 }, challenge: { prio: 3 }, evidence: { prio: 2 } };
+  const ov = { active: null, queue: [] };
+  function ovStart(o) {
+    ov.active = o;
+    document.body.dataset.courtMajor = o.kind;
+    o.show();
+    if (o.dur) o.timer = later(() => ovEnd(o), o.dur);
+  }
+  function ovEnd(o, quick) {
+    if (!o || ov.active !== o) return;
+    cancel(o.timer);
+    ov.active = null;
+    delete document.body.dataset.courtMajor;
+    try { o.hide(quick); } catch (e) { console.warn('[court]', e && e.message); }
+    later(ovNext, quick || reduced() ? 0 : 360);
+  }
+  function ovNext() {
+    if (ov.active) return;
+    while (ov.queue.length) {
+      const o = ov.queue.shift();
+      if (o.phase && st.phase !== o.phase) continue;
+      ovStart(o);
+      return;
+    }
+  }
+  function present(o) {
+    Object.assign(o, OVL[o.kind]);
+    if (!ov.active) return ovStart(o);
+    if (o.critical && !ov.active.critical) { ovEnd(ov.active, true); return ovStart(o); }
+    ov.queue.push(o);
+    ov.queue.sort((x, y) => y.prio - x.prio);
+  }
+
   // ---------------- 3) KÖR-INTRO ----------------
   // "N. TÁRGYALÁS – AZ ÁLLAM VS. <vádlott> – VÁD: <vád>" a szerver állapotából (kör, vádlott, vád), majd "A TÁRGYALÁS MEGKEZDŐDIK!" + kalapács.
   // Kihagyható (kattintás / Esc / Enter / szóköz). Mozgás-csökkentésnél rövidebb, mozgás nélkül.
-  function introEnd(el) {
-    if (!el) return;
-    if (st.intro) { cancel(st.intro.t1); cancel(st.intro.t3); }
-    el.classList.remove('show', 'step2');
-    later(() => { el.classList.add('hidden'); el.innerHTML = ''; }, reduced() ? 0 : 320);
-    st.introActive = false; st.intro = null;
-    document.body.classList.remove('court-intro-on');
-  }
-  function introStep2(el) {
-    if (!st.intro || st.intro.step === 2) return;
+  function introEnd() { if (st.intro && st.intro.o) ovEnd(st.intro.o); }
+  function introStep2() {
+    const el = $('#courtIntro');
+    if (!st.intro || st.intro.step === 2 || !el) return;
     st.intro.step = 2;
     cancel(st.intro.t1);
     // A kalapácsot a bíró saját figurája üti (judgeSmash); ide csak a felirat kerül – új kalapács-rajz nincs.
@@ -114,123 +145,130 @@
     if (typeof window.judgeSmash === 'function') window.judgeSmash(); else play('gavel');
     play('intro-open');
     shake();
-    st.intro.t3 = later(() => introEnd(el), reduced() ? 700 : 1200);
+    st.intro.t3 = later(introEnd, reduced() ? 700 : 1200);
   }
   const showIntro = safe((snap) => {
     const el = $('#courtIntro');
     if (!el || !snap.accusationText) return;
-    if (st.intro) { cancel(st.intro.t1); cancel(st.intro.t3); }
     const role = snap.myRole && ROLE_WORD[snap.myRole] ? '<div class="ci-role">A TE SZEREPED: <b>' + esc(ROLE_WORD[snap.myRole]) + '</b></div>' : '';
-    el.className = 'court-intro';
-    el.innerHTML = '<div class="court-intro-card court-parchment">' +
+    const html = '<div class="court-intro-card court-parchment">' +
       '<div class="ci-kicker">' + esc(snap.round) + '. TÁRGYALÁS' + (snap.totalRounds > 1 ? ' <small>/ ' + esc(snap.totalRounds) + '</small>' : '') + '</div>' +
       '<div class="ci-vs">AZ ÁLLAM <span>VS.</span> ' + esc(snap.names.defendant || 'GYANÚSÍTOTT') + '</div>' +
       '<div class="ci-label">VÁD</div><div class="ci-charge">' + esc(snap.accusationText) + '</div>' + role +
       '<div class="court-stamp">BEIDÉZVE</div><div class="ci-skip">Kihagyás: kattintás vagy Esc</div></div>';
-    el.classList.remove('hidden');
-    requestAnimationFrame(() => el.classList.add('show'));
-    st.introActive = true;
-    document.body.classList.add('court-intro-on');
-    st.intro = { step: 1 };
-    play('intro');
-    st.intro.t1 = later(() => introStep2(el), reduced() ? 1500 : 2800);
+    const o = {
+      kind: 'intro', phase: 'accusation', dur: 0,
+      show() {
+        el.className = 'court-intro';
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+        requestAnimationFrame(() => el.classList.add('show'));
+        st.introActive = true;
+        document.body.classList.add('court-intro-on');
+        st.intro = { step: 1, o };
+        play('intro');
+        st.intro.t1 = later(introStep2, reduced() ? 1500 : 2800);
+      },
+      hide() {
+        if (st.intro) { cancel(st.intro.t1); cancel(st.intro.t3); }
+        el.classList.remove('show', 'step2');
+        later(() => { el.classList.add('hidden'); el.innerHTML = ''; }, reduced() ? 0 : 320);
+        st.introActive = false; st.intro = null;
+        document.body.classList.remove('court-intro-on');
+      }
+    };
+    present(o);
   });
   const skipIntro = () => {
-    const el = $('#courtIntro');
-    if (!st.introActive || !el || !st.intro) return;
-    if (st.intro.step === 1) introStep2(el); else introEnd(el);
+    if (!st.introActive || !st.intro) return;
+    if (st.intro.step === 1) introStep2(); else introEnd();
   };
   // A réteg áteresztő (pointer-events: none), ezért a kattintást az egész jelenet-zónán figyeljük, míg az intro látszik.
   document.addEventListener('click', (e) => { if (st.introActive && e.target && e.target.closest && e.target.closest('#stage, #courtIntro')) skipIntro(); });
   document.addEventListener('keydown', (e) => { if (st.introActive && ['Escape', 'Enter', ' '].includes(e.key)) { e.preventDefault(); skipIntro(); } });
 
-  // Egyszerre egy kártya látszik: a következő megvárja az előzőt (pl. felkészülésnél előbb a bizonyíték, utána a titkos kihívás).
-  // Ha várakozás közben fázis váltott, a kártya elmarad (elavult kártyát nem mutatunk).
-  function inSlot(dur, phase, fn) {
-    const wait = Math.max(0, st.cardFreeAt - Date.now());
-    st.cardFreeAt = Date.now() + wait + dur + 350;
-    if (!wait) return fn();
-    later(() => { if (st.phase === phase) fn(); }, wait);
+  // Egy átmeneti kártya-overlay (bizonyíték / kihívás) közös megjelenítője: a tartalmat a hívó adja, az eltűnést a menedzser időzíti.
+  function cardOverlay(kind, elId, className, html, sound, dur) {
+    const el = $(elId);
+    if (!el) return;
+    present({
+      kind, phase: st.phase, dur,
+      show() {
+        el.className = className;
+        el.innerHTML = html;
+        el.classList.remove('hidden');
+        requestAnimationFrame(() => el.classList.add('show'));
+        play(sound);
+      },
+      hide(quick) {
+        el.classList.remove('show');
+        later(() => { el.classList.add('hidden'); el.innerHTML = ''; }, quick || reduced() ? 0 : 320);
+      }
+    });
   }
 
   // ---------------- 4) BIZONYÍTÉK ----------------
   // Valódi játékesemény: a felkészülés elején az ügyész és a védő megkapja a bizonyítékokat (a szerver csak nekik küldi); a kör végén, a leleplezésnél
-  // mindenki látja az összes kártyát. Csak a játék által adott szöveg jelenik meg.
-  const evBox = () => $('#courtEvidence');
-  function evidenceHide() { const el = evBox(); if (!el) return; el.classList.remove('show'); later(() => { el.classList.add('hidden'); el.innerHTML = ''; }, reduced() ? 0 : 320); }
+  // mindenki látja az összes kártyát. Csak a játék által adott szöveg jelenik meg. (A kártyák tartósan a KÁRTYÁIM-ban vannak; ez csak a rövid bemutató.)
   const showEvidence = safe((snap, items, label, key) => {
-    const el = evBox();
-    if (!el || !items || !items.length || st.evidenceKey === key) return;
+    if (!items || !items.length || st.evidenceKey === key) return;
     st.evidenceKey = key;
-    const dur = reduced() ? 1800 : 3600;
-    inSlot(dur, snap.phase, () => {
-    cancel(st.evidenceTimer);
     const rows = items.slice(0, 4).map((t, i) => '<li><b>#' + String(i + 1).padStart(2, '0') + '</b><span>' + esc(t) + '</span></li>').join('');
-    el.className = 'court-evidence';
-    el.innerHTML = '<div class="evidence-folder"><div class="ev-tab">' + esc(label) + ' · ' + esc(snap.caseNo || 'AKTA') + '</div>' +
-      '<ol class="ev-list">' + rows + '</ol><div class="court-stamp ev-stamp">AKTÁBA VÉVE</div></div>';
-    el.classList.remove('hidden');
-    requestAnimationFrame(() => el.classList.add('show'));
-    play('evidence');
-    st.evidenceTimer = later(evidenceHide, dur);
-    });
+    cardOverlay('evidence', '#courtEvidence', 'court-evidence',
+      '<div class="evidence-folder"><div class="ev-tab">' + esc(label) + ' · ' + esc(snap.caseNo || 'AKTA') + '</div>' +
+      '<ol class="ev-list">' + rows + '</ol><div class="court-stamp ev-stamp">AKTÁBA VÉVE</div></div>', 'evidence', reduced() ? 1600 : 2800);
   });
 
   // ---------------- 5) KIHÍVÁSKÁRTYA ----------------
-  const chBox = () => $('#courtChallenge');
-  function challengeHide() { const el = chBox(); if (!el) return; el.classList.remove('show'); later(() => { el.classList.add('hidden'); el.innerHTML = ''; }, reduced() ? 0 : 320); }
+  // Rövid (1,5–2,5 mp) bemutató; utána a kártya eltűnik, és a bíró kompakt ellenőrző sávja marad (nincs két nagy kihívás-felület egyszerre).
   const showChallenge = safe((snap, title, lines, key, note) => {
-    const el = chBox();
-    if (!el || !lines || !lines.length || st.challengeKey === key) return;
+    if (!lines || !lines.length || st.challengeKey === key) return;
     st.challengeKey = key;
-    const dur = reduced() ? 1800 : 3200;
-    inSlot(dur, snap.phase, () => {
-    cancel(st.challengeTimer);
     const body = lines.map((l) => '<div class="cc-line">' + (l.who ? '<b>' + esc(l.who) + '</b> ' : '') + esc(l.text) + '</div>').join('');
-    el.className = 'court-challenge';
-    el.innerHTML = '<div class="challenge-card court-parchment"><div class="cc-kicker">KAMU BÍRÓSÁG</div><div class="cc-title">' + esc(title) + '</div>' + body +
-      (note ? '<div class="cc-note">' + esc(note) + '</div>' : '') + '<div class="court-stamp cc-stamp">KIHÍVÁS</div></div>';
-    el.classList.remove('hidden');
-    requestAnimationFrame(() => el.classList.add('show'));
-    play('challenge');
-    st.challengeTimer = later(challengeHide, dur);
-    });
+    cardOverlay('challenge', '#courtChallenge', 'court-challenge',
+      '<div class="challenge-card court-parchment"><div class="cc-kicker">KAMU BÍRÓSÁG</div><div class="cc-title">' + esc(title) + '</div>' + body +
+      (note ? '<div class="cc-note">' + esc(note) + '</div>' : '') + '<div class="court-stamp cc-stamp">KIHÍVÁS</div></div>', 'challenge', reduced() ? 1500 : 2200);
   });
 
   // ---------------- 6) ÍTÉLET ----------------
   // A szerver ítélete (snap.verdict) indítja; az animáció csak megjeleníti. Sorrend: bíró-fókusz → (a kalapácsot a client.js ütteti meg a fázisváltáskor)
   // → ütés-villanás, rázkódás, pecsét → vádlott-fókusz → eltűnik. Ha közben tovább lép a fázis (a házigazda gyorsan lép), a réteg kecsesen elhal;
   // a pontok mindenképp megjelennek.
-  function verdictEnd(el, quick) {
-    cancel(st.vT1); cancel(st.vT2); cancel(st.vT3);
-    st.verdictActive = false;
-    el.classList.remove('show');
-    later(() => { el.className = 'court-verdict hidden'; el.innerHTML = ''; }, quick || reduced() ? 0 : 340);
-    flushScore(false);
-  }
   const showVerdict = safe((snap) => {
     const el = $('#courtVerdict'), v = snap.verdict;
     if (!el || !v || typeof v.guilty !== 'boolean') return;
     const key = snap.round + '|' + snap.caseNo + '|' + v.guilty;
     if (st.verdictKey === key) return;
     st.verdictKey = key;
-    cancel(st.vT1); cancel(st.vT2); cancel(st.vT3);
     const guilty = !!v.guilty;
-    st.verdictActive = true;
-    focus('judge');
-    el.className = 'court-verdict hidden';
-    st.vT1 = later(() => {
-      shake();
-      const tally = (Number.isInteger(v.guiltyVotes) && Number.isInteger(v.notGuiltyVotes)) ? v.guiltyVotes + ' : ' + v.notGuiltyVotes : '';
-      el.className = 'court-verdict ' + (guilty ? 'flash-guilty' : 'flash-acquitted');
-      el.innerHTML = '<div class="verdict-card court-parchment ' + (guilty ? 'guilty' : 'acquitted') + '">' +
-        '<div class="verdict-kicker">A BÍRÓSÁG ÍTÉLETE</div><div class="verdict-name">' + esc(snap.names.defendant || 'A VÁDLOTT') + '</div>' +
-        '<div class="court-stamp">' + (guilty ? 'BŰNÖS' : 'FELMENTVE') + '</div>' +
-        '<div class="verdict-sub">' + (tally ? '<b>' + esc(tally) + '</b> ' : '') + '</div>' + (v.unanimous ? '<div class="verdict-unanimous">EGYHANGÚ ÍTÉLET – BÓNUSZPONT</div>' : '') + '</div>';
-      requestAnimationFrame(() => el.classList.add('show'));
-      st.vT2 = later(() => focus('defendant'), reduced() ? 900 : 1500);
-      st.vT3 = later(() => verdictEnd(el, false), reduced() ? 1500 : 2600);
-    }, reduced() ? 150 : 480);
+    const tally = (Number.isInteger(v.guiltyVotes) && Number.isInteger(v.notGuiltyVotes)) ? v.guiltyVotes + ' : ' + v.notGuiltyVotes : '';
+    const o = {
+      kind: 'verdict', phase: 'verdict', dur: 0,
+      show() {
+        st.verdictActive = true; st.verdictObj = o;
+        focus('judge');
+        el.className = 'court-verdict hidden';
+        st.vT1 = later(() => {
+          shake();
+          el.className = 'court-verdict ' + (guilty ? 'flash-guilty' : 'flash-acquitted');
+          el.innerHTML = '<div class="verdict-card court-parchment ' + (guilty ? 'guilty' : 'acquitted') + '">' +
+            '<div class="verdict-kicker">A BÍRÓSÁG ÍTÉLETE</div><div class="verdict-name">' + esc(snap.names.defendant || 'A VÁDLOTT') + '</div>' +
+            '<div class="court-stamp">' + (guilty ? 'BŰNÖS' : 'FELMENTVE') + '</div>' +
+            '<div class="verdict-sub">' + (tally ? '<b>' + esc(tally) + '</b> ' : '') + '</div>' + (v.unanimous ? '<div class="verdict-unanimous">EGYHANGÚ ÍTÉLET – BÓNUSZPONT</div>' : '') + '</div>';
+          requestAnimationFrame(() => el.classList.add('show'));
+          st.vT2 = later(() => focus('defendant'), reduced() ? 900 : 1500);
+          st.vT3 = later(() => ovEnd(o), reduced() ? 1500 : 2600);
+        }, reduced() ? 150 : 480);
+      },
+      hide(quick) {
+        cancel(st.vT1); cancel(st.vT2); cancel(st.vT3);
+        st.verdictActive = false; st.verdictObj = null;
+        el.classList.remove('show');
+        later(() => { el.className = 'court-verdict hidden'; el.innerHTML = ''; }, quick || reduced() ? 0 : 340);
+        flushScore(false);
+      }
+    };
+    present(o);
   });
 
   // ---------------- 7) PONT-FELREPÜLÉS ----------------
@@ -344,7 +382,7 @@
         if (seen !== caseKey) { try { sessionStorage.setItem('kb_intro_case', caseKey); } catch (_) { /* nincs tár */ } showIntro(snap); }
       }
     }
-    if (st.introActive && snap.phase !== 'accusation' && st.intro && st.intro.step === 1) introStep2($('#courtIntro'));
+    if (st.introActive && snap.phase !== 'accusation' && st.intro && st.intro.step === 1) introStep2();
 
     // bizonyíték: a felkészülés elején (akinek a szerver adja), és a kör végi leleplezéskor mindenkinek
     if (snap.phase === 'prep' && snap.evidence && snap.evidence.length) showEvidence(snap, snap.evidence, 'BIZONYÍTÉK', caseKey + '|prep');
@@ -363,7 +401,7 @@
 
     // ítélet: a szerver ítéletére; ha a fázis elhagyta, a réteg kecsesen elhal
     if (snap.phase === 'verdict') showVerdict(snap);
-    else if (st.verdictActive) { const el = $('#courtVerdict'); if (el) verdictEnd(el, true); }
+    else if (st.verdictObj) ovEnd(st.verdictObj, true);
 
     // pontok: a szerver eseményeiből, az ítélet után
     if (['verdict', 'challenge_review', 'round_results', 'game_over'].includes(snap.phase)) queueScore(snap);
@@ -373,7 +411,8 @@
   const reset = safe(() => {
     for (const t of st.timers) clearTimeout(t);
     document.body.classList.remove('court-intro-on');
-    Object.assign(st, { timers: new Set(), introActive: false, verdictActive: false, intro: null, camKey: '', lastCase: '', verdictKey: '', evidenceKey: '', challengeKey: '', scoreQueue: [], scoreSeen: {}, countdown: 0, phase: '', cardFreeAt: 0 });
+    ov.active = null; ov.queue = []; delete document.body.dataset.courtMajor;
+    Object.assign(st, { timers: new Set(), introActive: false, verdictActive: false, verdictObj: null, intro: null, camKey: '', lastCase: '', verdictKey: '', evidenceKey: '', challengeKey: '', scoreQueue: [], scoreSeen: {}, countdown: 0, phase: '' });
     for (const id of ['#courtIntro', '#courtEvidence', '#courtChallenge', '#courtVerdict', '#courtCountdown']) {
       const el = $(id);
       if (el) { el.classList.add('hidden'); el.classList.remove('show', 'step2'); el.innerHTML = ''; }
@@ -384,7 +423,7 @@
   document.addEventListener('kb:screen', (e) => { if (e.detail !== 'game') reset(); });
 
   // Teszt / hibakeresés: a megjelenítés pillanatnyi állapota (nem játékállapot).
-  const getState = () => ({ camera: st.cam, introActive: st.introActive, verdictActive: st.verdictActive, countdown: st.countdown, phase: st.phase, preloaded: preloaded.size });
+  const getState = () => ({ camera: st.cam, introActive: st.introActive, verdictActive: st.verdictActive, countdown: st.countdown, phase: st.phase, preloaded: preloaded.size, major: ov.active ? ov.active.kind : '', queued: ov.queue.map((o) => o.kind) });
 
   // ---------------- 11) AVATÁR × SZEREP KÉPEK ----------------
   // A szerver listája a feltöltött szerep-képekről (/api/role-sprites); hiányzó képnél az eredeti avatár marad (nincs SVG-tartalék).
