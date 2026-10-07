@@ -325,6 +325,23 @@ async function main() {
     // A játékos-méretek párhuzamosan futnak (külön böngészőkörnyezet és szoba mindegyiknek).
     await Promise.all(VIEWPORTS.map((vp) => walk(browser, vp).catch((e) => { failed++; console.error('FAIL: ' + vp[0] + 'x' + vp[1] + ' – megszakadt: ' + (e && e.message)); })));
     for (const vp of [VIEWPORTS[1], VIEWPORTS[3], VIEWPORTS[6]]) await walkAccount(browser, vp).catch((e) => { failed++; console.error('FAIL: fiókos ' + vp[0] + 'x' + vp[1] + ' – megszakadt: ' + (e && e.message)); });
+    // A tartalom-biztonsági szabály (CSP) mellett is működnie kell az /admin oldal külső szkriptjének (ADMIN_TOKEN nélkül a szerver 404-et ad, ezt a szkript kiírja).
+    await check('/admin oldal: a külső szkript fut a CSP mellett, nincs CSP-sértés', async () => {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      const page = await context.newPage();
+      const problems = [];
+      page.on('console', (m) => { if (m.type() === 'error' && /Content Security Policy|Refused to/.test(m.text())) problems.push(m.text()); });
+      page.on('pageerror', (e) => problems.push('pageerror: ' + e.message));
+      try {
+        await page.goto(BASE + '/admin', { waitUntil: 'domcontentloaded' });
+        await page.fill('#token', 'valami-hosszu-teszt-token-0123456789');
+        await page.evaluate(() => document.getElementById('loginForm').requestSubmit());
+        await page.waitForFunction(() => document.getElementById('loginMsg').textContent.length > 0, null, { timeout: 5000 });
+        assert.match(await page.textContent('#loginMsg'), /nincs bekapcsolva|admin token/i);
+        assert.deepEqual(problems, []);
+      } finally { await context.close(); }
+    });
+
     await check('a szerver nem naplózott hibát a böngészős futás alatt', async () => {
       assert.ok(!/HIBA a\(z\)|uncaughtException|unhandledRejection/.test(stderr), stderr.slice(0, 400));
     });

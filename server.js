@@ -22,6 +22,7 @@ const {createSocial} = require('./social');
 const {verifyLegendCode} = require('./legend-claims');
 const {createDms} = require('./dms');
 const {createErrorLog} = require('./errorlog');
+const {securityHeaders} = require('./security-headers');
 const {createAdmin} = require('./admin');
 const {cleanText} = require('./textclean');
 const {budapestDate, weekStart, msUntilWeekReset} = require('./quests');
@@ -65,6 +66,9 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 
 // Reverse proxy (Render) mögött a kliens IP-je a proxy fejlécéből jön.
 app.set('trust proxy', 1);
+// Biztonsági fejlécek (CSP, beágyazás-tiltás, HSTS stb.) minden válaszra – a statikus fájlok előtt kell lenniük.
+app.disable('x-powered-by');
+app.use(securityHeaders());
 // Legendás kártya igénylése: a kódot a LEGEND_SECRET-ből számoljuk (a titkot a tulajdonos állítja be a tárhelyen, a kódban nincs).
 const LEGEND_SECRET = process.env.LEGEND_SECRET || '';
 // Hibanapló: a váratlan hibák összevonva, fájlban és (DATABASE_URL esetén) az adatbázisban is megmaradnak; az /admin oldal mutatja.

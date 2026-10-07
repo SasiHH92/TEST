@@ -161,9 +161,10 @@ Minden legendás tesztelő a saját kártyájához kapcsolt fiókot kaphat: egy 
 - **Sebességkorlátok:** 20 socket-esemény/mp kapcsolatonként; csevegő, közös tér, privát üzenet, ajándék, barátkérés, hibajelentés, ranglista, QR és admin-próbálkozás külön korláttal; reakciók ~4/mp játékosonként; az avatár-mentés 3 mp-enként.
 - **Szoba- és kapcsolat-spam:** egy címről egyszerre legfeljebb 6 szoba (`MAX_ROOMS_PER_IP`) és 60 nyitott kapcsolat (`MAX_SOCKETS_PER_IP`) lehet; a szándékosan elhagyott, üres lobbi-szoba azonnal megszűnik, így a szoba-spam nem tölti meg a 50 helyet.
 - **Közönségkedvenc:** a beszélő (és a csapattársa) nevetése nem számít, más játékostól körönként egy beszélőnek legfeljebb 5 😂.
+- **HTTP-fejlécek** (`security-headers.js`, minden válaszra): `Content-Security-Policy` (`script-src 'self'`: csak a saját szkriptek futnak, nincs inline szkript és eval; stílus inline is lehet, a betűtípus a Google Fontsról jön; kapcsolat csak a saját oldalra), `frame-ancestors 'none'` + `X-Frame-Options: DENY` (az oldal nem ágyazható be), `nosniff`, `Referrer-Policy`, `Permissions-Policy` (nincs kamera / mikrofon / hely / fizetés), HSTS csak HTTPS-en (fél év, aldomain nélkül). **Új külső szkriptet vagy inline `<script>`-et / `on…=` eseménykezelőt ne adj az oldalhoz**: a CSP letiltja (a `test/security.js` ezt ellenőrzi). Ha mégis blokkol valamit, a böngésző `securitypolicyviolation` jelzése az `/admin` hibalistájába kerül („CSP: …").
 - **Titkok:** az API-kulcsok, az adatbázis-cím, az `ADMIN_TOKEN` és a `LEGEND_SECRET` csak a szerver környezeti változóiban élnek; a böngészőbe, a repóba és a naplóba nem kerülnek. A játék nem hív fizetős külső (AI) szolgáltatást, és nincs fizetés sem.
 - **Adatbázis:** csak a szerver éri el (a kliens soha nem kapcsolódik közvetlenül a Neonhoz), ezért sorszintű hozzáférés-szabály (RLS) nem szükséges.
-- Teszt: `npm run test:security` (13 ellenőrzés: ülés-átvétel, szoba- és kapcsolat-spam, avatár, szavazat, nevetés, QR).
+- Teszt: `npm run test:security` (15 ellenőrzés: ülés-átvétel, szoba- és kapcsolat-spam, avatár, szavazat, nevetés, QR, fejlécek).
 
 ## Botokkal tesztelés
 

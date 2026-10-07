@@ -20,6 +20,11 @@
     if (ev.target && ev.target !== window) return; // képek / szkriptek betöltési hibái nem érdekesek
     report(ev.message, ev.filename, ev.lineno);
   });
+  // A tartalom-biztonsági szabály (CSP) megsértése: valami betöltődne, amit nem engedünk – ez hiba vagy támadási kísérlet.
+  // Csak a direktíva és a tiltott cím eleje megy el (lekérdezés-paraméter nélkül).
+  document.addEventListener('securitypolicyviolation', (ev) => {
+    report('CSP: ' + ev.violatedDirective + ' – ' + String(ev.blockedURI || '').replace(/[?#].*$/, '').slice(0, 80), ev.sourceFile, ev.lineNumber);
+  });
   window.addEventListener('unhandledrejection', (ev) => {
     const r = ev.reason;
     report('Elkapatlan ígéret: ' + (r && r.message ? r.message : r), '', 0);

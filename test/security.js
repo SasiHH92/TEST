@@ -274,6 +274,35 @@ async function main() {
       assert.equal(savedAvatars().Izsván, 'av05', 'érvénytelen avatár-azonosító nem mentődik');
     });
 
+    await test('Biztonsági fejlécek: CSP, beágyazás-tiltás, nosniff, HSTS csak HTTPS-en; nincs X-Powered-By', async () => {
+      for (const route of ['/', '/admin', '/assets/biro.png', '/api/auth/status', '/health']) {
+        const r = await fetch(BASE + route);
+        const csp = r.headers.get('content-security-policy') || '';
+        assert.match(csp, /script-src 'self'(;|$)/, route + ': a szkriptek csak a saját oldalról');
+        assert.ok(!/unsafe-eval|script-src[^;]*unsafe-inline/.test(csp), route + ': nincs eval / inline szkript');
+        assert.match(csp, /frame-ancestors 'none'/); assert.match(csp, /object-src 'none'/); assert.match(csp, /base-uri 'self'/);
+        assert.equal(r.headers.get('x-frame-options'), 'DENY', route);
+        assert.equal(r.headers.get('x-content-type-options'), 'nosniff', route);
+        assert.ok(r.headers.get('referrer-policy'), route);
+        assert.match(r.headers.get('permissions-policy') || '', /camera=\(\)/);
+        assert.equal(r.headers.get('x-powered-by'), null, route);
+        assert.equal(r.headers.get('strict-transport-security'), null, route + ': sima HTTP-n nincs HSTS');
+      }
+      const https = await fetch(BASE + '/', { headers: { 'X-Forwarded-Proto': 'https' } });
+      assert.match(https.headers.get('strict-transport-security') || '', /max-age=\d+/, 'HTTPS (proxy) mögött van HSTS');
+      assert.ok(!/includeSubDomains|preload/i.test(https.headers.get('strict-transport-security')), 'az onrender.com aldomain-jeire nem terjed ki');
+    });
+
+    await test('A kiszolgált oldalakban nincs inline szkript és inline eseménykezelő (a CSP ezért nem törheti el őket)', () => {
+      for (const file of ['index.html', 'admin.html']) {
+        const html = fs.readFileSync(path.join(__dirname, '..', 'public', file), 'utf8');
+        const inline = [...html.matchAll(/<script\b([^>]*)>/gi)].filter((m) => !/\bsrc=/.test(m[1]));
+        assert.equal(inline.length, 0, file + ': inline <script>');
+        assert.ok(!/\son(click|load|error|change|input|submit|focus|blur|mouse\w+)\s*=/i.test(html), file + ': inline on…= eseménykezelő');
+        assert.ok(!/javascript:/i.test(html), file + ': javascript: cím');
+      }
+    });
+
     await test('QR-generálás: percenként legfeljebb 30 kérés címenként', async () => {
       let limited = 0;
       for (let i = 0; i < 36; i++) if ((await fetch(BASE + '/qr?room=ABCD')).status === 429) limited++;
