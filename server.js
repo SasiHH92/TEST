@@ -81,6 +81,17 @@ storage.setErrorHook((err) => errors.record('storage', err));
 const authApi = createAuth({
   persist:()=>storage.push('accounts'),
   onError:reportError,
+  // Fiók-törlés után: a privát üzenetek, a névhez kötött statisztika és az élő kapcsolatok takarítása, a barátok listája frissül.
+  // (A legendás kártyák nyilvántartási statisztikája megmarad: azt a kártyán játszott játékok adják, nem a fiók személyes adata.)
+  onDelete:(gone)=>{
+    dms.purgeUser(gone.id);
+    if(!gone.legend) {
+      const key=Object.keys(STATS).find((k)=>k.normalize('NFKC').toLocaleLowerCase('hu-HU')===gone.username.normalize('NFKC').toLocaleLowerCase('hu-HU'));
+      if(key) { delete STATS[key]; saveStats(); }
+    }
+    io.in('u:'+gone.id).fetchSockets().then((list)=>{ for(const s of list) { socialApi.disconnect(s.id); s.leave('u:'+gone.id); } }).catch(()=>{});
+    for(const friendId of gone.friends) io.to('u:'+friendId).emit('friends_refresh',{});
+  },
   reservedNames:()=>REGISTRY.map((r)=>r.nev),
   onRename:renameStats,
   // érvényes (név, kód) párra a legenda pontos nevét adja vissza, egyébként null
@@ -131,6 +142,36 @@ app.use('/api/friends',socialApi.router);
 const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi });
 app.use('/api/admin', adminApi.router);
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+// Adatkérés: a bejelentkezett felhasználó saját adatainak letöltése JSON-ban (fiók, barátok, bolt, statisztika, privát üzenetek).
+// Jelszó-hash, munkamenet- és visszaállító token nem kerül bele. Percenként nem több, 10 percenként legfeljebb 5 kérés felhasználónként.
+const allowExport = makeLimiter(5, 10 * 60 * 1000);
+app.get('/api/account/export', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const user = authApi.session(req);
+  if (!user) return res.status(401).json({ error: 'Előbb jelentkezz be.' });
+  if (!allowExport(user.id)) return res.status(429).json({ error: 'Túl sok kérés. Próbáld újra pár perc múlva.' });
+  const nameOf = (id) => (authApi.directory.byId(id) || {}).username || '(törölt fiók)';
+  const names = (ids) => (Array.isArray(ids) ? ids : []).map(nameOf);
+  const social = user.social || {};
+  const messages = Object.entries(dms.exportFor(user.id)).map(([friendId, msgs]) => ({
+    with: nameOf(friendId),
+    messages: msgs.map((m) => ({ from: m.from === user.id ? user.username : nameOf(m.from), text: m.text, time: new Date(m.ts).toISOString() }))
+  }));
+  res.set('Content-Disposition', 'attachment; filename="kamu-birosag-adataim.json"');
+  res.json({
+    exportedAt: new Date().toISOString(),
+    account: {
+      username: user.username, email: user.email, createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : null,
+      legend: user.legend || '', providers: Object.keys(user.providers || {}), hasPassword: !!user.password, profile: user.profile || {}
+    },
+    social: { friends: names(social.friends), incomingRequests: names(social.incoming), outgoingRequests: names(social.outgoing), blocked: names(social.blocked),
+      presence: social.presence || 'all', notifyOnline: !!social.notifyOnline },
+    shop: user.shop || {},
+    stats: statsForName(user.username),
+    messages
+  });
+});
 
 // Böngészős hibák jelentése (public/report.js): szigorúan korlátozva, csak rövid, tisztított szöveg kerül a naplóba.
 const clientErrorHits = new Map(); // ip -> időbélyegek

@@ -88,6 +88,27 @@ function createDms({ file, persist = () => {}, now = () => Date.now() }) {
       for (const [x, y] of [[a, b], [b, a]]) if (data.reads[x] && y in data.reads[x]) { delete data.reads[x][y]; changed = true; }
       if (changed) save();
     },
+    // Fiók-törlés: a felhasználó összes beszélgetése és olvasási jelölője megszűnik (a barátok oldaláról is).
+    purgeUser(userId) {
+      let removed = 0;
+      for (const k of Object.keys(data.threads)) {
+        if (k.split(':').includes(userId)) { delete data.threads[k]; removed++; }
+      }
+      if (data.reads[userId]) { delete data.reads[userId]; removed++; }
+      for (const reads of Object.values(data.reads)) if (userId in reads) { delete reads[userId]; removed++; }
+      if (removed) save();
+      return removed;
+    },
+    // Adatkérés: a felhasználó üzenetei barátonként ({ barátId: [üzenetek] }); a beszélgetésben mindkét fél üzenete szerepel.
+    exportFor(userId) {
+      const out = {};
+      for (const [k, t] of Object.entries(data.threads)) {
+        const [a, b] = k.split(':');
+        if (a !== userId && b !== userId) continue;
+        out[a === userId ? b : a] = t.msgs.map((m) => ({ from: m.from, text: m.text, ts: m.ts }));
+      }
+      return out;
+    },
     flush() { if (timer) saveNow(); }
   };
 }

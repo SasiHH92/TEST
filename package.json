@@ -23,7 +23,8 @@
     "db-backup": "node scripts/db-backup.js",
     "db-restore": "node scripts/db-restore.js",
     "test:layout": "node test/layout.js",
-    "test:security": "node test/security.js"
+    "test:security": "node test/security.js",
+    "test:privacy": "node test/privacy.js"
   },
   "engines": {
     "node": ">=18"

@@ -88,6 +88,17 @@
       ]
     },
     {
+      "heading": "ADATVÉDELEM",
+      "list": [
+        "Vendégként nem kell semmit megadnod. A neved és a beállításaid a böngésződben maradnak; a szoba és a csevegés csak a szerver memóriájában él, a szoba megszűnésével eltűnik. A közös tér üzenetei sem maradnak meg tartósan.",
+        "A játékban használt név alatt a nyilvántartás számokat őriz (elítélve, felmentve, pontok…). Ez vendégként is így van, és a nevedhez kötődik.",
+        "Fiókkal ezeket tároljuk: felhasználónév, e-mail cím, a jelszavad (csak titkosított lenyomatként), a kártyád, a barátlistád, a pogácsád és tárgyaid, a privát üzeneteid (barátonként az utolsó 60). Google vagy Discord belépésnél a szolgáltató azonosítóját és az e-mail címet kapjuk meg, jelszót nem.",
+        "Az adatok a szerveren és egy külső adatbázisban (Neon) vannak, naponta pillanatképpel; a mentéseket 14 napig őrizzük, ezért a törölt adat még legfeljebb ennyi ideig szerepelhet bennük.",
+        "Nincs hirdetés és nincs követés. A betűtípusokat a Google Fontsról töltjük be, ezért a Google láthatja a böngésződ címét.",
+        "A jogaid: a PROFIL ablak FIÓK részében letöltheted az összes adatodat (JSON), vagy véglegesen törölheted a fiókodat. A törlés eltávolítja a fiókot, a barátságokat, a kéréseket, a privát üzeneteket, a pogácsát, a tárgyakat és a névhez kötött statisztikát. Jelszavas fióknál a jelszó, Google/Discord fióknál a felhasználóneved begépelése kell hozzá. A legendás kártyák nyilvántartása megmarad, a kártya újra igényelhető."
+      ]
+    },
+    {
       "heading": "KILÉPÉS ÉS KÖVETKEZŐ JÁTÉK",
       "body": [
         "Véletlen kapcsolatvesztésnél 20 másodpercig megtartod a szereped. Utána egy nem szereplő esküdt veszi át ugyanazokkal a kártyákkal és a hátralévő idővel, legalább 15 másodperccel. Késői visszatéréskor esküdtként folytatod. A házigazda joga 30 másodperces kiesés után a legrégebben bent lévő játékosé. A szándékos kilépés és kirúgás azonnali; három fő alatt a játék visszatér a lobbyba.",

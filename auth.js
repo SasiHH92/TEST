@@ -267,6 +267,37 @@ function createAuth(options={}) {
     if(saved.username!==oldName) {try {options.onRename?.(oldName,saved.username);} catch(_) { /* a statisztika átvitele nem állíthatja meg a mentést */ }}
     res.json({user:publicUser(saved)});
   }));
+  // Fiók törlése (végleges). Újra-azonosítás kell: jelszavas fióknál a jelszó, jelszó nélkülinél (Google/Discord) a felhasználónév begépelése.
+  // Egy mentésben: a fiók, a munkamenetei és a visszaállító tokenjei megszűnnek, és a MÁS fiókok kapcsolatai közül (barát, kérés, tiltás) is kikerül.
+  // A játék többi adatát (privát üzenetek, statisztika, élő kapcsolatok) a server.js `onDelete` kezelője takarítja.
+  router.post('/delete',wrap(async(req,res)=>{
+    const current=session(req);
+    if(!current) fail(401,'Előbb jelentkezz be.');
+    if(current.password) {
+      if(typeof req.body.password!=='string' || !req.body.password.length || req.body.password.length>128) fail(400,'A törléshez add meg a jelszavad.');
+      if(!(await verify(req.body.password,current.password))) fail(401,'Hibás jelszó.');
+    } else if(typeof req.body.confirmName!=='string' || normalize(req.body.confirmName)!==normalize(current.username)) {
+      fail(400,'A törléshez írd be pontosan a felhasználóneved.');
+    }
+    const gone=store.commit(data=>{
+      const user=data.users.find(u=>u.id===current.id);
+      if(!user) fail(401,'Előbb jelentkezz be.');
+      const friends=[...(user.social?.friends||[])];
+      data.users=data.users.filter(u=>u.id!==user.id);
+      data.sessions=data.sessions.filter(s=>s.userId!==user.id);
+      data.resets=data.resets.filter(r=>r.userId!==user.id);
+      for(const other of data.users) {
+        const social=other.social;
+        if(social && typeof social==='object') for(const key of ['friends','incoming','outgoing','blocked']) {
+          if(Array.isArray(social[key])) social[key]=social[key].filter(id=>id!==user.id);
+        }
+      }
+      return {id:user.id,username:user.username,legend:user.legend||'',friends};
+    });
+    try {options.onDelete?.(gone);} catch(error) {console.error('A fiók-törlés utólagos takarítása hibázott:',scrub(error&&error.message,200));}
+    res.clearCookie(COOKIE,cookieOptions(req));
+    res.json({ok:true});
+  }));
   router.post('/logout',wrap((req,res)=>{
     const token=cookies(req)[COOKIE];
     if(token) store.commit(data=>{data.sessions=data.sessions.filter(s=>s.hash!==digest(token));});

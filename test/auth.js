@@ -303,6 +303,19 @@ async function main() {
     assert.doesNotMatch(status.text,/google-secret|discord-secret|test-access-token|"password"\s*:|"sessions"\s*:|"hash"\s*:/);
     const raw=fs.readFileSync(oauth.file,'utf8');assert.doesNotMatch(raw,/google-secret|discord-secret|test-access-token/);
   });
+  await test('Fiók törlése jelszó nélküli (Google) fióknál: a felhasználónév begépelése kell, utána a fiók és a munkamenet megszűnik',async()=>{
+    const user=(await oauth.req('GET','/status',undefined,{jar:googleJar})).data.user;
+    assert.equal(user.hasPassword,false);
+    assert.equal((await oauth.req('POST','/delete',{},{jar:googleJar})).status,400,'megerősítés nélkül nem');
+    assert.equal((await oauth.req('POST','/delete',{confirmName:'Valaki Más'},{jar:googleJar})).status,400,'rossz név nem');
+    assert.equal((await oauth.req('POST','/delete',{confirmName:{$ne:1}},{jar:googleJar})).status,400,'nem szöveg nem');
+    assert.equal((await oauth.req('GET','/status',undefined,{jar:googleJar})).data.user.id,googleId,'még megvan');
+    assert.equal((await oauth.req('POST','/delete',{confirmName:user.username.toUpperCase()},{jar:googleJar})).status,200,'a név kis/nagybetűre nem érzékeny');
+    assert.equal((await oauth.req('GET','/status',undefined,{jar:googleJar})).data.user,null);
+    const stored=JSON.parse(fs.readFileSync(oauth.file,'utf8'));
+    assert.ok(!stored.users.some(u=>u.id===googleId));
+    assert.ok(!stored.sessions.some(entry=>entry.userId===googleId));
+  });
   await test('Resend transport: címzett, feladó és Bearer fejléc',async()=>{
     let sent;
     const resend=await boot({env:{AUTH_MAIL_API_KEY:'test-mail-key',AUTH_MAIL_FROM:'Kamu <sender@example.invalid>'},

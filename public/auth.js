@@ -246,6 +246,32 @@
     } catch(error) {message('#accountMessage',error.message);openProfile();}
     finally {leaving=false;}
   };
+  // Fiók törlése: újra-azonosítással (jelszó, vagy jelszó nélküli fióknál a felhasználónév begépelése).
+  const deleteBox=$('#accountDeleteBox'),deleteInput=$('#accountDeleteInput');
+  function closeDelete() {deleteBox.classList.add('hidden');deleteInput.value='';}
+  $('#accountDeleteOpen').addEventListener('click',()=>{
+    const password=!!account?.hasPassword;
+    $('#accountDeleteLabel').textContent=password?'Jelszavad a megerősítéshez':'Írd be a felhasználóneved a megerősítéshez';
+    deleteInput.type=password?'password':'text';deleteInput.autocomplete=password?'current-password':'off';
+    deleteInput.value='';deleteBox.classList.remove('hidden');deleteInput.focus();
+    message('#accountMessage','');
+  });
+  $('#accountDeleteCancel').addEventListener('click',closeDelete);
+  $('#accountDeleteGo').addEventListener('click',async()=>{
+    if(!account||!deleteInput.value) {message('#accountMessage','A megerősítéshez töltsd ki a mezőt.');return;}
+    const button=$('#accountDeleteGo');button.disabled=true;
+    try {
+      await api('delete',account.hasPassword?{password:deleteInput.value}:{confirmName:deleteInput.value});
+      closeDelete();closeProfile();
+      clearRoomIdentity();account=null;IDENTITY_READY=false;
+      LS.removeItem('kb_accountId');sessionStorage.removeItem('kb_guest');
+      if(window.kbShop) window.kbShop.forget();
+      if(window.kbFriends) window.kbFriends.forget();
+      identifySocket();
+      show('auth');tab('login');message('#authStatus','A fiókod és az adataid törölve lettek.');
+    } catch(error) {message('#accountMessage',error.message);}
+    finally {button.disabled=false;}
+  });
   $('#authLoginForm').addEventListener('submit',event=>{
     event.preventDefault();
     const body={email:$('#authLoginEmail').value,password:$('#authLoginPassword').value,remember:$('#authRemember').checked};

@@ -205,6 +205,20 @@
         <p id="accountEmail" class="profile-email"></p>
         <div id="accountConnections" class="account-connections"></div>
         <p id="accountMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+        <!-- Adataid: letöltés (JSON) és végleges fióktörlés (újra-azonosítással) -->
+        <div class="account-data">
+          <a id="accountExport" class="btn small ghost" href="/api/account/export" download="kamu-birosag-adataim.json">⬇ ADATAIM LETÖLTÉSE</a>
+          <button id="accountDeleteOpen" type="button" class="btn small ghost danger">🗑 FIÓK TÖRLÉSE</button>
+        </div>
+        <div id="accountDeleteBox" class="account-delete hidden">
+          <p>A fiókod, a barátlistád, a pogácsád, a megvett tárgyaid, a statisztikád és a privát üzeneteid <b>véglegesen törlődnek</b>. Ez nem vonható vissza.</p>
+          <label id="accountDeleteLabel" for="accountDeleteInput">Jelszavad a megerősítéshez</label>
+          <input id="accountDeleteInput" type="password" autocomplete="current-password" maxlength="128">
+          <div class="account-delete-actions">
+            <button id="accountDeleteCancel" type="button" class="btn small ghost">MÉGSEM</button>
+            <button id="accountDeleteGo" type="button" class="btn small danger">VÉGLEGES TÖRLÉS</button>
+          </div>
+        </div>
       </div>
       <p id="pfMessage" class="auth-form-message" role="status" aria-live="polite"></p>
       <div class="avatar-panel-foot">
