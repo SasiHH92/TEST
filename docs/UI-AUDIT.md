@@ -55,17 +55,17 @@ haladást. A cél: a meglévő működő rendszerek megőrzése, a játék „é
 ## 2. Megvalósítási terv (sorrend, külön commit mindegyik)
 
 | # | Lépés | Állapot |
-|---|---|---|
+| --- | --- | --- |
 | 1 | Audit + design tokenek (`court.css`) + kamera-keret a színpad körül | ✅ |
-| 2 | Avatár × szerep megfeleltetés (`avatar-roles.js`, manifest, fallback) | ⬜ |
-| 3 | Szerver (visszafelé kompatibilis): `scoreEvents`, `exhibit` (bizonyíték), `ready`, díj-számlálók | ⬜ |
-| 4 | Élő terem (parallax, fény, por), cinematic fókusz, szerep-bevezetés, fázis-HUD | ⬜ |
-| 5 | Kör-intro, ítélet-pecsét, pontok felrepülése, bizonyíték- és kihívás-kártya a jelenetben | ⬜ |
-| 6 | Lobbi: GYORS / EGYÉNI játék, játékoskártyák (ready, HOST, VENDÉG) | ⬜ |
-| 7 | Avatárválasztó (random, pecsét), ponttábla-dobogó, humoros díjak | ⬜ |
-| 8 | Hang-architektúra (név-alapú leképezés, fallback) | ⬜ |
-| 9 | Kapcsolat-UX (újracsatlakozás, helyreállt, házigazda kiesett, szoba megszűnt) | ⬜ |
-| 10 | Reszponzív + akadálymentesség + tesztek + takarítás | ⬜ |
+| 2 | Avatár × szerep megfeleltetés (`avatar-roles.js`, `/api/role-sprites`, hiányzó képnél az eredeti avatár + HTML jelvény) | ✅ |
+| 3 | Szerver (visszafelé kompatibilis): `scoreEvents`, `set_ready` / `ready`, mért díj-számlálók | ✅ (`test/gamestate.js`) |
+| 4 | Élő terem (fény, por, sodródás), kamera-fókusz fázisonként, HUD (alcím + szerver-idő a szerepsávban) | ✅ |
+| 5 | Kör-intro (kihagyható), ítélet-pecsét (race-védett), pont-felrepülés a szerver eseményeiből, bizonyíték- és kihívás-kártya (egyszerre egy) | ✅ |
+| 6 | Lobbi: GYORS / EGYÉNI játék, játékoskártyák (HOST, VENDÉG, KÉSZ), "kész vagyok" valós időben | ✅ |
+| 7 | Avatárválasztó (VÉLETLEN + "KARAKTER KIVÁLASZTVA"), végeredmény: érmek, dobogó-fények, díjak a mért értékkel | ✅ |
+| 8 | Hang-architektúra: `kbSound.play(név)` → WebAudio-szintézis, csendes tartalék, némítás + hangerő megmarad | ✅ (hangfájl nincs) |
+| 9 | Kapcsolat-UX: megszakadt / újrapróbálkozás (n. próba, ébredő szerver) / helyreállt; oldal-újratöltés a szobába visszatér | ✅ |
+| 10 | Reszponzív + akadálymentesség + tesztek (`test/flow.js`, `test/layout.js`) | ✅ |
 
 Jelölés: ⬜ még nincs, ✅ kész és ellenőrizve (teszt + böngészős próba). Az állapot lépésenként frissül.
 
@@ -85,3 +85,33 @@ Jelölés: ⬜ még nincs, ✅ kész és ellenőrizve (teszt + böngészős pró
 **Jelenet-profil:** a `client.js` `SCENES.hu` a `terem-hatter.webp` cím nélküli alsó részét (cropTop 300) mutatja; a kép az aljához igazított, a teteje sötétbe
 halványul (itt van a HUD). A `window.kbCourtConfig = { scene: 'legacy' }` a régi képet kapcsolja vissza. Ha a grafikai munkafolyamat új, magyar `targyalotterem.jpg`-t ad,
 elég a `SCENES.legacy` koordinátáit hozzáigazítani, és ezt állítani alapértelmezettnek.
+
+
+## 4. Végső integráció: a megjelenítés a szerver állapotából (a kliens semmit nem dönt el)
+
+**Adatfolyam.** `socket 'state'` → `S` → `renderGame()` → `courtSnapshot()` (csak a megjelenítéshez szükséges kivonat: kör, ügyszám, vád, nevek, saját szerep, saját privát kártyák, ítélet, pontesemények) →
+`kbCourt.update()`. Az időzítő-ciklus (`startTimerLoop`) a szerver lejáratából (`phaseEndsAt − (Date.now() + serverOffset)`) számolja a HUD-időt és hívja a `kbCourt.tick()`-et (3-2-1). Nincs második játékmotor,
+nincs kliens-oldali óra, pontozás, szerep- vagy ítélet-döntés.
+
+| Terület | Forrás a szerverről | Megjelenítés |
+| --- | --- | --- |
+| Szerepek | `prosecutorId / defendantId / defenderId / witnessId / currentJudgeId` | színpadi pozíció + `assets/roles/avatar_NN_<szerep>.webp` (hiányzik → az eredeti avatár + HTML jelvény) |
+| Fázis → kamera | `phase` (+ `objectionData.phase`) | `court.js PHASE_UI / CAMERA`: ügyész, vádlott, védő, tanú, bíró, széles; mozgás-csökkentésnél a kamera áll |
+| HUD | `phase`, `phaseEndsAt` | szerepsáv: cím + beszélő + alcím + idő; 10 mp-től sárga, 5 mp-től piros, utolsó 3 mp-ben nagy 3-2-1 |
+| Kör-intro | `round`, `totalRounds`, `caseNo`, `accusationText`, vádlott neve | "N. TÁRGYALÁS – AZ ÁLLAM vs. X – VÁD", kihagyható (kattintás / Esc), majd "A TÁRGYALÁS MEGKEZDŐDIK!" + a bíró kalapácsa; újratöltéskor nem ismétlődik |
+| Bizonyíték | `evidence` (csak az ügyésznek / védőnek küldi a szerver), `revealedCards` (kör végén mindenkinek) | dosszié-kártya; más játékos privát adata soha nem kerül a kliensre |
+| Kihívás | `myChallenge`, `challengeReview`, `challengeVote` | egyszerre egy kártya, a bizonyíték után |
+| Ítélet | `verdict.guilty` (+ szavazatszám, `unanimous`) | bíró-fókusz → kalapács → pecsét (BŰNÖS / FELMENTVE) + rázkódás → vádlott-fókusz; ha közben fázis vált, a réteg kecsesen elhal |
+| Pontok | `scoreEvents` (ki, mennyi, miért) | felrepülő "+N" az okkal; a ponttábla sora pulzál; semmi sem jelenik meg, ami nincs az eseményben |
+| Reakciók | `reaction` esemény (a szerver szűri a fázist, az emojit és a sebességet) | legfeljebb 14 egyszerre; mozgás-csökkentésnél rövid, álló jelzés |
+| Díjak | `gameOver.awards` (csak pozitív mért értékre) | díjkártya + a mért érték (pont, elítélés, nevetés, kihívás, elítélt ügy, felmentés, jó ítélet) |
+| Lobbi | `players[].ready / isHost / profile.acct` | KÉSZ / HOST / VENDÉG jelvény, "Készen áll: X / Y" |
+
+**Hang-hookok** (`kbSound.play(név)`): `gavel, intro, intro-open, evidence, challenge, points, countdown, verdict-guilty, verdict-acquitted, join, ready, vote, objection, ding`. Mind WebAudio-szintézis (nincs letöltött hang); AudioContext vagy hangerő
+hiányában csend. A némítás és a hangerő `localStorage`-ban él (`kb_muted`, `kb_volume`).
+
+**Tesztek.** `npm run test:flow` (3 emberi böngésző + 2 bot: lobbi, indítás, intro, szerepek, HUD-idő, kamera, 3-2-1, bizonyíték-szivárgás, reakció-korlát, ítélet-pecsét = szerver ítélet, Σ pontesemény = pontszám, szerepcsere
+újratöltés nélkül, kapcsolat-megszakadás és újracsatlakozás, F5 a játékban, végeredmény + díjak, JS-hiba nélkül); `npm run test:layout` (11 méret); `test/gamestate.js`, `test/asset-policy.js`, `test/avatar-roles.js`.
+
+**Nyitott / nem automatizált.** (1) A végleges szerep-képek: a 250 `assets/roles/*.webp` ideiglenes placeholder (azonos az alap-avatárral) – a kód a névkonvencióra épül, csere = fájlok felülírása. (2) Hangfájlok nincsenek (csendes / szintetizált tartalék).
+(3) Valódi, több géppel / mobilhálózaton végzett próba nem futtatható ebben a környezetben (BLOCKED): a tesztek egy gépen, több böngésző-környezettel szimulálják a játékosokat.

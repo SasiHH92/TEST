@@ -200,10 +200,9 @@ body.chat-docked .comfort-dock { left: 372px; }
 /* ---------------- 4) CINEMATIC COURTROOM HUD ---------------- */
 .court-focus{position:absolute;inset:0;z-index:7;pointer-events:none;opacity:0;transition:opacity .45s var(--court-ease);background:radial-gradient(circle at 50% 55%,transparent 0 18%,rgba(4,2,1,.12) 45%,rgba(4,2,1,.46) 100%)}
 .court-focus.active{opacity:1}.court-focus[data-focus="left"]{background:radial-gradient(circle at 20% 62%,transparent 0 17%,rgba(4,2,1,.15) 42%,rgba(4,2,1,.52) 100%)}.court-focus[data-focus="right"],.court-focus[data-focus="witness"]{background:radial-gradient(circle at 73% 61%,transparent 0 17%,rgba(4,2,1,.15) 42%,rgba(4,2,1,.52) 100%)}
-.court-phase-hud{position:absolute;z-index:90;top:14px;left:50%;transform:translateX(-50%);min-width:250px;max-width:min(520px,70vw);padding:8px 20px;text-align:center;pointer-events:none;border-width:1px}.cph-title{display:block;color:var(--court-gold);font:800 18px var(--font-disp);letter-spacing:2px}.cph-who{display:block;font:800 14px var(--font-disp);color:#fff}.cph-sub{display:block;margin-top:2px;color:var(--court-text-dim);font-size:11px}
 .court-intro,.court-evidence{position:absolute;inset:0;z-index:125;display:grid;place-items:center;pointer-events:none;background:rgba(5,3,2,.38);opacity:0;transition:opacity .3s ease}.court-intro.show,.court-evidence.show{opacity:1}.court-intro-card{width:min(660px,82vw);padding:28px 36px;text-align:center;transform:translateY(18px) scale(.95) rotate(-1deg);transition:transform .55s var(--court-ease-bounce)}.court-intro.show .court-intro-card{transform:translateY(0) scale(1) rotate(-1deg)}.ci-kicker{font:800 15px var(--font-disp);letter-spacing:4px;color:#8a6420}.ci-vs{margin:7px 0;font:900 clamp(28px,4vw,54px) var(--font-disp);color:#201711}.ci-vs span{color:var(--court-red);font-size:.55em}.ci-label{display:inline-block;margin-top:5px;padding:2px 12px;background:#2b211a;color:#f6efdc;font:800 11px var(--font-disp);letter-spacing:3px}.ci-charge{margin:12px auto 20px;max-width:540px;font:700 clamp(16px,2vw,23px) var(--font-body);line-height:1.25}.court-intro-card .court-stamp{font-size:18px}
 .evidence-folder{position:relative;width:min(520px,78vw);min-height:250px;padding:54px 34px 30px;color:#2b211a;background:linear-gradient(135deg,#caa86c,#e1c68e 55%,#b99355);border:2px solid #8a6420;border-radius:7px;box-shadow:0 24px 60px #0009,inset 0 0 45px #7a4f1d33;transform:translateY(45px) rotate(4deg) scale(.9);transition:transform .5s var(--court-ease-bounce)}.court-evidence.show .evidence-folder{transform:translateY(0) rotate(-2deg) scale(1)}.ev-tab{position:absolute;top:-22px;left:22px;padding:8px 22px;background:#d8ba7d;border:2px solid #8a6420;border-bottom:0;border-radius:7px 7px 0 0;font:800 13px var(--font-disp);letter-spacing:2px}.ev-pin{float:left;display:grid;place-items:center;width:105px;height:125px;margin:0 24px 10px 0;background:#eee2c4;border:8px solid #f6efdc;box-shadow:0 4px 10px #0004;font:900 64px Georgia;color:#6b5638;transform:rotate(-4deg)}.ev-text{padding-top:20px;font:800 clamp(17px,2.4vw,27px) var(--font-disp);line-height:1.2}.ev-stamp{position:absolute;right:25px;bottom:24px;font-size:12px;letter-spacing:2px}
-@media(max-width:700px){.court-phase-hud{top:8px;min-width:0;width:52vw;padding:5px 9px}.cph-title{font-size:12px}.cph-who{font-size:10px}.cph-sub{display:none}.court-intro-card{padding:20px 18px}.ci-kicker{font-size:11px}.evidence-folder{min-height:210px;padding:44px 22px 24px}.ev-pin{width:76px;height:90px;font-size:45px;margin-right:14px}.ev-text{padding-top:7px}}
+@media(max-width:700px){.court-intro-card{padding:20px 18px}.ci-kicker{font-size:11px}.evidence-folder{min-height:210px;padding:44px 22px 24px}}
 .reduced-motion .court-intro-card,.reduced-motion .evidence-folder{transition:none!important;transform:none!important}
 @media(prefers-reduced-motion:reduce){.court-intro-card,.evidence-folder{transition:none!important;transform:none!important}}
 
@@ -216,3 +215,116 @@ body.chat-docked .comfort-dock { left: 372px; }
 
 /* A raszter-háttér burkolója: a JS (renderFurniture) a háttérkép tényleges méretére és helyére igazítja; a kép teteje (belesütött cím) kilóg és levágódik. */
 .stage-bg-wrap { position: absolute; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 13%); mask-image: linear-gradient(180deg, transparent 0, #000 13%); }
+
+/* ---------------- 6) HUD: alcím + szerver-idő a szerepsávban ---------------- */
+.rb-sub { color: var(--court-text-dim); font: 600 12px var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rb-time {
+  display: inline-flex; align-items: center; padding: 1px 10px; border-radius: 999px; min-width: 52px; justify-content: center;
+  font: 800 14px var(--font-disp); letter-spacing: 1px; color: var(--court-text); background: rgba(10, 8, 6, 0.6); border: 1px solid var(--court-panel-line);
+  font-variant-numeric: tabular-nums;
+}
+.rb-time.warn { color: #1a1208; background: var(--court-amber); border-color: var(--court-amber); }
+.rb-time.danger { color: #fff; background: var(--court-red-bright); border-color: var(--court-red-bright); animation: rb-pulse 0.5s ease-in-out infinite alternate; }
+@keyframes rb-pulse { from { transform: scale(1); } to { transform: scale(1.12); } }
+@media (max-width: 760px) { .rb-sub { display: none; } .rb-time { font-size: 12px; padding: 0 7px; min-width: 40px; } }
+
+/* ---------------- 7) INTRO / BIZONYÍTÉK / KIHÍVÁS: kiegészítések ---------------- */
+.ci-role { margin: 0 0 10px; font: 700 13px var(--font-disp); letter-spacing: 2px; color: #6f5837; }
+.ci-role b { color: var(--court-red); }
+.ci-skip { margin-top: 10px; font: 600 11px var(--font-body); color: #8a7a5c; letter-spacing: 1px; }
+.court-intro.step2 { background: rgba(5, 3, 2, 0.5); }
+.court-open { text-align: center; animation: court-open-hit 0.5s var(--court-ease-bounce) both; }
+.co-text { font: 900 clamp(30px, 6vw, 78px) var(--font-disp); line-height: 1.05; letter-spacing: 4px; color: var(--court-gold); text-shadow: 0 0 36px rgba(242, 193, 78, 0.7), 0 4px 0 #5b4210; }
+@keyframes court-open-hit { 0% { transform: scale(1.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.ev-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.ev-list li { display: flex; gap: 12px; align-items: baseline; font: 700 clamp(15px, 2vw, 21px) var(--font-body); line-height: 1.25; }
+.ev-list li b { flex: none; font: 900 14px var(--font-disp); letter-spacing: 1px; color: #6b5638; background: #eee2c4; border: 2px solid #f6efdc; padding: 2px 8px; transform: rotate(-3deg); }
+.cc-line { margin: 4px 0; font: 700 clamp(15px, 2vw, 20px) var(--font-body); line-height: 1.3; color: #3d3024; }
+.cc-line b { color: var(--court-red); letter-spacing: 1px; }
+.cc-note { margin-top: 10px; font: 800 11px var(--font-disp); letter-spacing: 2px; color: #80663d; }
+.cc-stamp { margin-top: 14px; font-size: 16px; }
+
+/* ---------------- 8) ÍTÉLET: rázkódás, rövid alcím ---------------- */
+.court-shake { animation: court-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+@keyframes court-shake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 1px, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, -1px, 0); } 40%, 60% { transform: translate3d(6px, 1px, 0); }
+}
+.verdict-sub b { color: #241b13; }
+
+/* ---------------- 9) VISSZASZÁMLÁLÁS 3-2-1 ---------------- */
+.court-countdown {
+  position: absolute; left: 50%; top: 38%; z-index: 126; transform: translate(-50%, -50%); pointer-events: none;
+  font: 900 clamp(90px, 18vw, 220px) var(--font-disp); line-height: 1; color: #fff;
+  text-shadow: 0 0 40px rgba(229, 72, 77, 0.85), 0 6px 0 #6e1616; opacity: 0.92;
+}
+.court-countdown.n3 { color: var(--court-amber); } .court-countdown.n2 { color: #ff8a3d; } .court-countdown.n1 { color: var(--court-red-bright); }
+.court-countdown.pulse { animation: cd-pulse 0.9s ease-out both; }
+@keyframes cd-pulse { 0% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } 25% { opacity: 0.95; } 100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.7; } }
+
+/* ---------------- 10) PONT-FELREPÜLÉS ---------------- */
+.court-score { position: fixed; inset: 0; z-index: 140; pointer-events: none; overflow: hidden; }
+.score-float {
+  position: absolute; transform: translate(-50%, 0); display: flex; flex-direction: column; align-items: center; gap: 1px;
+  animation: score-up 2.4s ease-out forwards; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+.score-float b { font: 900 clamp(26px, 4vw, 40px) var(--font-disp); color: var(--court-gold); }
+.score-float span { font: 800 10px var(--font-disp); letter-spacing: 2px; color: #fff; background: rgba(18, 12, 9, 0.8); padding: 1px 8px; border-radius: 999px; }
+.score-float.mine b { color: var(--court-green); }
+@keyframes score-up { 0% { transform: translate(-50%, 10px) scale(0.6); opacity: 0; } 15% { transform: translate(-50%, -8px) scale(1.15); opacity: 1; } 100% { transform: translate(-50%, -70px) scale(1); opacity: 0; } }
+.sb-row.score-bump { animation: sb-bump 0.7s ease-out; }
+@keyframes sb-bump { 0% { background: rgba(242, 193, 78, 0.45); transform: scale(1.03); } 100% { background: transparent; transform: scale(1); } }
+.reduced-motion .score-float { animation: none !important; transform: translate(-50%, -40px); opacity: 1; }
+.reduced-motion .court-countdown.pulse, .reduced-motion .court-open, .reduced-motion .court-shake, .reduced-motion .rb-time.danger { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .score-float { animation: none !important; transform: translate(-50%, -40px); opacity: 1; }
+  .court-countdown.pulse, .court-open, .court-shake, .rb-time.danger { animation: none !important; }
+}
+
+/* ---------------- 11) KÁRTYÁK ELHELYEZÉSE, SZALAG ---------------- */
+/* A bizonyíték- és kihívás-kártya a jelenet FELSŐ felében áll, hogy az alsó fázispanel ne takarja. Az intro és az ítélet középen marad. */
+.court-evidence, .court-challenge { place-items: start center; padding-top: clamp(64px, 12vh, 140px); }
+body.court-intro-on .accusation-ticker { visibility: hidden; }
+.verdict-unanimous {
+  margin: 12px auto 0; display: inline-block; padding: 4px 18px; font: 900 clamp(13px, 2.2vw, 20px) var(--font-disp); letter-spacing: 3px; color: #fff3d0;
+  background: linear-gradient(180deg, #8a6420, #5b4210); border: 2px solid var(--court-gold); border-radius: 4px; box-shadow: 0 0 22px rgba(242, 193, 78, 0.55);
+  animation: unan-in 0.45s 0.45s var(--court-ease-bounce) both;
+}
+@keyframes unan-in { from { transform: scale(1.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.reduced-motion .verdict-unanimous { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .verdict-unanimous { animation: none !important; } }
+
+/* ---------------- 12) VÉGEREDMÉNY: díjak (csak mért statisztikából) ---------------- */
+.phase-content[data-phase="game_over"] .awards { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; width: 100%; }
+.phase-content[data-phase="game_over"] .award-card { width: auto; }
+.award-stat { font: 800 11px var(--font-disp); letter-spacing: 1px; color: var(--court-text-dim); }
+
+/* ---------------- 13) LOBBI: gyors / egyéni játék, készenlét ---------------- */
+.lobby-mode { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 10px; }
+.lobby-mode-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 12px; cursor: pointer; text-align: center;
+  color: var(--court-text); background: rgba(10, 8, 6, 0.55); border: 2px solid var(--court-gold-dark); border-radius: var(--court-radius-sm);
+  font-family: var(--font-disp); transition: background var(--court-dur-fast), border-color var(--court-dur-fast), transform var(--court-dur-fast);
+}
+.lobby-mode-btn b { font-size: 16px; letter-spacing: 2px; }
+.lobby-mode-btn small { font: 600 11px var(--font-body); color: var(--court-text-dim); letter-spacing: 0; }
+.lobby-mode-btn:hover { transform: translateY(-1px); border-color: var(--court-gold); }
+.lobby-mode-btn[aria-selected="true"] { background: linear-gradient(180deg, rgba(242, 193, 78, 0.28), rgba(138, 100, 32, 0.28)); border-color: var(--court-gold); box-shadow: var(--court-glow-gold); }
+.lobby-mode-btn:focus-visible { outline: 3px solid var(--court-gold); outline-offset: 2px; }
+.quick-summary { margin: 0 0 12px; }
+#btnReady.green { background: linear-gradient(180deg, #34d673, #159447); color: #04210f; border-color: #0d6a32; }
+.p-state-row { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin: 2px 0 4px; min-height: 20px; }
+.p-state-row .court-badge { font-size: 10px; padding: 1px 7px; }
+.p-notready { color: var(--court-text-dim); opacity: 0.8; }
+@media (max-width: 560px) { .lobby-mode { grid-template-columns: 1fr; } }
+
+/* ---------------- 14) KAPCSOLAT-SÁV, AVATÁRVÁLASZTÓ ---------------- */
+#connBar.ok { background: linear-gradient(180deg, #1f7a46, #14532d); border-color: #4ade80; }
+.avatar-preview-box { position: relative; flex: none; }
+.avatar-stamp { position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%) rotate(-6deg); white-space: nowrap; font-size: 10px; letter-spacing: 1px; border-width: 3px; padding: 1px 8px;
+  color: var(--court-green); border-color: var(--court-green); background: rgba(8, 20, 12, 0.88); pointer-events: none; }
+.avatar-stamp:empty { display: none; }
+.avatar-stamp.stamp-in { animation: stamp-in 0.35s var(--court-ease-bounce) both; }
+@keyframes stamp-in { from { transform: translateX(-50%) rotate(-14deg) scale(1.8); opacity: 0; } to { transform: translateX(-50%) rotate(-6deg) scale(1); opacity: 1; } }
+.reduced-motion .avatar-stamp.stamp-in { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .avatar-stamp.stamp-in { animation: none !important; } }

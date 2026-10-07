@@ -158,7 +158,10 @@
   <div id="avatarModal" class="avatar-modal hidden" role="dialog" aria-modal="true" aria-labelledby="avatarModalTitle">
     <div class="avatar-panel">
       <div class="avatar-panel-head">
-        <img id="avatarModalPreview" class="avatar-preview" src="" alt="">
+        <div class="avatar-preview-box">
+          <img id="avatarModalPreview" class="avatar-preview" src="" alt="">
+          <span id="avatarModalStamp" class="court-stamp avatar-stamp" aria-live="polite"></span>
+        </div>
         <div>
           <h2 id="avatarModalTitle">Válaszd ki az avatárodat!</h2>
           <p>Ezzel a figurával jelensz meg a teremben: <b id="avatarModalName"></b></p>
@@ -167,6 +170,7 @@
       <div id="avatarModalGrid" class="avatar-grid avatar-modal-grid"></div>
       <div class="avatar-panel-foot">
         <button id="avatarModalCancel" type="button" class="btn small ghost">MÉGSEM</button>
+        <button id="avatarModalRandom" type="button" class="btn small" title="Véletlen karaktert kapsz">🎲 VÉLETLEN</button>
         <button id="avatarModalOk" type="button" class="btn big">BELÉPÉS A NYILVÁNTARTÁSBA</button>
       </div>
     </div>
@@ -365,6 +369,7 @@
           <span class="qr-label">📞 Olvasd be – csatlakozás</span>
         </div>
         <button id="btnCopyLink" class="btn police">Link másolása Discordra</button>
+        <button id="btnReady" type="button" class="btn small hidden" aria-pressed="false">KÉSZEN ÁLLOK</button>
         <button id="btnAddBot" class="btn small hidden">Bot hozzáadása</button>
         <button id="btnRemoveBot" class="btn small hidden">Bot eltávolítása</button>
         <button id="btnLeaveLobby" class="btn small ghost">KILÉPÉS</button>
@@ -380,6 +385,13 @@
       <!-- Ügyiratmappa: játékmódok + beállítások -->
       <div id="hostSettings" class="folder hidden">
         <div class="folder-tab">ÜGYSZÁMOK • A HÁZIGAZDA ASZTALA</div>
+        <!-- Gyors játék: alap szabályok, minden ügytípus keverve – egy kattintás. Egyéni játék: módok, időzítők, saját vádak. -->
+        <div class="lobby-mode" role="tablist" aria-label="Játék típusa">
+          <button id="btnQuickGame" type="button" role="tab" class="lobby-mode-btn" aria-selected="true"><b>⚡ GYORS JÁTÉK</b><small>alap szabályokkal, azonnal</small></button>
+          <button id="btnCustomGame" type="button" role="tab" class="lobby-mode-btn" aria-selected="false"><b>🛠 EGYÉNI JÁTÉK</b><small>módok, időzítők, saját vádak</small></button>
+        </div>
+        <p id="quickSummary" class="hint quick-summary"></p>
+        <div id="customSettings" class="hidden">
         <h4 class="folder-heading">Mely ügyekben folyik a tárgyalás? (több is bejelölhető)</h4>
         <div id="modeGrid" class="folder-grid"></div>
         <p id="activeModes" class="hint active-modes"></p>
@@ -405,6 +417,7 @@
         <textarea id="customAccusations" rows="3" placeholder="Egy sor = egy vád. Pl.: A [vádlott] ellopta Bence Minecraft gyémántjait."></textarea>
         <p class="hint">A [vádlott] a vádlott neve, a [játékos] egy másik játékosé.</p>
         <button id="btnSaveSettings" class="btn small">BEÁLLÍTÁSOK MENTÉSE</button>
+        </div>
         <button id="btnStartGame" class="btn big hidden">🔨 TÁRGYALÁS MEGKEZDÉSE</button>
       </div>
       <div id="nonHostNote" class="waiting-note hidden">Várakozás, míg a házigazda beállítja az ügyeket…</div>
@@ -458,11 +471,11 @@
           <div id="stageSpeaker" class="stage-speaker-strip"></div>
           <!-- Asset-first cinematic overlays: csak HTML/CSS, nem helyettesítik a valódi artworköt. -->
           <div id="courtFocus" class="court-focus" aria-hidden="true"></div>
-          <div id="courtPhaseHud" class="court-phase-hud court-card hidden" aria-live="polite"></div>
           <div id="courtIntro" class="court-intro hidden" aria-live="polite"></div>
           <div id="courtEvidence" class="court-evidence hidden" aria-live="polite"></div>
           <div id="courtChallenge" class="court-challenge hidden" aria-live="polite"></div>
           <div id="courtVerdict" class="court-verdict hidden" aria-live="assertive"></div>
+          <div id="courtCountdown" class="court-countdown hidden" aria-hidden="true"></div>
         </div>
       </section>
 
@@ -536,9 +549,7 @@
     <div class="objection-name" id="objectionName"></div>
   </div>
   <div id="reactionLayer" class="reaction-layer"></div>
-  <div id="unanimousOverlay" class="unanimous-overlay hidden">
-    <div class="unanimous-text">EGYHANGÚ!</div>
-  </div>
+  <div id="courtScore" class="court-score" aria-hidden="true"></div>
   <div id="confettiLayer" class="confetti-layer"></div>
 
   <script src="/report.js"></script>

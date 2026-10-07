@@ -1411,18 +1411,6 @@ svg.pin-threads circle { fill: var(--red-dark); stroke: #7e1d1d; stroke-width: 1
   letter-spacing: 3px; color: #ffd9d9;
 }
 
-.unanimous-overlay {
-  position: fixed; inset: 0; z-index: 65;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(8, 8, 4, 0.55);
-}
-.unanimous-text {
-  font-family: var(--font-disp);
-  font-size: clamp(60px, 14vw, 160px);
-  letter-spacing: 6px; color: var(--gold);
-  text-shadow: 0 0 44px rgba(242, 193, 78, 0.85), 0 5px 0 #6e5213;
-  animation: verdict-slam 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
-}
 
 .reaction-layer { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; }
 .flying-emoji {

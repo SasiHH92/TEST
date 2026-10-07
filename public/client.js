@@ -138,10 +138,27 @@ SFX.acquit = () => {
   tone(2093, 0.5, 'sine', 0.45, 0.16); tone(2637, 0.5, 'sine', 0.58, 0.11);
 };
 SFX.vote = () => { tone(520, 0.07, 'square', 0, 0.16); tone(780, 0.11, 'square', 0.07, 0.14); };
+// Tárgyalótermi "TV-show" hangok: mind WebAudio-szintetizált (nincs letöltött hangfájl). Ha nincs AudioContext, vagy némított / hangerő 0, a
+// tone() / noiseBurst() csendben kilép – a játék hang nélkül is teljes.
+SFX.intro = () => { [196, 262, 330].forEach((n, i) => tone(n, 0.42, 'triangle', i * 0.14, 0.26)); noiseBurst(0.5, 0, 0.07, 3200); };
+SFX.openCourt = () => { [392, 523, 659, 784].forEach((n, i) => tone(n, 0.3, 'triangle', 0.12 + i * 0.1, 0.3)); };
+SFX.paper = () => { noiseBurst(0.16, 0, 0.18, 2600); noiseBurst(0.1, 0.12, 0.12, 3400); };
+SFX.stampHit = () => { noiseBurst(0.1, 0, 0.5, 600); tone(110, 0.14, 'sine', 0, 0.6, 60); };
+SFX.points = () => { tone(880, 0.1, 'triangle', 0, 0.28); tone(1320, 0.16, 'triangle', 0.08, 0.26); };
+SFX.tick = () => tone(1000, 0.05, 'square', 0, 0.14);
+SFX.join = () => { tone(600, 0.08, 'sine', 0, 0.22); tone(900, 0.1, 'sine', 0.07, 0.2); };
+SFX.ready = () => tone(1046, 0.1, 'triangle', 0, 0.26);
 let chatSound = LS.getItem('kb_chat_sound') !== '0';
+// Hang-hívások néven (a court.js és a többi modul ezen át szólaltat meg): ismeretlen név vagy hiba esetén csend.
+const SOUND_HOOKS = {
+  gavel: 'gavel', intro: 'intro', 'intro-open': 'openCourt', evidence: 'paper', challenge: 'stampHit', points: 'points', countdown: 'tick',
+  'verdict-guilty': 'guilty', 'verdict-acquitted': 'acquit', join: 'join', ready: 'ready', vote: 'vote', objection: 'objection', ding: 'ding'
+};
 window.kbSound = {
   ping() { if (chatSound) { ensureAudio(); SFX.dm(); } },
   chat() { if (chatSound) { ensureAudio(); SFX.chat(); } },
+  play(name) { const fn = SFX[SOUND_HOOKS[name]]; if (typeof fn === 'function') { try { ensureAudio(); fn(); } catch (_) { /* nincs hang */ } } },
+  hooks: () => Object.keys(SOUND_HOOKS),
   enabled: () => chatSound,
   setEnabled(on) { chatSound = !!on; LS.setItem('kb_chat_sound', chatSound ? '1' : '0'); }
 };
@@ -241,7 +258,6 @@ function leaveToMenu() {
   cancelChargeIntro();
   lastSceneRoles=null;lastCharge=null;chargeCaseKey='';
   $('#objectionOverlay').classList.add('hidden');
-  $('#unanimousOverlay').classList.add('hidden');
   hideConnBar();
   renderLobby._lastNotice = null;
   stopTicker();
@@ -265,15 +281,17 @@ function me() {
   return S && S.players.find((p) => p.id === MY.playerId);
 }
 
-function myRole() {
-  if (!S) return 'juror';
-  if (S.phase !== 'lobby' && S.currentJudgeId === MY.playerId) return 'judge';
-  if (S.defendantId === MY.playerId) return 'defendant';
-  if (S.prosecutorId === MY.playerId) return 'prosecutor';
-  if (S.defenderId === MY.playerId) return 'defender';
-  if (S.witnessId === MY.playerId) return 'witness';
+// A szerepet a szerver állapotából olvassuk (a kliens nem dönt róla): bíró / vádlott / ügyész / védő / tanú, különben esküdt.
+function roleOfPid(pid) {
+  if (!S || !pid) return 'juror';
+  if (S.phase !== 'lobby' && S.currentJudgeId === pid) return 'judge';
+  if (S.defendantId === pid) return 'defendant';
+  if (S.prosecutorId === pid) return 'prosecutor';
+  if (S.defenderId === pid) return 'defender';
+  if (S.witnessId === pid) return 'witness';
   return 'juror';
 }
+function myRole() { return roleOfPid(MY.playerId); }
 
 function playerById(id) {
   return S ? (S.players.find((p) => p.id === id) || (S.departedPlayers || []).find((p) => p.id === id)) : null;
@@ -1046,16 +1064,28 @@ function openAvatarPicker(suspectName, onConfirm, onCancel) {
   const modal = $('#avatarModal');
   if (!AVATARS.includes(MY.avatar)) MY.avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
   $('#avatarModalName').textContent = suspectName.replace(/\s*\[[^\]]+\]\s*/, '').trim();
-  const preview = $('#avatarModalPreview');
+  const preview = $('#avatarModalPreview'), stamp = $('#avatarModalStamp');
   const sync = () => { preview.src = avatarSrc(MY.avatar); };
-  buildAvatarGrid($('#avatarModalGrid'), (a) => { MY.avatar = a; sync(); });
+  const chosen = () => { stamp.textContent = 'KARAKTER KIVÁLASZTVA'; stamp.classList.remove('stamp-in'); void stamp.offsetWidth; stamp.classList.add('stamp-in'); };
+  const grid = $('#avatarModalGrid');
+  buildAvatarGrid(grid, (a) => { MY.avatar = a; sync(); chosen(); });
+  stamp.textContent = ''; stamp.classList.remove('stamp-in');
   sync();
+  // VÉLETLEN: egy másik, véletlen karakter (a kiválasztott ugyanúgy változtatható marad)
+  $('#avatarModalRandom').onclick = () => {
+    const others = AVATARS.filter((x) => x !== MY.avatar);
+    MY.avatar = others[Math.floor(Math.random() * others.length)];
+    grid.querySelectorAll('.avatar-cell').forEach((c) => c.classList.toggle('selected', c.dataset.avatar === MY.avatar));
+    const cell = grid.querySelector('.avatar-cell.selected'); if (cell) cell.scrollIntoView({ block: 'center' });
+    sync(); chosen();
+  };
   modal.classList.remove('hidden');
   const sel = $('#avatarModalGrid .selected');
   if (sel) sel.scrollIntoView({ block: 'center' });
   const close = () => {
     modal.classList.add('hidden');
     $('#avatarModalOk').onclick = null;
+    $('#avatarModalRandom').onclick = null;
     $('#avatarModalCancel').onclick = null;
     modal.onclick = null;
   };
@@ -1612,7 +1642,7 @@ function updateActiveModesLabel() {
     : 'Válassz legalább egy ügyiratmappát!';
   const btn = $('#btnStartGame');
   if (btn) {
-    btn.disabled = sel.length === 0 || S.players.filter((p) => p.connected).length < 3;
+    btn.disabled = (lobbyQuick ? false : sel.length === 0) || S.players.filter((p) => p.connected).length < 3;
     btn.title = sel.length === 0 ? 'Válassz legalább egy ügyiratmappát!' : '';
   }
   const note = $('#nonHostNote');
@@ -1674,6 +1704,11 @@ function posterHtml(p, idx) {
   const stamp = isBot
     ? '<div class="p-stamp bot">TESZT-BOT</div>'
     : (p.isHost ? '<div class="p-stamp host">A TÁRGYALÁS VEZETŐJE</div>' : '');
+  // Állapot-jelvények (a szerver állapotából): HOST, VENDÉG (nincs fiók), KÉSZ (a játékos jelezte; a botok mindig készek, náluk nem mutatjuk).
+  const stateBadges = isBot ? '' :
+    (p.isHost ? '<span class="court-badge fill" style="--badge:var(--court-gold)">HOST</span>' : '') +
+    (!prof.acct ? '<span class="court-badge" style="--badge:var(--court-text-dim)">VENDÉG</span>' : '') +
+    (p.ready ? '<span class="court-badge fill p-ready" style="--badge:var(--court-green)">✓ KÉSZ</span>' : '<span class="court-badge p-notready">VÁR…</span>');
   // Házigazdai kirúgás a lobbyban: minden MÁSIK játékos plakátján KIRÚG gomb.
   const canKick = (S && S.hostId === MY.playerId && p.id !== MY.playerId);
   const kickBtn = canKick
@@ -1695,6 +1730,7 @@ function posterHtml(p, idx) {
     '<span class="p-wanted">' + (isBot ? 'HIVATALOS SZEMÉLYZET' : ((cosm && cosm.labelText) || 'KÖRÖZÉS')) + '</span>' +
     '<span class="p-name">' + escapeHtml(p.name) + '</span>' +
     '<div class="p-badge-row">' + (prof.jelveny && !isBot ? '<span class="p-badge">' + escapeHtml(prof.jelveny) + '</span>' : '') + '</div>' +
+    '<div class="p-state-row">' + stateBadges + '</div>' +
     '<span class="p-title">' + escapeHtml(title) + '</span>' +
     '<span class="p-priors">' + escapeHtml(priusz) + '</span>' +
     '<span class="p-reward">' + bountyText(p.score) + '</span>' +
@@ -1712,8 +1748,16 @@ function renderLobby() {
   $('#btnStartGame').classList.toggle('hidden', !host);
   $('#btnAddBot').classList.toggle('hidden', !host);
   $('#btnRemoveBot').classList.toggle('hidden', !host || !S.players.some((p) => p.isBot));
+  const humans = S.players.filter((p) => p.connected && !p.isBot);
+  const readyN = humans.filter((p) => p.ready).length;
   $('#lobbyHint').textContent = S.players.filter((p) => p.connected).length < 3
-    ? 'Legalább 3 gyanúsított kell egy tárgyaláshoz!' : '';
+    ? 'Legalább 3 gyanúsított kell egy tárgyaláshoz!' : 'Készen áll: ' + readyN + ' / ' + humans.length + ' játékos (a házigazda bármikor indíthat).';
+  const meP = me(), rdy = $('#btnReady');
+  rdy.classList.toggle('hidden', !meP);
+  rdy.textContent = meP && meP.ready ? '✓ KÉSZ VAGYOK – mégsem' : 'KÉSZEN ÁLLOK';
+  rdy.classList.toggle('green', !!(meP && meP.ready));
+  rdy.setAttribute('aria-pressed', meP && meP.ready ? 'true' : 'false');
+  applyLobbyMode();
   if (!host) $('#btnLeaveLobby').classList.remove('hidden');
 
   // KÖZELLENSÉG №1: a legtöbb 'bunos' bejegyzésű profil (a szerver odacsatolja a stats-ot)
@@ -1769,6 +1813,7 @@ function renderLobby() {
     const el = wall.querySelector('[data-poster="' + publicEnemy.id + '"] .poster');
     if (el) el.insertAdjacentHTML('beforeend', '<div class="p-stamp enemy">KÖZELLENSÉG №1</div>');
   }
+  if (posterIds.length && newIds.some((id) => !posterIds.includes(id))) window.kbSound.play('join'); // valaki belépett a terembe
   posterIds = newIds;
 
   // Házigazdai kirúgás a lobbyban (plakátokon lévő gombok – esemény-kezelés a falon).
@@ -1846,6 +1891,35 @@ function renderLobby() {
   }
 }
 
+// GYORS JÁTÉK: alap szabályok, minden ügytípus keverve (a szerver ezt is ellenőrzi / korlátozza, mint a kézi beállítást).
+const QUICK_DEFAULTS = { speechSeconds: 60, defenderSeconds: 45, prepSeconds: 30, witnessSeconds: 30, closingSeconds: 20, rounds: 3,
+  witnessEnabled: true, challengesEnabled: true, autoNextRound: true, autoNewGame: true, challengeMode: 'judge', customAccusations: [] };
+let lobbyQuick = LS.getItem('kb_lobby_mode') !== 'custom';
+function quickSettings() { return { ...QUICK_DEFAULTS, modes: (S.modes || []).map((m) => m.key) }; }
+function applyLobbyMode() {
+  $('#customSettings').classList.toggle('hidden', lobbyQuick);
+  $('#btnQuickGame').setAttribute('aria-selected', lobbyQuick ? 'true' : 'false');
+  $('#btnCustomGame').setAttribute('aria-selected', lobbyQuick ? 'false' : 'true');
+  $('#quickSummary').classList.toggle('hidden', !lobbyQuick);
+  $('#quickSummary').textContent = lobbyQuick
+    ? QUICK_DEFAULTS.rounds + ' tárgyalás · minden ügytípus keverve · ' + QUICK_DEFAULTS.speechSeconds + ' mp beszédidő · meglepetés tanú és kihíváskártyák. Egyedi szabályokhoz válaszd az EGYÉNI JÁTÉKOT.'
+    : '';
+  if (S && S.hostId === MY.playerId) {
+    const btn = $('#btnStartGame');
+    if (lobbyQuick) { btn.disabled = S.players.filter((p) => p.connected).length < 3; btn.title = ''; }
+    else updateActiveModesLabel();
+  }
+}
+function setLobbyMode(quick) { lobbyQuick = quick; LS.setItem('kb_lobby_mode', quick ? 'quick' : 'custom'); applyLobbyMode(); }
+$('#btnQuickGame').addEventListener('click', () => setLobbyMode(true));
+$('#btnCustomGame').addEventListener('click', () => setLobbyMode(false));
+$('#btnReady').addEventListener('click', () => {
+  const meP = me();
+  if (!meP) return;
+  ensureAudio();
+  socket.emit('set_ready', { ready: !meP.ready }, (res) => { if (res && res.error) showToast('⚠️ ' + res.error); else window.kbSound.play('ready'); });
+});
+
 $('#btnSaveSettings').addEventListener('click', () => {
   // Minden beállítás (módokkal együtt) megy a szerverhez.
   emitLobbySettings();
@@ -1855,7 +1929,7 @@ $('#btnSaveSettings').addEventListener('click', () => {
 $('#btnStartGame').addEventListener('click', () => {
   ensureAudio();
   judgeSmash(); // kalapácsütés a TÁRGYALÁS MEGKEZDÉSE gombra
-  const selCount = $$('#modeGrid .case-tab[data-mode]')
+  const selCount = lobbyQuick ? 1 : $$('#modeGrid .case-tab[data-mode]')
     .filter((c) => c.classList.contains('active-case')).length;
   if (selCount === 0) {
     showToast('⚠️ Válassz legalább egy ügyiratmappát a TÁRGYALÁS MEGKEZDÉSE előtt!');
@@ -1863,7 +1937,7 @@ $('#btnStartGame').addEventListener('click', () => {
   }
   // A start a pillanatnyi beállításokat (MÓDOKAT!) is elküldi – a szerver
   // ezt tekinti hitelesnek, nem a korábban mentett állapotot.
-  socket.emit('start_game', { settings: collectLobbySettings() }, (res) => {
+  socket.emit('start_game', { settings: lobbyQuick ? quickSettings() : collectLobbySettings() }, (res) => {
     if (res && res.error) showToast('⚠️ ' + res.error);
   });
 });
@@ -1953,6 +2027,23 @@ function renderMyCardsBar() {
   scheduleSceneLayout();
 }
 
+// A jelenet-rendezőnek (court.js) átadott KIVONAT a szerver állapotából: csak megjelenítéshez, a kliens semmit nem dönt el belőle.
+// A privát adat (bizonyíték, kihívás) csak annyi, amennyit a szerver nekem küldött; a többiekét nem ismerem.
+function courtSnapshot() {
+  const who = (id) => (id ? nameOf(id) : '');
+  const od = S.objectionData;
+  return {
+    phase: S.phase, round: S.round || 1, totalRounds: S.totalRounds || 1, caseNo: S.caseNo || '',
+    accusationText: S.accusationText || '', meId: MY.playerId, myRole: myRole(),
+    names: { prosecutor: who(S.prosecutorId), defendant: who(S.defendantId), defender: who(S.defenderId), witness: who(S.witnessId), judge: who(S.currentJudgeId) },
+    ids: { judge: S.currentJudgeId || '' },
+    evidence: Array.isArray(S.evidence) ? S.evidence : null, myChallenge: S.myChallenge || null,
+    revealedCards: S.revealedCards || null, challengeReview: S.challengeReview || null, challengeVote: S.challengeVote || null,
+    verdict: S.verdict || null, scoreEvents: Array.isArray(S.scoreEvents) ? S.scoreEvents : [],
+    objection: od && od.phase ? { phase: od.phase, speakerRole: roleOfPid(od.speakerId) } : null
+  };
+}
+
 function renderGame() {
   renderHeader();
   renderAccusationTicker();
@@ -1964,15 +2055,9 @@ function renderGame() {
   renderSidebar();
   $('#screen-game').dataset.phase=S.phase;
   $('#scenePanel').dataset.layout=SPEAKER_OF[S.phase]?'speech':['verdict','round_results','game_over'].includes(S.phase)?'result':S.phase;
-  if (window.kbCourt && typeof window.kbCourt.update === 'function') {
-    window.kbCourt.update({
-      phase: S.phase, round: S.round || 1, totalRounds: S.totalRounds || 1, caseNo: S.caseNo || '',
-      accusationText: S.accusationText || '', phaseEndsAt: S.phaseEndsAt || 0,
-      prosecutorName: nameOf(S.prosecutorId), defendantName: nameOf(S.defendantId),
-      defenderName: nameOf(S.defenderId), witnessName: nameOf(S.witnessId), judgeName: nameOf(S.currentJudgeId),
-      evidence: S.evidence || null, witnessCard: S.witnessCard || null,
-      verdict: S.verdict || null, challengeReview: S.challengeReview || null, myChallenge: S.myChallenge || null
-    });
+  if (window.kbCourt) {
+    window.kbCourt.update(courtSnapshot());
+    window.kbCourt.preloadRoles(S.players, roleOfPid); // a szerep-képek lustán, tétlen időben
   }
   scheduleSceneLayout();
   // "Rendet a teremben!" – CSAK az aktuális KÖR BÍRÓJA látja és használhatja
@@ -2438,10 +2523,16 @@ function renderRoleBanner() {
     ? '<div class="rb-judge"><span class="rb-judge-chip" style="--role:var(--gold)">BÍRÓ</span>' +
       '<span class="rb-judge-hammer">🔨</span>Ebben a körben <b>' + escapeHtml(S.judgeName) + '</b> a bíró</div>'
     : '';
+  // A HUD alcíme és a hátralévő idő: a szöveg a court.js egyetlen fázis-leképezéséből, az idő a szerver által adott lejáratból (phaseEndsAt).
+  const ui = window.kbCourt ? window.kbCourt.phaseUi(S.phase, { objection: S.objectionData ? { phase: S.objectionData.phase } : null }) : null;
+  const timed = !!S.phaseEndsAt && HUD_TIMED.includes(S.phase);
   el.innerHTML = '<div class="rb-title">' + title + '</div>' +
     (speakerId ? '<div class="rb-speaker"><span class="rb-avatar">' + avatarEmoji(avatarOf(speakerId)) + '</span>' +
-      escapeHtml(nameOf(speakerId)) + '</div>' : '') + judgeLine;
+      escapeHtml(nameOf(speakerId)) + '</div>' : '') +
+    (ui && ui.sub ? '<div class="rb-sub">' + escapeHtml(ui.sub) + '</div>' : '') +
+    (timed ? '<div class="rb-time" id="rbTime" role="timer" aria-label="Hátralévő idő">' + fmtTime(Math.max(0, S.phaseEndsAt - (Date.now() + serverOffset))) + '</div>' : '') + judgeLine;
 }
+const HUD_TIMED = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'prep', 'verdict_vote', 'challenge_vote'];
 
 const RING_R = 52;
 const RING_C = 2 * Math.PI * RING_R;
@@ -2478,9 +2569,18 @@ function startTimerLoop() {
   timerInterval = setInterval(() => {
     const countdown = $('#autoCountdown');
     if (countdown && S?.autoAdvance) countdown.textContent = countdown.dataset.label + ': ' + Math.max(0, Math.ceil((S.autoAdvance.endsAt - Date.now() - serverOffset) / 1000));
-    const box = $('#timerBox');
-    if (!box || !S || !S.phaseEndsAt) return;
+    if (!S || !S.phaseEndsAt) return;
     const rem = Math.max(0, S.phaseEndsAt - (Date.now() + serverOffset));
+    // HUD-idő: figyelmeztetés 10 mp-től (sárga), 5 mp-től (piros, lüktet); az utolsó 3 mp-ben a nagy 3-2-1 (court.js). Csak a szerver idejét mutatja.
+    const hud = $('#rbTime');
+    if (hud) {
+      hud.textContent = fmtTime(rem);
+      const left = Math.ceil(rem / 1000);
+      hud.className = 'rb-time' + (left <= 5 ? ' danger' : left <= 10 ? ' warn' : '');
+    }
+    if (window.kbCourt) window.kbCourt.tick(rem, S.phase);
+    const box = $('#timerBox');
+    if (!box) return;
     const total = +box.dataset.total || 1;
     const frac = Math.max(0, Math.min(1, rem / total));
     const fg = box.querySelector('.tr-fg');
@@ -2815,11 +2915,15 @@ function renderPhaseContent() {
           avatarEmoji(p.avatar) + ' ' + escapeHtml(p.name) + '</span><span class="pts">' + p.score + ' pont</span></div>';
       }).join('') + '</div>';
       const a = go.awards || {};
-      const cards = [a.bestLawyer, a.biggestCriminal, a.audienceFavorite, a.challengeChampion].filter(Boolean);
+      // Díjak CSAK a szerver által ténylegesen mért statisztikából (a szerver csak pozitív értéket ad; nincs kitalált díj). A mért érték is látszik.
+      const AWARD_UNIT = { bestLawyer: 'pont', biggestCriminal: 'elítélés', audienceFavorite: 'nevetés', challengeChampion: 'kihívás',
+        bestProsecutor: 'elítélt ügy', bestDefender: 'felmentés', sharpestJuror: 'jó ítélet' };
+      const cards = Object.keys(AWARD_UNIT).filter((k) => a[k]).map((k) => ({ ...a[k], unit: AWARD_UNIT[k] }));
       if (cards.length) {
         html += '<div class="awards">' + cards.map((c) =>
           '<div class="award-card podium-gold"><span class="emoji">' + c.emoji + '</span>' +
-          '<span class="award-name">' + escapeHtml(c.award) + '</span><span class="who">' + escapeHtml(c.name) + '</span></div>'
+          '<span class="award-name">' + escapeHtml(c.award) + '</span><span class="who">' + escapeHtml(c.name) + '</span>' +
+          (Number.isFinite(c.value) ? '<span class="award-stat">' + c.value + ' ' + c.unit + '</span>' : '') + '</div>'
         ).join('') + '</div>';
       }
       html += '</div>'; // results-scroll vége
@@ -2927,13 +3031,23 @@ $('#btnOrder').addEventListener('click', () => {
   socket.emit('order_in_court');
 });
 
+const MAX_FLYING_EMOJI = 14; // egyszerre ennyi reakció repülhet: sok játékos mellett sem tölti meg a képernyőt, és nem terheli a böngészőt
 function flyEmoji(emoji) {
   const layer = $('#reactionLayer');
+  if (layer.children.length >= MAX_FLYING_EMOJI) return;
+  SFX.reaction(['😂', '💀', '🤡', '🔥', '👏'].indexOf(emoji));
   const el = document.createElement('div');
   el.className = 'flying-emoji';
   el.textContent = emoji;
   const startX = Math.random() * 70 + 15;
   const fromLeft = Math.random() < 0.5;
+  if (motionReduced()) { // mozgás-csökkentés: nem repül, egy rövid ideig látszó jelzés a jelenet alján
+    el.style.left = (20 + Math.random() * 60) + 'vw';
+    el.style.top = (66 + Math.random() * 12) + 'vh';
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+    return;
+  }
   el.style.left = (fromLeft ? -10 : 90) + 'vw';
   el.style.top = (60 + Math.random() * 30) + 'vh';
   el.style.setProperty('--dx', (fromLeft ? 1 : -1) * (40 + Math.random() * 50) + 'vw');
@@ -2941,7 +3055,6 @@ function flyEmoji(emoji) {
   el.style.setProperty('--rot', (Math.random() * 80 - 40) + 'deg');
   layer.appendChild(el);
   setTimeout(() => el.remove(), 1700);
-  SFX.reaction(['😂', '💀', '🤡', '🔥', '👏'].indexOf(emoji));
 }
 
 function judgeSmash() {
@@ -3031,11 +3144,10 @@ function confettiBurst(n, theme) {
   }
 }
 
+// Egyhangú ítélet: konfetti + fanfár; a feliratot az ítélet-pecsét kártya szalagja adja (court.js), nem külön takaró réteg.
 function showUnanimous(theme) {
-  $('#unanimousOverlay').classList.remove('hidden');
   confettiBurst(80, theme);
   setTimeout(() => SFX.fanfare(), 950); // az ítélet-hang után szól
-  setTimeout(() => $('#unanimousOverlay').classList.add('hidden'), 2200);
 }
 
 // Békegalambok: a felmentést jelző, felfelé szálló madarak (csökkentett mozgásnál elmaradnak).
@@ -3066,15 +3178,8 @@ function verdictCue(v) {
   if (v.unanimous) showUnanimous(theme);
   else confettiBurst(v.guilty ? 30 : 60, theme);
   if (motionReduced()) return;
-  if (v.guilty) {
-    const panel = $('#scenePanel');
-    panel.classList.remove('verdict-shake');
-    void panel.offsetWidth;
-    panel.classList.add('verdict-shake');
-    setTimeout(() => panel.classList.remove('verdict-shake'), 700);
-  } else {
-    releaseDoves(v.unanimous ? 8 : 5);
-  }
+  // BŰNÖS: a jelenet rázkódását a court.js adja az ítélet-pecséttel együtt; FELMENTÉS: békegalambok.
+  if (!v.guilty) releaseDoves(v.unanimous ? 8 : 5);
 }
 
 // ============================================================
@@ -3187,7 +3292,9 @@ socket.on('host_warning', (data) => {
 // Házigazda-átadás jelzése: "X lett a házigazda" (kilépés/kiesés miatt).
 socket.on('host_changed', (data) => {
   if (data && data.reason === 'lept') {
-    showToast('👑 ' + (data.newHostName || '?') + ' lett a házigazda (az előző kilépett).');
+    showToast(data.newHostId && data.newHostId === MY.playerId
+      ? '👑 Te lettél a házigazda – az előző házigazda kilépett vagy kiesett.'
+      : '👑 ' + (data.newHostName || '?') + ' lett a házigazda (az előző kilépett vagy kiesett).');
   }
 });
 
@@ -3246,14 +3353,17 @@ socket.on('you_are_kicked', (data) => {
 let everConnected = false;
 let rejoinTimer = null;
 
-function showConnBar(text) {
+function showConnBar(text, ok) {
   let bar = document.getElementById('connBar');
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'connBar';
+    bar.setAttribute('role', 'status');
+    bar.setAttribute('aria-live', 'polite');
     document.body.appendChild(bar);
   }
   if (bar.textContent !== text) bar.textContent = text;
+  bar.classList.toggle('ok', !!ok);
   bar.classList.add('visible');
 }
 function hideConnBar() {
@@ -3291,8 +3401,15 @@ function identifySocket() {
 // Szoba-műveletek az azonosítás után (különben a szerver még vendégnek látná a játékost).
 const afterIdentified = (fn) => identPromise.then(fn, fn);
 
+let connWasDown = false, connHideTimer = 0;
 socket.on('connect', () => {
-  hideConnBar();
+  clearTimeout(connHideTimer);
+  if (connWasDown && MY.code && !INTENTIONAL_LEAVE && !KICKED_FROM_ROOM) {
+    // a kapcsolat visszajött: rövid, megnyugtató jelzés (a szoba állapota a következő state-tel frissül)
+    showConnBar('✓ Kapcsolat helyreállt – visszatérés a terembe…', true);
+    connHideTimer = setTimeout(hideConnBar, 2600);
+  } else hideConnBar();
+  connWasDown = false;
   identifySocket();
   if (INTENTIONAL_LEAVE || KICKED_FROM_ROOM) return;
   if (!everConnected) { everConnected = true; return; }
@@ -3321,12 +3438,20 @@ socket.on('connect', () => {
 });
 
 socket.on('disconnect', () => {
+  connWasDown = true;
   if (!INTENTIONAL_LEAVE && !KICKED_FROM_ROOM && MY.code) showConnBar('Kapcsolat megszakadt, újracsatlakozás…');
 });
 
 socket.on('connect_error', () => {
   // A szerver épp nem elérhető (pl. az ingyenes tárhely "alszik", vagy hálózati hiba).
+  connWasDown = true;
   showConnBar('Nem sikerül a kapcsolat… újrapróbálkozás…');
+});
+// Az újrapróbálkozások számával: néhány sikertelen kísérlet után elmondjuk, hogy az ingyenes szerver ébredezhet.
+socket.io.on('reconnect_attempt', (n) => {
+  if (INTENTIONAL_LEAVE || KICKED_FROM_ROOM) return;
+  connWasDown = true;
+  showConnBar(n < 4 ? 'Újracsatlakozás… (' + n + '. próba)' : 'A szerver ébredezik, kérlek várj… (' + n + '. próba, akár egy percig is tarthat)');
 });
 
 socket.on('state', (state) => {

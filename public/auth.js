@@ -93,6 +93,7 @@
     if(previous!==identity) clearRoomIdentity();
     account=user||null;LS.setItem('kb_accountId',identity);
     if(account) sessionStorage.removeItem('kb_guest');else sessionStorage.setItem('kb_guest','1');
+    sessionStorage.setItem('kb_tab','1'); // ebben a lapban már beléptünk: oldal-újratöltésnél a szobába magától visszatérünk
     IDENTITY_READY=true;
     if(window.kbShop) window.kbShop.forget();
     if(window.kbFriends) window.kbFriends.forget();
@@ -228,7 +229,7 @@
   document.addEventListener('kb:screen',renderAccount);
   $('#authGuest').addEventListener('click',()=>enter(null,true));
   $('#accountSignIn').addEventListener('click',()=>{
-    IDENTITY_READY=false;sessionStorage.removeItem('kb_guest');show('auth');tab('login');
+    IDENTITY_READY=false;sessionStorage.removeItem('kb_guest');sessionStorage.removeItem('kb_tab');show('auth');tab('login');
   });
   // Kijelentkezés (a profil gombsorából hívja a client.js).
   let leaving=false;
@@ -238,7 +239,7 @@
     try {
       await api('logout',{});
       clearRoomIdentity();account=null;IDENTITY_READY=false;
-      LS.removeItem('kb_accountId');sessionStorage.removeItem('kb_guest');
+      LS.removeItem('kb_accountId');sessionStorage.removeItem('kb_guest');sessionStorage.removeItem('kb_tab');
       if(window.kbShop) window.kbShop.forget();
       if(window.kbFriends) window.kbFriends.forget();
       identifySocket(); // a socket vendég lesz: a barátok offline-nak látják
@@ -264,7 +265,7 @@
       await api('delete',account.hasPassword?{password:deleteInput.value}:{confirmName:deleteInput.value});
       closeDelete();closeProfile();
       clearRoomIdentity();account=null;IDENTITY_READY=false;
-      LS.removeItem('kb_accountId');sessionStorage.removeItem('kb_guest');
+      LS.removeItem('kb_accountId');sessionStorage.removeItem('kb_guest');sessionStorage.removeItem('kb_tab');
       if(window.kbShop) window.kbShop.forget();
       if(window.kbFriends) window.kbFriends.forget();
       identifySocket();
@@ -388,6 +389,16 @@
     button.classList.remove('hidden');
     button.onclick=()=>enter(user,true);
   }
+  // Oldal-újratöltés (F5) szobában / játékban: ugyanabban a lapban ugyanazzal az azonosítóval magától visszatér (a szerver a munkamenet-jelszóval
+  // ellenőrzi). A friss látogatónál (új lap, nincs szoba) a bejelentkezés jön először, a fiókkal egy gombbal lehet folytatni.
+  let resumed=false;
+  function resumeAfterReload(user) {
+    if(resumed||!MY.code||!MY.playerId||!MY.sessionToken||INTENTIONAL_LEAVE||sessionStorage.getItem('kb_tab')!=='1') return false;
+    const identity=LS.getItem('kb_accountId')||'guest';
+    const same=user?identity===user.id:(identity==='guest'&&sessionStorage.getItem('kb_guest')==='1');
+    if(!same) return false;
+    resumed=true;enter(user||null,false);return true;
+  }
   async function initialize() {
     if(initializing) return;
     initializing=true;$('#authRetry').classList.add('hidden');
@@ -403,11 +414,12 @@
         if(externalReturn) {
           enter(availability.user,true);
           if(error) {message('#accountMessage',errors[error]||errors.provider);openProfile();}
-        } else showContinue(availability.user);
-      }
+        } else if(!resumeAfterReload(availability.user)) showContinue(availability.user);
+      } else resumeAfterReload(null);
       if(hash.startsWith('#reset=')&&!resetToken) message('#authStatus','A jelszó-visszaállító link érvénytelen. Kérj új linket.');
     } catch(error) {
       message('#authStatus',error.message+' Vendégként továbbra is beléphetsz.');$('#authRetry').classList.remove('hidden');
+      resumeAfterReload(null); // a fiók-állapot nem elérhető, de a vendég-munkamenet a szobába visszatérhet
     } finally {initializing=false;}
   }
   $('#authRetry').addEventListener('click',initialize);

@@ -28,7 +28,8 @@
     "test:moderation": "node test/moderation.js",
     "test:roles": "node test/avatar-roles.js",
     "test:gamestate": "node test/gamestate.js",
-    "test:assets": "node test/asset-policy.js"
+    "test:assets": "node test/asset-policy.js",
+    "test:flow": "node test/flow.js"
   },
   "engines": {
     "node": ">=18"
