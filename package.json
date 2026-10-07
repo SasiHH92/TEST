@@ -26,7 +26,9 @@
     "test:security": "node test/security.js",
     "test:privacy": "node test/privacy.js",
     "test:moderation": "node test/moderation.js",
-    "test:roles": "node test/avatar-roles.js"
+    "test:roles": "node test/avatar-roles.js",
+    "test:gamestate": "node test/gamestate.js",
+    "test:assets": "node test/asset-policy.js"
   },
   "engines": {
     "node": ">=18"

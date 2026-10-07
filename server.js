@@ -1117,6 +1117,15 @@ io.on('connection', (socket) => {
     game.broadcast();
   });
 
+  // ---- Lobbi: "kész vagyok" jelzés (a játékos csak a SAJÁTJÁT állíthatja; a szerver a munkamenetből tudja, ki ő) ----
+  safeOn('set_ready', ({ ready } = {}, ack) => {
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    if (!game) return typeof ack === 'function' && ack({ error: 'Nincs szoba.' });
+    const ok = game.setReady(sess.playerId, ready === true);
+    if (typeof ack === 'function') ack(ok ? { ok: true, ready: ready === true } : { error: 'Csak a lobbiban jelezhetsz.' });
+  });
+
   // TÁRGYALÁS MEGKEZDÉSE: a gombbal együtt érkező beállítások (módok!) a
   // hiteles forrás – a korábban mentett állapotot felülírják.
   safeOn('start_game', (...args) => {

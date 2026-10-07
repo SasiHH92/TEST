@@ -172,11 +172,14 @@ class Game {
       score: 0,
       laughCount: 0,
       convictions: 0,
-      challengesDone: 0
+      challengesDone: 0,
+      prosecutionWins: 0, // ügyészként elért elítélések (díj: legmeggyőzőbb ügyész)
+      defenseWins: 0,     // védőügyvédként elért felmentések (díj: legjobb védő)
+      ready: false        // lobbi: "kész vagyok" jelzés (nem kötelező, csak a házigazdának segít)
     };
     const archived = [...this.archivedPlayers.values()].find((p) => p.name === player.name);
     if (archived) {
-      for (const key of ['score','laughCount','convictions','challengesDone']) player[key] = archived[key] || 0;
+      for (const key of ['score','laughCount','convictions','challengesDone','prosecutionWins','defenseWins','jurorPoints']) player[key] = archived[key] || 0;
       this.archivedPlayers.delete(archived.id);
     }
     this.players.set(playerId, player);
@@ -235,9 +238,19 @@ class Game {
       score: p.score,
       profile: p.profile || null,
       isBot: !!p.isBot,
+      ready: !!p.isBot || !!p.ready, // lobbi: botok mindig készek
       // a házigazda elnémította a szobai csevegőben (a kulcsokat a server.js kezeli: játékos-azonosító vagy név)
       chatMuted: !!(this.chatMutes && (this.chatMutes.has('p:' + p.id) || this.chatMutes.has('n:' + String(p.name).normalize('NFKC').trim().toLocaleLowerCase('hu-HU'))))
     }));
+  }
+
+  // Lobbi: "kész vagyok" jelzés. Csak a lobbiban számít, és csak a játékos a sajátját állíthatja (a szerver a munkamenetből tudja, ki ő).
+  setReady(playerId, ready) {
+    const p = this.players.get(playerId);
+    if (!p || this.phase !== PHASES.LOBBY || p.isBot) return false;
+    p.ready = !!ready;
+    this.broadcast();
+    return true;
   }
 
   activePlayers() {
@@ -351,6 +364,7 @@ class Game {
       base.myChallengeDifficulty = myCh.difficulty;
     }
     base.objectionLog = (d.objectionLog || []).map((entry) => ({ ...entry }));
+    base.scoreEvents = (d.scoreEvents || []).map((e) => ({ ...e })); // a kör eddigi pontjai okkal (a kliens ebből mutatja a felrepülő pontokat)
     if (this.phase === PHASES.ROUND_RESULTS) {
       base.revealedCards = {
         evidence: d.evidence, alibi: d.alibi, tricks: d.tricks || [],
@@ -525,6 +539,19 @@ class Game {
     return this.startGame(null, this.hostId()) !== false;
   }
 
+  // Pontozás + pontesemény. A SZABÁLYOK nem változnak: ugyanazok a pontok járnak, mint eddig; az esemény csak azt rögzíti, kinek mennyi járt és
+  // miért, hogy a kliens ugyanazt mutassa (felrepülő "+N" okkal), amit a szerver ténylegesen jóváírt. kind: prosecution | defense | defender |
+  // unanimous | juror | challenge | favorite.
+  _award(player, points, kind) {
+    if (!player || !points) return;
+    player.score += points;
+    const d = this.roundData;
+    if (!d) return;
+    d.scoreEvents = d.scoreEvents || [];
+    d.scoreSeq = (d.scoreSeq || 0) + 1;
+    d.scoreEvents.push({ seq: d.scoreSeq, pid: player.id, name: player.name, points, kind });
+  }
+
   scoreList() {
     const rows = [...this.playerList(), ...[...this.archivedPlayers.values()].map((p) => ({
       id:p.id, name:p.name, avatar:p.avatar, score:p.score, profile:p.profile || null,
@@ -576,6 +603,10 @@ class Game {
       p.laughCount = 0;
       p.convictions = 0;
       p.challengesDone = 0;
+      p.prosecutionWins = 0;
+      p.defenseWins = 0;
+      p.jurorPoints = 0;
+      p.ready = false; // a játék elindult: a következő lobbiban újra jelezni kell
     }
     this.nextRound();
   }
@@ -983,7 +1014,7 @@ class Game {
       if (done) {
         const p = this.players.get(ch.id);
         if (p) {
-          p.score += pts;
+          this._award(p, pts, 'challenge');
           p.challengesDone += 1;
         }
       }
@@ -1084,14 +1115,16 @@ class Game {
     const prosecutor = this.players.get(d.prosecutorId);
     const defender = d.defenderId ? this.players.get(d.defenderId) : null;
     if (guilty) {
-      if (prosecutor) prosecutor.score += guiltyVotes;
+      this._award(prosecutor, guiltyVotes, 'prosecution');
+      if (prosecutor) prosecutor.prosecutionWins += 1;
       if (defendant) defendant.convictions += 1;
     } else {
-      if (defendant) defendant.score += notGuiltyVotes;
-      if (defender) defender.score += notGuiltyVotes; // védőügyvéd is pontot kap
+      this._award(defendant, notGuiltyVotes, 'defense');
+      this._award(defender, notGuiltyVotes, 'defender'); // védőügyvéd is pontot kap
+      if (defender) defender.defenseWins += 1;
     }
     if (unanimous && (guilty ? prosecutor : defendant)) {
-      (guilty ? prosecutor : defendant).score += 1; // EGYHANGÚ bónusz
+      this._award(guilty ? prosecutor : defendant, 1, 'unanimous'); // EGYHANGÚ bónusz
     }
 
     // ---- ESKÜDT-PONT: minden szavazó +1 pontot kap, ha a végső ítélettel
@@ -1105,7 +1138,7 @@ class Game {
       const match = guilty ? vote === 'guilty' : vote === 'not_guilty';
       const voter = this.players.get(v);
       if (voter && (match || guiltyVotes === notGuiltyVotes)) {
-        voter.score += 1;
+        this._award(voter, 1, 'juror');
         voter.jurorPoints = (voter.jurorPoints || 0) + 1;
       }
     }
@@ -1126,7 +1159,7 @@ class Game {
           const p = this.players.get(ch.id);
           const pts = ch.difficulty ? 4 : 2;
           if (p) {
-            p.score += pts;
+            this._award(p, pts, 'challenge');
             p.challengesDone += 1;
           }
         }
@@ -1217,7 +1250,7 @@ class Game {
         favorite = { playerId: defendant.id, name: defendant.name, laughs: d.laughs.defendant };
       }
     }
-    if (favorite) this.players.get(favorite.playerId).score += 1;
+    if (favorite) this._award(this.players.get(favorite.playerId), 1, 'favorite');
 
     d.roundResults = {
       verdict: d.verdictResult,
@@ -1244,7 +1277,10 @@ class Game {
       bestLawyer: award(players[0], 'score', 'A legjobb ügyvéd', '⚖️'),
       biggestCriminal: award(by('convictions'), 'convictions', 'A legnagyobb bűnöző', '🦹'),
       audienceFavorite: award(by('laughCount'), 'laughCount', 'Közönségkedvenc', '😂'),
-      challengeChampion: award(by('challengesDone'), 'challengesDone', 'Kihívás bajnok', '🎭')
+      challengeChampion: award(by('challengesDone'), 'challengesDone', 'Kihívás bajnok', '🎭'),
+      bestProsecutor: award(by('prosecutionWins'), 'prosecutionWins', 'A legmeggyőzőbb ügyész', '🔥'),
+      bestDefender: award(by('defenseWins'), 'defenseWins', 'A legjobb védő', '🛡️'),
+      sharpestJuror: award(by('jurorPoints'), 'jurorPoints', 'A legjobb ítélőképesség', '👀')
     };
     // Díjak bejegyzése a nyilvántartásba (botok nem kerülnek be).
     // HIBAJAVÍTÁS: ez a metódus a game_over fázis MINDEN state-kérésénél
