@@ -1,0 +1,14 @@
+{
+  "status": "TEMPORARY_PLACEHOLDER_ROLE_ASSETS",
+  "count": 250,
+  "avatars": 50,
+  "roles_per_avatar": 5,
+  "roles": [
+    "judge",
+    "prosecutor",
+    "defendant",
+    "witness",
+    "juror"
+  ],
+  "warning": "These 250 files intentionally reuse the original avatar artwork. They exist only to wire and test the gameplay integration. Replace them later with identity-preserving role-specific artwork; do not replace them with SVG characters."
+}

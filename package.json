@@ -25,7 +25,8 @@
     "test:layout": "node test/layout.js",
     "test:security": "node test/security.js",
     "test:privacy": "node test/privacy.js",
-    "test:moderation": "node test/moderation.js"
+    "test:moderation": "node test/moderation.js",
+    "test:roles": "node test/avatar-roles.js"
   },
   "engines": {
     "node": ">=18"

@@ -264,7 +264,7 @@ async function walk(browser, vp) {
           probe.shake = document.getElementById('scenePanel').classList.contains('verdict-shake');
           await new Promise((r) => setTimeout(r, 900));
           probe.shakeGone = !document.getElementById('scenePanel').classList.contains('verdict-shake');
-          probe.transform = getComputedStyle(document.getElementById('scenePanel')).transform;
+          probe.animation = getComputedStyle(document.getElementById('scenePanel')).animationName;
           charAnim.setReducedMotion(true);
           const before = document.querySelectorAll('.dove').length;
           verdictCue({ guilty: false, unanimous: false });
@@ -279,9 +279,45 @@ async function walk(browser, vp) {
         assert.ok(out.doves >= 3, 'galambok szállnak: ' + out.doves);
         assert.ok(out.scrollW <= out.vw + 1, 'a galambok nem okoznak vízszintes görgetést');
         assert.ok(out.shake && out.shakeGone, 'a bűnös ítélet megrázza a színpadot, majd megáll');
-        assert.equal(out.transform, out.baseTransform, 'a rázkódás után nincs maradék eltolás');
+        assert.equal(out.animation, 'none', 'a rázkódás után nem fut animáció a színpadon: ' + out.animation);
         assert.equal(out.reducedNewDoves, 0, 'csökkentett mozgásnál nincs galamb');
         assert.ok(!out.reducedShake, 'csökkentett mozgásnál nincs rázkódás');
+      });
+    }
+
+    if (game) {
+      // Avatár × szerep: a szerver a feltöltött szerep-képeket listázza (jelenleg 250 átmeneti placeholder, assets/roles/); ha egy kép hiányzik,
+      // az eredeti avatár marad, SVG-karakter nélkül, csak egy kis HTML szerepjelvény kerül rá.
+      await check(tag + ' – avatár × szerep: szerep-kép a szerver listájából, hiányzó képnél az eredeti avatár + HTML jelvény', async () => {
+        const out = await page.evaluate(async () => {
+          const me = (S.players || []).find((p) => p.id === MY.playerId) || {};
+          const probe = { avatar: me.avatar || '', isAv: /^av\d\d$/.test(me.avatar || '') };
+          const count = (sel) => document.querySelectorAll(sel).length;
+          await new Promise((r) => setTimeout(r, 400)); // a /api/role-sprites válasza
+          probe.listed = window.kbAvatarRoles.count();
+          renderStage();
+          probe.spritesFromServer = count('.st-art.role-sprite');
+          probe.svgInFigures = count('#stageSlots svg, #judge svg, #stagePlates svg');
+          window.kbAvatarRoles.setAvailable({}); // minden szerep-kép hiányzik
+          renderStage();
+          probe.spritesWhenMissing = count('.st-art.role-sprite');
+          probe.badges = count('.role-fallback-badge');
+          probe.portraits = count('.st-art.av-figure');
+          probe.brokenImgs = [...document.querySelectorAll('#stage .st-base')].filter((i) => i.complete && i.naturalWidth === 0).length;
+          probe.scrollW = document.documentElement.scrollWidth; probe.vw = innerWidth;
+          window.kbCourt.loadRoleSprites(); // vissza a szerver listájára
+          return probe;
+        });
+        if (out.isAv) {
+          assert.equal(out.listed, 250, 'a szerver mind az 50 × 5 szerep-képet listázza: ' + out.listed);
+          assert.ok(out.spritesFromServer >= 1, 'a szerep-kép áll a színpadon: ' + JSON.stringify(out));
+          assert.equal(out.spritesWhenMissing, 0, 'hiányzó képnél nincs szerep-kép');
+          assert.ok(out.portraits >= 1, 'hiányzó képnél az eredeti avatár-portré marad');
+          assert.ok(out.badges >= 1, 'és egy HTML szerepjelvény kerül rá');
+        }
+        assert.equal(out.svgInFigures, 0, 'a karakterek között nincs SVG');
+        assert.equal(out.brokenImgs, 0, 'nincs törött kép');
+        assert.ok(out.scrollW <= out.vw + 1, 'nincs vízszintes görgetés');
       });
     }
 

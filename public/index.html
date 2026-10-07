@@ -427,7 +427,8 @@
           <!-- KAMERA: a fókusz-mozgás (court.js) és a lassú, szinte észrevétlen sodródás. A háttér, a bútorlapok, a karakterek és a
                fény-rétegek EGYÜTT mozognak, így a bútorlapok takarása pontos marad; a névtáblák, a buborék és a villanás kívül maradnak. -->
           <div class="court-camera" id="courtCamera"><div class="court-drift" id="courtDrift">
-          <img class="stage-bg" src="/assets/targyalotterem.jpg" alt="">
+          <!-- A raszter-háttér a jelenet-profil szerint (client.js SCENES): a levágott, magyar tárgyalóterem-kép -->
+          <div class="stage-bg-wrap" id="stageBgWrap"><img class="stage-bg" src="/assets/terem-hatter.webp" alt=""></div>
 
           <!-- élő terem: napsugarak, lámpafény, por (csak díszítés, court.js / court.css) -->
           <div class="court-ambience" id="courtAmbience" aria-hidden="true">
@@ -455,6 +456,13 @@
           <div class="stage-flash" id="stageFlash"></div>
           <div id="judgeBubble" class="judge-bubble"></div>
           <div id="stageSpeaker" class="stage-speaker-strip"></div>
+          <!-- Asset-first cinematic overlays: csak HTML/CSS, nem helyettesítik a valódi artworköt. -->
+          <div id="courtFocus" class="court-focus" aria-hidden="true"></div>
+          <div id="courtPhaseHud" class="court-phase-hud court-card hidden" aria-live="polite"></div>
+          <div id="courtIntro" class="court-intro hidden" aria-live="polite"></div>
+          <div id="courtEvidence" class="court-evidence hidden" aria-live="polite"></div>
+          <div id="courtChallenge" class="court-challenge hidden" aria-live="polite"></div>
+          <div id="courtVerdict" class="court-verdict hidden" aria-live="assertive"></div>
         </div>
       </section>
 
@@ -541,5 +549,7 @@
   <script src="/friends.js"></script>
   <script src="/chat.js"></script>
   <script src="/ranking.js"></script>
+  <script src="/avatar-roles.js"></script>
+  <script src="/court.js"></script>
 </body>
 </html>

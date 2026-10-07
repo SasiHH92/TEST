@@ -213,6 +213,30 @@ app.get('/help.json', (req, res) => {
 app.get('/health', (req, res) => res.status(200).type('text').send('ok'));
 app.get('/healthz', (req, res) => res.json({ ok: true }));
 
+// Szerep-specifikus avatár-képek (assets/roles/avatar_NN_<szerep>.webp): megmondja, melyik van ténylegesen feltöltve, így a kliens
+// csak a meglévőt kéri, a többihez tartalékot használ (public/avatar-roles.js). A mappa tartalmát 60 mp-ig gyorsítótárazza.
+const ROLE_SPRITE_DIR = path.resolve(__dirname, process.env.KB_ROLE_SPRITES_DIR || 'assets/roles');
+const ROLE_SPRITE_RE = /^avatar_(0[1-9]|[1-4]\d|50)_(judge|prosecutor|defendant|defender|witness|juror)\.webp$/;
+let roleSpriteCache = { at: 0, data: null };
+function scanRoleSprites() {
+  const available = {};
+  try {
+    for (const name of fs.readdirSync(ROLE_SPRITE_DIR)) {
+      const m = ROLE_SPRITE_RE.exec(name);
+      if (!m) continue;
+      const id = 'av' + m[1];
+      (available[id] = available[id] || []).push(m[2]);
+    }
+  } catch (e) { /* nincs mappa: nincs szerep-kép, a tartalék működik */ }
+  return { version: 1, available };
+}
+app.get('/api/role-sprites', (req, res) => {
+  const now = Date.now();
+  if (!roleSpriteCache.data || now - roleSpriteCache.at > 60 * 1000) roleSpriteCache = { at: now, data: scanRoleSprites() };
+  res.set('Cache-Control', 'no-cache');
+  res.json(roleSpriteCache.data);
+});
+
 // QR-kód a szoba csatlakozási linkjéhez (?room=KÓD) – a lobby mutatja,
 // így a telefontokkal egy koppintással be lehet lépni.
 // A Render proxy mögött az eredeti Host fejléc áll elő (trust proxy), ez a megbízható cím.

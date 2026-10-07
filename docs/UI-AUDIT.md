@@ -68,3 +68,20 @@ haladást. A cél: a meglévő működő rendszerek megőrzése, a játék „é
 | 10 | Reszponzív + akadálymentesség + tesztek + takarítás | ⬜ |
 
 Jelölés: ⬜ még nincs, ✅ kész és ellenőrizve (teszt + böngészős próba). Az állapot lépésenként frissül.
+
+## 3. Asset-leltár és SVG-audit (a ZIP-átvétel után)
+
+**Leltár (a repó és a szülőmappa, node_modules nélkül):** PNG 9 + 1 referencia-tábla, JPG 1, WebP 51 (50 avatár + `terem-hatter.webp`) + 250 szerep-kép
+(`assets/roles/`, átmeneti placeholderek), SVG 13 (régi `assets/*.svg`), ZIP 1 (`files.zip`, régi SVG-k). **Hang-asset nincs.**
+
+| Kategória | Elemek |
+| --- | --- |
+| **ORIGINAL ASSETS USED** | `terem-hatter.webp` (a játék jelenete és a belépő háttere, a magyar tárgyalóterem), `avatars/avatar_NN.webp`, `roles/avatar_NN_<szerep>.webp`, a szerep-PNG-k (`biro.png`, `ugyesz.png`, `vadlott.png`, `tanu.png`, `vedougyved.png`, `eskudt1-3.png`) avatár nélküli játékosnak |
+| **KEPT UI SVG** | az időzítő-gyűrű (`<svg viewBox="0 0 118 118">`, 2 helyen a `client.js`-ben), a lobbi piros fonalai (`createElementNS`, vonalrajz), a favicon (data URI) |
+| **REMOVED / REPLACED SVG ARTWORK** | a magyar zászló + címer SVG-overlay (korábbi `court.js` decor) és a szerep-jelmez SVG-k (korábbi `avatar-roles.js`): eltávolítva; helyettük a raszter terem-kép, és hiányzó szerep-képnél az eredeti avatár + kis HTML szerepjelvény |
+| **LEGACY (nincs hivatkozva)** | `assets/*.svg` (13 db), `files.zip`; a futó kód nem hivatkozik rájuk (`test/asset-policy.js` ellenőrzi) |
+| **MISSING ASSET** | végleges szerep-specifikus avatár-képek (a 250 placeholder ugyanazokra a fájlnevekre cserélendő), külön dosszié / bizonyíték / kihívás-kártya raszter-artwork (HTML/CSS pergamen-kártya a tartalék), hangfájlok (csendes tartalék), a régi `targyalotterem.jpg` amerikai zászlót tartalmaz: ezért a jelenet a `terem-hatter.webp`-t használja |
+
+**Jelenet-profil:** a `client.js` `SCENES.hu` a `terem-hatter.webp` cím nélküli alsó részét (cropTop 300) mutatja; a kép az aljához igazított, a teteje sötétbe
+halványul (itt van a HUD). A `window.kbCourtConfig = { scene: 'legacy' }` a régi képet kapcsolja vissza. Ha a grafikai munkafolyamat új, magyar `targyalotterem.jpg`-t ad,
+elég a `SCENES.legacy` koordinátáit hozzáigazítani, és ezt állítani alapértelmezettnek.

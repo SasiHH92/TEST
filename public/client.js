@@ -327,7 +327,7 @@ const ROLE_IMG = {
 const CHAR_IMAGES = new Map();
 function preloadCharacterImages() {
   const paths = [...Object.values(ROLE_IMG),
-    '/assets/eskudt2.png','/assets/eskudt3.png','/assets/targyalotterem.jpg'];
+    '/assets/eskudt2.png','/assets/eskudt3.png',SCENE.src];
   for (const path of paths) {
     if (CHAR_IMAGES.has(path)) continue;
     const image = new Image();
@@ -336,12 +336,22 @@ function preloadCharacterImages() {
   }
 }
 
+// Az avatár azonosítója nem változik; a szerep szerinti kép (avatar_NN_<szerep>.webp) csak a megjelenítést érinti (avatar-roles.js).
+// Három változat: 'sprite' (feltöltött szerep-kép), 'portrait' (az avatár portréja + szerep-jelmez tartalékként), 'generic' (avatár nélkül a fix szerepfigura).
+function figureKind(pid, role) {
+  const p = playerById(pid);
+  if (!p || !AVATAR_ID_RE.test(p.avatar || '')) return 'generic';
+  return window.kbAvatarRoles && window.kbAvatarRoles.spriteFor(p.avatar, role) ? 'sprite' : 'portrait';
+}
 function characterFigure(role, pid, jurorIndex=0) {
   const p = playerById(pid);
   // Aki választott avatárt, annak az avatárja áll a színpadon; a fix figura csak tartalék.
-  const hasAv = !!p && AVATAR_ID_RE.test(p.avatar || '');
-  const base = hasAv ? avatarSrc(p.avatar) : (role === 'juror' ? '/assets/eskudt' + (jurorIndex % 3 + 1) + '.png' : ROLE_IMG[role]);
-  return '<div class="st-fig"><div class="st-art' + (hasAv ? ' av-figure' : '') + '"><img class="st-base" src="' + base + '" alt="' + roleLabel(role) + '">' +
+  const kind = figureKind(pid, role);
+  const hasAv = kind !== 'generic';
+  const base = kind === 'sprite' ? window.kbAvatarRoles.spriteFor(p.avatar, role)
+    : hasAv ? avatarSrc(p.avatar) : (role === 'juror' ? '/assets/eskudt' + (jurorIndex % 3 + 1) + '.png' : ROLE_IMG[role]);
+  const costume = kind === 'portrait' && window.kbAvatarRoles ? window.kbAvatarRoles.costumeHtml(role) : '';
+  return '<div class="st-fig"><div class="st-art' + (kind === 'portrait' ? ' av-figure' : kind === 'sprite' ? ' role-sprite' : '') + '"><img class="st-base" src="' + base + '" alt="' + roleLabel(role) + '">' + costume +
     '<div class="st-fallback"><span>' + (p ? avatarEmoji(p.avatar) : '⚖️') + '</span><small>' + escapeHtml(p?.name || roleLabel(role)) + '</small></div></div></div>';
 }
 
@@ -626,25 +636,62 @@ function roleLabel(role) { return ROLE_LABEL[role] || 'ESKÜDT'; }
 function roleColorOf(role) { return ROLE_COLOR[role] || '#f2c14e'; }
 // Rövid szerepnevek a mobil felső sávjához (a színpad alján).
 const SP_LABEL = { prosecutor: 'Ügyész', defendant: 'Vádlott', defender: 'Védő', witness: 'Tanú' };
-// Színpadi helyek a kész tárgyalóteremhez igazítva (% a színpadon).
-// x: vízszintes közép, b: alsó él (alulról %), h: magasság, z: réteg.
-// A horgonyok a háttér eredeti képének százalékai; a cover-vágást vetítjük.
-const STAGE_POS = {
-  judge:      { x:49, y:45.5, h:22, z:3, plate:39 },
-  prosecutor: { x:14, y:73, h:30, z:6, plate:60 },
-  defendant:  { x:50, y:73, h:38, z:7, plate:72 },
-  defender:   { x:64, y:77, h:30, z:6, plate:70 },
-  witness:    { x:70, y:73, h:27, z:8, plate:75 },
-  juror:      { x:82, y:65, h:16, z:4, plate:66 }
+// ============================================================
+// JELENET-PROFILOK: a tárgyalóterem raszter-háttere, és a karakterek / bútorok helye ezen a képen.
+// A játék a MAGYAR terem-képet használja (assets/terem-hatter.webp: magyar zászlók, vörös bírói szék, mérleg, akták): a kép teteje
+// (a belesütött cím és tábla) levágva marad, ezért a cropTop. A 'legacy' profil a régi targyalotterem.jpg-t írja le (amerikai zászlóval),
+// csak tartaléknak van itt: window.kbCourtConfig = { scene: 'legacy' } visszakapcsolja.
+// Koordináták: a kép saját pixelei (a cropTop levonása után: "terem-koordináta"). pos.x / pos.y a terem szélességének / magasságának
+// %-a (y = a figura talpa), h a színpad magasságának %-a, plate a névtábla y-ja; furniture: a háttérből kivágott, a karakterek alját
+// takaró bútorlapok (z: a takarás rétege a karakterek --z·10 értékéhez képest).
+// ============================================================
+const SCENES = {
+  hu: {
+    src: '/assets/terem-hatter.webp', width: 1672, height: 941, cropTop: 300,
+    topReservePx: 235, topReserveMax: .32, // a színpad tetején ekkora sávot (legfeljebb a magasság 32%-át) a HUD foglal: a kép ez alá kerül, a teteje sötétbe halványul
+    pos: {
+      judge:      { x:50, y:25, h:20, z:3, plate:21 },
+      prosecutor: { x:23, y:38, h:26, z:6, plate:44 },
+      defendant:  { x:50, y:70, h:25, z:7, plate:76 },
+      defender:   { x:66, y:70, h:21, z:6, plate:75 },
+      witness:    { x:80, y:40, h:23, z:8, plate:47 },
+      juror:      { x:80, y:30, h:15, z:4, plate:34 }
+    },
+    jurorX: [82,86,90,94],
+    furniture: [
+      { x:465, y:105, w:745, h:195, z:34 },  // bírói pulpitus előlapja
+      { x:0, y:190, w:570, h:110, z:64 },    // bal oldali asztal (ügyész)
+      { x:1100, y:190, w:572, h:110, z:90 }  // jobb oldali asztal (tanú, védő)
+    ],
+    mobile: { judge:[.49,.40,14,.37], prosecutor:[.115,.50,15,.52], defendant:[.40,.53,19,.54],
+      defender:[.66,.52,14,.53], witness:[.865,.46,13,.47], jurorBase:[.905,.34,8,.36] }
+  },
+  legacy: {
+    src: '/assets/targyalotterem.jpg', width: 1672, height: 602, cropTop: 0, topReservePx: 0, topReserveMax: 0,
+    pos: {
+      judge:      { x:49, y:45.5, h:22, z:3, plate:39 },
+      prosecutor: { x:14, y:73, h:30, z:6, plate:60 },
+      defendant:  { x:50, y:73, h:38, z:7, plate:72 },
+      defender:   { x:64, y:77, h:30, z:6, plate:70 },
+      witness:    { x:70, y:73, h:27, z:8, plate:75 },
+      juror:      { x:82, y:65, h:16, z:4, plate:66 }
+    },
+    jurorX: [82,86,90,94],
+    furniture: [
+      { x:542, y:222, w:494, h:130, z:34 },  // bírói pulpitus előlapja
+      { x:0, y:354, w:445, h:174, z:64 },    // bal oldali asztal
+      { x:555, y:423, w:610, h:179, z:74 },  // elülső asztal
+      { x:1290, y:354, w:382, h:160, z:44 }  // esküdtpad előlapja
+    ],
+    mobile: { judge:[.49,.46,16,.425], prosecutor:[.115,.54,16,.545], defendant:[.395,.60,21,.575],
+      defender:[.655,.545,15.5,.54], witness:[.865,.52,14,.50], jurorBase:[.905,.365,9,.375] }
+  }
 };
-const JUROR_X = [82,86,90,94];
-const ROOM_SIZE = {width:1672,height:602};
-const ROOM_FURNITURE = [
-  {x:542,y:222,w:494,h:130}, // bírói pulpitus előlapja
-  {x:0,y:354,w:445,h:174},   // bal oldali asztal
-  {x:555,y:423,w:610,h:179}, // elülső asztal
-  {x:1290,y:354,w:382,h:160} // esküdtpad előlapja
-];
+const SCENE = SCENES[(window.kbCourtConfig && SCENES[window.kbCourtConfig.scene] && window.kbCourtConfig.scene) || 'hu'];
+const STAGE_POS = SCENE.pos;
+const JUROR_X = SCENE.jurorX;
+const ROOM_SIZE = {width:SCENE.width,height:SCENE.height-SCENE.cropTop}; // a látható (levágott) terem
+const ROOM_FURNITURE = SCENE.furniture;
 let lastSceneRoles = null;
 let sceneLayoutRaf = 0;
 function sceneGeometry() {
@@ -653,11 +700,13 @@ function sceneGeometry() {
   const height = stage.clientHeight || innerHeight;
   const mobile = width <= 700;
   const rail = width > 900 ? 280 : 0;
-  const scale = Math.max(width / ROOM_SIZE.width,height / ROOM_SIZE.height);
+  // topReserve > 0: a kép az aljához igazított, és a teteje fölött üres (sötét) sáv marad a HUD-nak; egyébként a kép kitölti a színpadot.
+  const reserve = Math.min(SCENE.topReserveMax * height, SCENE.topReservePx);
+  const scale = Math.max(width / ROOM_SIZE.width,(height - reserve) / ROOM_SIZE.height);
   const imageWidth = ROOM_SIZE.width * scale;
   const imageHeight = ROOM_SIZE.height * scale;
   return {width,height,mobile,usable:width-rail,scale,imageWidth,imageHeight,
-    offsetX:(width-imageWidth)*.5,offsetY:(height-imageHeight)*(mobile?.60:.55)};
+    offsetX:(width-imageWidth)*.5,offsetY:reserve ? height-imageHeight : (height-imageHeight)*(mobile?.60:.55)};
 }
 function projectScenePoint(x,y,g) {
   return {x:g.offsetX+g.imageWidth*x/100,y:g.offsetY+g.imageHeight*y/100};
@@ -690,24 +739,33 @@ function scenePosition(role,index,g) {
   if(g.mobile) {
     // Telefonon az avatár-keretek szélesek: a négy fő szereplő egymás mellett, kisebben,
     // az esküdtek hátul, a tanú feje fölött (így nem takarják a védőt és a tanút).
-    const m={judge:[.49,.46,16,.425],prosecutor:[.115,.54,16,.545],
-      defendant:[.395,.60,21,.575],defender:[.655,.545,15.5,.54],
-      witness:[.865,.52,14,.50],juror:[.905-index*.125,.365-index*.03,9,.375-index*.03]};
+    const mm=SCENE.mobile, jb=mm.jurorBase;
+    const m={judge:mm.judge,prosecutor:mm.prosecutor,defendant:mm.defendant,defender:mm.defender,
+      witness:mm.witness,juror:[jb[0]-index*.125,jb[1]-index*.03,jb[2],jb[3]-index*.03]};
     const v=m[role]; x=g.usable*v[0];y=g.height*v[1];h=v[2];plate=g.height*v[3];
     const edge=h/100*g.height*.4+8;
     x=Math.max(edge,Math.min(g.usable-edge,x));
   }
   return {x:100*x/g.width,b:100*(g.height-y)/g.height,h,z:p.z,plate:100*plate/g.height};
 }
+// A háttérkép a teljes (levágatlan) képből a cropTop alatti részt mutatja; a bútorlapok ugyanabból a képből vannak kivágva, ugyanazzal az eltolással.
+function sceneImageStyle(g,left,top) {
+  return 'left:'+left+'px;top:'+(top-SCENE.cropTop*g.scale)+'px;width:'+g.imageWidth+'px;height:'+SCENE.height*g.scale+'px;max-width:none';
+}
 function renderFurniture(g) {
+  const wrap=$('#stageBgWrap');
+  if(wrap) {
+    wrap.style.left=g.offsetX+'px';wrap.style.top=g.offsetY+'px';wrap.style.width=g.imageWidth+'px';wrap.style.height=g.imageHeight+'px';
+    const bg=wrap.firstElementChild;
+    if(bg) {bg.style.cssText=sceneImageStyle(g,0,0);if(bg.getAttribute('src')!==SCENE.src) bg.setAttribute('src',SCENE.src);}
+  }
   const layer=$('#sceneFurniture');
-  if(!layer.children.length) layer.innerHTML=ROOM_FURNITURE.map(()=>'<div class="room-occluder"><img src="/assets/targyalotterem.jpg" alt=""></div>').join('');
+  if(layer.children.length!==ROOM_FURNITURE.length) layer.innerHTML=ROOM_FURNITURE.map(()=>'<div class="room-occluder"><img src="'+SCENE.src+'" alt=""></div>').join('');
   [...layer.children].forEach((el,i)=>{
     const f=ROOM_FURNITURE[i];
     const x=g.offsetX+f.x*g.scale,y=g.offsetY+f.y*g.scale;
-    el.style.left=x+'px';el.style.top=y+'px';el.style.width=f.w*g.scale+'px';el.style.height=f.h*g.scale+'px';
-    const img=el.firstElementChild;
-    img.style.cssText='left:'+(g.offsetX-x)+'px;top:'+(g.offsetY-y)+'px;width:'+g.imageWidth+'px;height:'+g.imageHeight+'px';
+    el.style.left=x+'px';el.style.top=y+'px';el.style.width=f.w*g.scale+'px';el.style.height=f.h*g.scale+'px';el.style.zIndex=f.z;
+    el.firstElementChild.style.cssText=sceneImageStyle(g,g.offsetX-x,g.offsetY-y);
   });
 }
 function scheduleSceneLayout() {
@@ -1906,6 +1964,16 @@ function renderGame() {
   renderSidebar();
   $('#screen-game').dataset.phase=S.phase;
   $('#scenePanel').dataset.layout=SPEAKER_OF[S.phase]?'speech':['verdict','round_results','game_over'].includes(S.phase)?'result':S.phase;
+  if (window.kbCourt && typeof window.kbCourt.update === 'function') {
+    window.kbCourt.update({
+      phase: S.phase, round: S.round || 1, totalRounds: S.totalRounds || 1, caseNo: S.caseNo || '',
+      accusationText: S.accusationText || '', phaseEndsAt: S.phaseEndsAt || 0,
+      prosecutorName: nameOf(S.prosecutorId), defendantName: nameOf(S.defendantId),
+      defenderName: nameOf(S.defenderId), witnessName: nameOf(S.witnessId), judgeName: nameOf(S.currentJudgeId),
+      evidence: S.evidence || null, witnessCard: S.witnessCard || null,
+      verdict: S.verdict || null, challengeReview: S.challengeReview || null, myChallenge: S.myChallenge || null
+    });
+  }
   scheduleSceneLayout();
   // "Rendet a teremben!" – CSAK az aktuális KÖR BÍRÓJA látja és használhatja
   // (a szerver is ezt ellenőrzi).
@@ -1999,12 +2067,12 @@ function renderStage() {
   const juryMore = Math.max(0, jurors.length - juryPositions.length);
 
   const key = entries.map((e) => e.role + ':' + e.pid + ':' + playerById(e.pid)?.name + ':' + playerById(e.pid)?.avatar + ':' + (playerById(e.pid)?.profile?.cosm?.frame || '') + (playerById(e.pid)?.profile?.cosm?.nameFx || '')).join('|') +
-    '#' + mobile + '+' + juryMore;
+    '#' + mobile + '+' + juryMore + '~' + (window.kbAvatarRoles ? window.kbAvatarRoles.count() : 0);
   if (stage.dataset.key !== key) {
     stage.dataset.key = key;
     let html = entries.map((e) => {
       const pos=scenePosition(e.role,e.ji||0,g);
-      const avSlot=AVATAR_ID_RE.test(playerById(e.pid)?.avatar||'');
+      const avSlot=figureKind(e.pid,e.role)==='portrait'; // a teljes alakos szerep-kép a fix figurák méretét kapja
       return '<div class="stage-slot'+(avSlot?' av-slot':'')+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'" style="--x:'+pos.x+'%;--b:'+pos.b+'%;--h:'+avH(pos.h,avSlot,e.role)+'%;--z:'+pos.z+';--glow:'+ROLE_COLOR[e.role]+'">'+characterFigure(e.role,e.pid,e.ji||0)+'</div>';
     }).join('');
     if (juryMore > 0) {
@@ -2021,7 +2089,7 @@ function renderStage() {
   });
   const jp=scenePosition('judge',0,g),judgeSlot=$('#judge');
   // Avatáros bírónál a kép nagyobb (a teteje marad, lefelé nő), a pulpitus elé kerül, a névtábla az aljára.
-  const jAv=AVATAR_ID_RE.test(playerById(scene.currentJudgeId)?.avatar||'');
+  const jAv=figureKind(scene.currentJudgeId,'judge')==='portrait';
   const jf=jAv?.95:1; // az avatáros bíró képe kicsit kisebb, a teteje marad
   const jh=jp.h*jf, jb=jp.b-jp.h*(jf-1), jPlate=jAv?100-jb-5:jp.plate;
   judgeSlot.classList.toggle('av-judge',jAv);
@@ -2063,11 +2131,18 @@ function renderStage() {
     if(tag) tag.innerHTML='<span class="st-av">' + avatarEmoji(p?.avatar) + '</span><span class="st-name">' + escapeHtml(p?.name || 'Bíró') + '</span>';
     const fallback=judgeEl.querySelector('.st-fallback');
     if(fallback) fallback.innerHTML='<span>' + avatarEmoji(p?.avatar) + '</span><small>' + escapeHtml(p?.name || 'Bíró') + '</small>';
-    const jHasAv = !!p && AVATAR_ID_RE.test(p.avatar || '');
+    const jKind = figureKind(scene.currentJudgeId, 'judge');
     const jBase = judgeEl.querySelector('.st-base'), jArt = judgeEl.querySelector('.st-art');
-    const jWant = jHasAv ? avatarSrc(p.avatar) : '/assets/biro.png';
+    const jWant = jKind === 'sprite' ? window.kbAvatarRoles.spriteFor(p.avatar, 'judge') : jKind === 'portrait' ? avatarSrc(p.avatar) : '/assets/biro.png';
     if (jBase && jBase.getAttribute('src') !== jWant) jBase.setAttribute('src', jWant);
-    if (jArt) jArt.classList.toggle('av-figure', jHasAv);
+    if (jArt) {
+      jArt.classList.toggle('av-figure', jKind === 'portrait');
+      jArt.classList.toggle('role-sprite', jKind === 'sprite');
+      // a portré-bírón talár / jabot jelmez-sáv (a külön szerep-kép nélküli tartalék)
+      const hasCostume = !!jArt.querySelector('.role-costume');
+      if (jKind === 'portrait' && !hasCostume && window.kbAvatarRoles) jBase.insertAdjacentHTML('afterend', window.kbAvatarRoles.costumeHtml('judge'));
+      else if (jKind !== 'portrait' && hasCostume) jArt.querySelector('.role-costume').remove();
+    }
     bindCharacterFallback(judgeEl);
     // A bíró lélegzése, bólogatása és kalapács-rázkódása ugyanitt fut.
     judgeEl.dataset.pid = scene.currentJudgeId || '';

@@ -177,3 +177,42 @@ body.chat-docked .comfort-dock { left: 372px; }
 
 /* A fázispanel takarná a bíró buborékját (kis telefon): ilyenkor a díszítő buborék rejtve marad. */
 .judge-bubble.bubble-covered { visibility: hidden; }
+
+
+/* ---------------- Avatár × szerep ---------------- */
+/* Asset-first fallback: hiányzó role sprite esetén az eredeti avatar marad, csak HTML szerepjelvény jelenik meg. */
+.st-art.av-figure { position: relative; }
+.role-fallback-badge {
+  position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); z-index: 4;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(255,255,255,.6);
+  color: #fff; background: rgba(18,12,9,.88); box-shadow: 0 2px 8px rgba(0,0,0,.45);
+  font: 700 10px var(--font-disp); letter-spacing: .8px; white-space: nowrap; pointer-events: none;
+}
+.role-fallback-judge { background: rgba(72,54,12,.92); color: var(--court-gold); }
+.role-fallback-prosecutor { background: rgba(143,31,45,.94); }
+.role-fallback-defendant { background: rgba(188,84,9,.95); }
+.role-fallback-defender { background: rgba(38,69,122,.95); }
+.role-fallback-witness { background: rgba(47,125,77,.95); }
+.role-fallback-juror { background: rgba(91,63,174,.95); }
+/* Feltöltött, teljes alakos szerep-kép (assets/roles/avatar_NN_<szerep>.webp): a fix figurákhoz hasonlóan, keret nélkül. */
+.st-art.role-sprite .st-base { object-fit: contain; object-position: 50% 100%; border: 0; background: none; border-radius: 0; }
+
+/* ---------------- 4) CINEMATIC COURTROOM HUD ---------------- */
+.court-focus{position:absolute;inset:0;z-index:7;pointer-events:none;opacity:0;transition:opacity .45s var(--court-ease);background:radial-gradient(circle at 50% 55%,transparent 0 18%,rgba(4,2,1,.12) 45%,rgba(4,2,1,.46) 100%)}
+.court-focus.active{opacity:1}.court-focus[data-focus="left"]{background:radial-gradient(circle at 20% 62%,transparent 0 17%,rgba(4,2,1,.15) 42%,rgba(4,2,1,.52) 100%)}.court-focus[data-focus="right"],.court-focus[data-focus="witness"]{background:radial-gradient(circle at 73% 61%,transparent 0 17%,rgba(4,2,1,.15) 42%,rgba(4,2,1,.52) 100%)}
+.court-phase-hud{position:absolute;z-index:90;top:14px;left:50%;transform:translateX(-50%);min-width:250px;max-width:min(520px,70vw);padding:8px 20px;text-align:center;pointer-events:none;border-width:1px}.cph-title{display:block;color:var(--court-gold);font:800 18px var(--font-disp);letter-spacing:2px}.cph-who{display:block;font:800 14px var(--font-disp);color:#fff}.cph-sub{display:block;margin-top:2px;color:var(--court-text-dim);font-size:11px}
+.court-intro,.court-evidence{position:absolute;inset:0;z-index:125;display:grid;place-items:center;pointer-events:none;background:rgba(5,3,2,.38);opacity:0;transition:opacity .3s ease}.court-intro.show,.court-evidence.show{opacity:1}.court-intro-card{width:min(660px,82vw);padding:28px 36px;text-align:center;transform:translateY(18px) scale(.95) rotate(-1deg);transition:transform .55s var(--court-ease-bounce)}.court-intro.show .court-intro-card{transform:translateY(0) scale(1) rotate(-1deg)}.ci-kicker{font:800 15px var(--font-disp);letter-spacing:4px;color:#8a6420}.ci-vs{margin:7px 0;font:900 clamp(28px,4vw,54px) var(--font-disp);color:#201711}.ci-vs span{color:var(--court-red);font-size:.55em}.ci-label{display:inline-block;margin-top:5px;padding:2px 12px;background:#2b211a;color:#f6efdc;font:800 11px var(--font-disp);letter-spacing:3px}.ci-charge{margin:12px auto 20px;max-width:540px;font:700 clamp(16px,2vw,23px) var(--font-body);line-height:1.25}.court-intro-card .court-stamp{font-size:18px}
+.evidence-folder{position:relative;width:min(520px,78vw);min-height:250px;padding:54px 34px 30px;color:#2b211a;background:linear-gradient(135deg,#caa86c,#e1c68e 55%,#b99355);border:2px solid #8a6420;border-radius:7px;box-shadow:0 24px 60px #0009,inset 0 0 45px #7a4f1d33;transform:translateY(45px) rotate(4deg) scale(.9);transition:transform .5s var(--court-ease-bounce)}.court-evidence.show .evidence-folder{transform:translateY(0) rotate(-2deg) scale(1)}.ev-tab{position:absolute;top:-22px;left:22px;padding:8px 22px;background:#d8ba7d;border:2px solid #8a6420;border-bottom:0;border-radius:7px 7px 0 0;font:800 13px var(--font-disp);letter-spacing:2px}.ev-pin{float:left;display:grid;place-items:center;width:105px;height:125px;margin:0 24px 10px 0;background:#eee2c4;border:8px solid #f6efdc;box-shadow:0 4px 10px #0004;font:900 64px Georgia;color:#6b5638;transform:rotate(-4deg)}.ev-text{padding-top:20px;font:800 clamp(17px,2.4vw,27px) var(--font-disp);line-height:1.2}.ev-stamp{position:absolute;right:25px;bottom:24px;font-size:12px;letter-spacing:2px}
+@media(max-width:700px){.court-phase-hud{top:8px;min-width:0;width:52vw;padding:5px 9px}.cph-title{font-size:12px}.cph-who{font-size:10px}.cph-sub{display:none}.court-intro-card{padding:20px 18px}.ci-kicker{font-size:11px}.evidence-folder{min-height:210px;padding:44px 22px 24px}.ev-pin{width:76px;height:90px;font-size:45px;margin-right:14px}.ev-text{padding-top:7px}}
+.reduced-motion .court-intro-card,.reduced-motion .evidence-folder{transition:none!important;transform:none!important}
+@media(prefers-reduced-motion:reduce){.court-intro-card,.evidence-folder{transition:none!important;transform:none!important}}
+
+/* ---------------- 5) CHALLENGE + VERDICT PRESENTATION ---------------- */
+.court-challenge,.court-verdict{position:absolute;inset:0;z-index:128;display:grid;place-items:center;pointer-events:none;background:rgba(5,3,2,.36);opacity:0;transition:opacity .28s ease}.court-challenge.show,.court-verdict.show{opacity:1}
+.challenge-card{width:min(430px,78vw);padding:28px 28px 24px;text-align:center;transform:translateY(42px) rotate(3deg) scale(.9);transition:transform .48s var(--court-ease-bounce)}.court-challenge.show .challenge-card{transform:translateY(0) rotate(-2deg) scale(1)}.cc-kicker{font:900 13px var(--font-disp);letter-spacing:3px;color:#8a6420}.cc-title{margin:8px 0 12px;font:900 clamp(25px,4vw,42px) var(--font-disp);color:#2b211a}.cc-text{font:700 clamp(15px,2vw,20px) var(--font-body);line-height:1.3;color:#3d3024}
+.verdict-card{position:relative;width:min(590px,84vw);padding:34px 28px;text-align:center;transform:scale(.78) rotate(-3deg);transition:transform .36s var(--court-ease-bounce);overflow:hidden}.court-verdict.show .verdict-card{transform:scale(1) rotate(-1deg)}.verdict-card.guilty{--verdict:#c81e2b}.verdict-card.acquitted{--verdict:#159447}.verdict-kicker{font:800 13px var(--font-disp);letter-spacing:4px;color:#80663d}.verdict-name{margin:7px 0 18px;font:900 clamp(22px,4vw,40px) var(--font-disp);color:#241b13}.verdict-card .court-stamp{--stamp:var(--verdict);font-size:clamp(27px,6vw,62px);letter-spacing:5px;border-width:7px;animation:verdict-hit .38s var(--court-ease-bounce) both}.verdict-sub{margin-top:18px;font:800 13px var(--font-disp);letter-spacing:2px;color:#6f5837}@keyframes verdict-hit{0%{transform:scale(2.1) rotate(-14deg);opacity:0}100%{transform:scale(1) rotate(-6deg);opacity:1}}
+.court-verdict.flash-guilty{background:rgba(142,8,18,.32)}.court-verdict.flash-acquitted{background:rgba(5,108,49,.26)}
+.reduced-motion .challenge-card,.reduced-motion .verdict-card,.reduced-motion .verdict-card .court-stamp{transition:none!important;animation:none!important;transform:none!important}@media(prefers-reduced-motion:reduce){.challenge-card,.verdict-card,.verdict-card .court-stamp{transition:none!important;animation:none!important;transform:none!important}}
+
+/* A raszter-háttér burkolója: a JS (renderFurniture) a háttérkép tényleges méretére és helyére igazítja; a kép teteje (belesütött cím) kilóg és levágódik. */
+.stage-bg-wrap { position: absolute; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 13%); mask-image: linear-gradient(180deg, transparent 0, #000 13%); }
