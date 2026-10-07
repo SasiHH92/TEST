@@ -14,6 +14,10 @@
 //   POST /api/admin/backups       – azonnali mentés
 //   POST /api/admin/mail-test     – próbalevél {to}
 //   POST /api/admin/reset-link    – kézi jelszó-visszaállító link {email} (ha nincs levélküldés)
+//   GET  /api/admin/reports       – jelentett üzenetek + aktuális némítások
+//   POST /api/admin/reports/mute  – a jelentett üzenet küldőjének némítása {id, minutes}
+//   POST /api/admin/reports/hide  – a jelentett közös-téri üzenet eltávolítása {id}
+//   POST /api/admin/reports/dismiss | /reports/clear | /mutes/remove
 // ============================================================
 
 const crypto = require('crypto');
@@ -23,7 +27,7 @@ const MIN_TOKEN = 24;
 const FAIL_LIMIT = 10;
 const FAIL_WINDOW_MS = 10 * 60 * 1000;
 
-function createAdmin({ token = '', errors, storage, auth, now = () => Date.now(), startedAt = Date.now() }) {
+function createAdmin({ token = '', errors, storage, auth, moderation, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
   const router = express.Router();
   const enabled = typeof token === 'string' && token.length >= MIN_TOKEN;
   const expected = enabled ? crypto.createHash('sha256').update(token).digest() : null;
@@ -67,6 +71,7 @@ function createAdmin({ token = '', errors, storage, auth, now = () => Date.now()
       time: now(),
       uptimeSeconds: Math.round(process.uptime()),
       errors: errors.summary(),
+      reports: { open: moderation ? moderation.list().filter((r) => r.status === 'new').length : 0, mutes: moderation ? moderation.mutes().length : 0 },
       database: storage.enabled(),
       backups: { count: backups.length, latest: backups[0] || null, error: backupError },
       mail: auth.admin.mailStatus()
@@ -94,6 +99,36 @@ function createAdmin({ token = '', errors, storage, auth, now = () => Date.now()
       errors.record('mail', e);
       return res.status(502).json({ error: 'A levél küldése nem sikerült: ' + String(e && e.message || e).slice(0, 240) });
     }
+    res.json({ ok: true });
+  }));
+
+  // ---- Moderáció: jelentések, némítások ----
+  const reportId = (req) => {
+    const id = req.body && req.body.id;
+    if (!Number.isInteger(id)) { const e = new Error('Érvénytelen azonosító.'); e.status = 400; throw e; }
+    return id;
+  };
+  router.get('/reports', (req, res) => res.json({ reports: moderation.list(), mutes: moderation.mutes() }));
+  router.post('/reports/mute', wrap((req, res) => {
+    const id = reportId(req);
+    const keys = moderation.mute(id, req.body.minutes);
+    if (keys < 0) { const e = new Error('Nincs ilyen jelentés.'); e.status = 404; throw e; }
+    res.json({ ok: true, muted: keys });
+  }));
+  router.post('/reports/dismiss', wrap((req, res) => {
+    if (!moderation.dismiss(reportId(req))) { const e = new Error('Nincs ilyen jelentés.'); e.status = 404; throw e; }
+    res.json({ ok: true });
+  }));
+  // A jelentett közös-téri üzenet (és hirdetés) azonnali eltávolítása mindenkinek.
+  router.post('/reports/hide', wrap((req, res) => {
+    const report = moderation.get(reportId(req));
+    if (!report) { const e = new Error('Nincs ilyen jelentés.'); e.status = 404; throw e; }
+    if (report.channel !== 'board') { const e = new Error('Csak a közös tér üzenete rejthető el (a szobaiért a házigazda felel).'); e.status = 409; throw e; }
+    res.json({ ok: true, hidden: hideBoardMessage(report.msgId) });
+  }));
+  router.post('/reports/clear', (req, res) => { moderation.clearReports(); res.json({ ok: true }); });
+  router.post('/mutes/remove', wrap((req, res) => {
+    if (!moderation.unmute(String(req.body && req.body.id || ''))) { const e = new Error('Nincs ilyen némítás.'); e.status = 404; throw e; }
     res.json({ ok: true });
   }));
 

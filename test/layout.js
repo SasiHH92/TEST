@@ -23,6 +23,7 @@ const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
 
+const ioClient = require('socket.io-client');
 let chromium;
 try { ({ chromium } = require('playwright-core')); } catch (_) { /* hiányzik: lent SKIP */ }
 
@@ -176,6 +177,38 @@ async function walk(browser, vp) {
       await page.evaluate(() => document.getElementById('chatFab').click());
     });
 
+    // Moderáció a csevegőben: egy másik játékos üzenete mellett ott a jelentés (⚑) és (a házigazdának) a némítás (🔇) gomb.
+    await check(tag + ' – moderáció: jelentés és némítás a csevegőben, elrendezés tiszta', async () => {
+      const code = await page.evaluate(() => window.kbInRoom().code);
+      const mate = ioClient(BASE, { transports: ['websocket'], reconnection: false });
+      await new Promise((resolve, reject) => { mate.once('connect', resolve); mate.once('connect_error', reject); });
+      const ask = (event, payload) => new Promise((resolve) => mate.emit(event, payload, resolve));
+      try {
+        assert.ok((await ask('join_room', { code, name: 'Szomszed ' + width, playerId: 'mate-' + width })).state, 'a másik játékos belépett');
+        assert.ok((await ask('chat_send', { text: 'Hahó, én vagyok a szomszéd!' })).ok);
+        await page.evaluate(() => window.kbChat.open());
+        await page.waitForSelector('#chatLog .chat-msg .cm-act[data-report]', { timeout: 8000 });
+        assert.ok(await page.isVisible('#chatLog .cm-act[data-mute]'), 'a házigazda látja a némítás gombot');
+        await expectClean(page, 'lobby-chat-mod', vp);
+        // némítás: a másik játékos nem írhat, a gomb átvált, feloldásra újra írhat
+        await page.click('#chatLog .cm-act[data-mute]');
+        await page.waitForSelector('#chatLog .cm-act.on[data-mute]', { timeout: 5000 });
+        assert.match((await ask('chat_send', { text: 'ezt már nem' })).error || '', /elnémított/);
+        await expectClean(page, 'lobby-chat-muted', vp);
+        await page.click('#chatLog .cm-act.on[data-mute]');
+        await page.waitForSelector('#chatLog .cm-act[data-mute]:not(.on)', { timeout: 5000 });
+        assert.ok((await ask('chat_send', { text: 'újra írhatok' })).ok);
+        // jelentés: a gomb ✓-ra vált, a jelzés (⚑ 1) megjelenik
+        await page.click('#chatLog .cm-act[data-report]');
+        await page.waitForSelector('#chatLog .cm-act.done', { timeout: 5000 });
+        await page.waitForSelector('#chatLog .cm-flag', { timeout: 5000 });
+        await expectClean(page, 'lobby-chat-reported', vp);
+      } finally {
+        mate.disconnect();
+        await page.evaluate(() => { const c = document.getElementById('chatClose'); if (c && c.offsetParent) c.click(); });
+      }
+    });
+
     if (game) {
       await check(tag + ' – játék: a HUD és a színpad átfedés nélkül a fázisokon át', async () => {
         await page.evaluate(() => { document.getElementById('btnAddBot').click(); });
@@ -311,7 +344,7 @@ async function main() {
   }
   const child = spawn(process.execPath, ['server.js'], {
     cwd: path.resolve(__dirname, '..'),
-    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', AUTH_BASE_URL: BASE, DATABASE_URL: '', MAX_ROOMS_PER_IP: '60', MAX_SOCKETS_PER_IP: '200', // a teszt minden böngészője ugyanarról a címről jön
+    env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', AUTH_BASE_URL: BASE, DATABASE_URL: '', MAX_ROOMS_PER_IP: '60', MAX_SOCKETS_PER_IP: '200', REPORTS_PER_10_MIN: '200', // a teszt minden böngészője ugyanarról a címről jön
       AUTH_STORE_PATH: path.join(tmp, 'accounts.json'), KB_AVATARS_FILE: path.join(tmp, 'avatars.json'), KB_STATS_FILE: path.join(tmp, 'stats.json'),
       KB_DMS_FILE: path.join(tmp, 'dms.json'), KB_ERRORS_FILE: path.join(tmp, 'errors.json') },
     stdio: ['ignore', 'ignore', 'pipe']

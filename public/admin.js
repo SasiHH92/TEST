@@ -40,9 +40,11 @@
     row(dl, 'Adatbázis (Neon)', s.database ? 'be van kötve' : 'NINCS (csak helyi fájlok)', s.database ? 'ok' : 'bad');
     row(dl, 'Mentések', s.backups.error ? 'hiba: ' + s.backups.error : s.backups.count + ' db, legutóbbi: ' + (s.backups.latest ? when(s.backups.latest.takenAt) : 'még nincs'), s.backups.error ? 'bad' : (s.backups.count ? 'ok' : 'dim'));
     row(dl, 'Levélküldés', s.mail.configured ? 'be van állítva' : 'nincs beállítva (kulcs: ' + (s.mail.key ? 'van' : 'nincs') + ', feladó: ' + (s.mail.sender ? 'van' : 'nincs') + ', AUTH_BASE_URL: ' + (s.mail.baseUrl ? 'van' : 'nincs') + ')', s.mail.configured ? 'ok' : 'bad');
+    row(dl, 'Jelentések', s.reports.open + ' új, ' + s.reports.mutes + ' aktív némítás', s.reports.open ? 'bad' : 'ok');
     row(dl, 'Hibák', s.errors.distinct + ' féle, összesen ' + s.errors.total + ' előfordulás', s.errors.total ? 'bad' : 'ok');
     const [errs, backs] = await Promise.all([api('GET', '/errors'), api('GET', '/backups')]);
     renderErrors(errs); renderBackups(backs);
+    renderReports(await api('GET', '/reports'));
   }
 
   function renderErrors(data) {
@@ -55,6 +57,35 @@
         el('div', {}, el('span', { className: 'tag', textContent: e.kind }), el('b', { textContent: e.message || '(üres üzenet)' })),
         el('div', { className: 'dim', textContent: e.count + '× • első: ' + when(e.first) + ' • utolsó: ' + when(e.last) + (ctx ? ' • ' + ctx : '') }),
         e.stack && e.stack.length ? el('pre', { textContent: e.stack.join('\n') }) : ''));
+    }
+  }
+
+  // Jelentések és némítások
+  function renderReports(data) {
+    const box = $('#reports'); box.replaceChildren();
+    $('#repSummary').textContent = data.reports.length + ' jelentés';
+    if (!data.reports.length) box.append(el('p', { className: 'ok', textContent: 'Nincs jelentés.' }));
+    const act = (label, path, body, cls) => el('button', { className: cls || 'ghost', textContent: label, onclick: async () => {
+      try { await api('POST', path, body); await load(); msg('#repMsg', 'Kész.', 'ok'); } catch (e) { msg('#repMsg', e.message, 'bad'); }
+    } });
+    for (const r of data.reports) {
+      const buttons = [act('Némítás 1 óra', '/reports/mute', { id: r.id, minutes: 60 }, ''), act('1 nap', '/reports/mute', { id: r.id, minutes: 1440 }, 'ghost')];
+      if (r.channel === 'board') buttons.push(act('Üzenet elrejtése', '/reports/hide', { id: r.id }, 'ghost'));
+      if (r.status !== 'dismissed') buttons.push(act('Elvet', '/reports/dismiss', { id: r.id }, 'ghost'));
+      box.append(el('div', { className: 'err' },
+        el('div', {}, el('span', { className: 'tag', textContent: r.channel === 'room' ? 'szoba ' + (r.code || '') : 'közös tér' }), el('b', { textContent: r.name }),
+          el('span', { className: 'dim', textContent: '  ' + (r.status === 'muted' ? '🔇 némítva' : r.status === 'dismissed' ? '✓ elvetve' : 'új') })),
+        el('div', { textContent: '„' + r.text + '”' }),
+        el('div', { className: 'dim', textContent: r.count + '× jelentették: ' + r.reporters.join(', ') + ' • ' + when(r.ts) }),
+        el('div', { className: 'row', style: 'margin-top:6px' }, ...buttons)));
+    }
+    const mutes = $('#mutes'); mutes.replaceChildren();
+    if (!data.mutes.length) mutes.append(el('p', { className: 'dim', textContent: 'Nincs aktív némítás.' }));
+    for (const m of data.mutes) {
+      mutes.append(el('div', { className: 'err row' }, el('span', { textContent: m.label + ' – még ' + m.minutesLeft + ' perc' }),
+        el('button', { className: 'ghost', textContent: 'Feloldás', onclick: async () => {
+          try { await api('POST', '/mutes/remove', { id: m.id }); await load(); } catch (e) { msg('#repMsg', e.message, 'bad'); }
+        } })));
     }
   }
 
@@ -81,6 +112,7 @@
     }
   });
   $('#reload').addEventListener('click', () => load().catch((e) => msg('#backupMsg', e.message, 'bad')));
+  $('#clearReports').addEventListener('click', async () => { if (confirm('Biztosan törlöd az összes jelentést? (A némítások megmaradnak.)')) { await api('POST', '/reports/clear'); load(); } });
   $('#clearErrors').addEventListener('click', async () => { if (confirm('Biztosan törlöd a hibanaplót?')) { await api('POST', '/errors/clear'); load(); } });
   $('#backupNow').addEventListener('click', async () => {
     const b = $('#backupNow'); b.disabled = true; msg('#backupMsg', 'Mentés…');

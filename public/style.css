@@ -3968,3 +3968,20 @@ body[data-screen="name"] .comfort-dock, body[data-screen="menu"] .comfort-dock, 
 .account-delete label { display: block; font-size: 12px; margin-bottom: 4px; }
 .account-delete input { width: 100%; box-sizing: border-box; }
 .account-delete-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+
+/* ---- Moderáció: jelentés (⚑) és némítás (🔇) az üzenetek mellett ---- */
+.cm-row { display: flex; align-items: flex-end; gap: 4px; max-width: 100%; }
+.chat-msg.me .cm-row { flex-direction: row-reverse; }
+.cm-actions { display: inline-flex; align-items: center; gap: 2px; flex: none; opacity: 0; transition: opacity 0.15s; }
+.chat-msg:hover .cm-actions, .chat-msg:focus-within .cm-actions, .chat-msg.flagged .cm-actions { opacity: 1; }
+@media (hover: none) { .cm-actions { opacity: 0.55; } }
+.cm-act {
+  min-width: 26px; height: 26px; padding: 0 4px; font-size: 13px; line-height: 1; cursor: pointer;
+  color: #c9bca0; background: rgba(24, 19, 26, 0.7); border: 1px solid rgba(223, 185, 109, 0.35); border-radius: 8px;
+}
+.cm-act:hover:not(:disabled), .cm-act:focus-visible { color: #fff3d0; border-color: var(--gold); }
+.cm-act.on { color: #ffb1b1; border-color: #b3353a; }
+.cm-act.done { color: #6bfa8f; border-color: rgba(107, 250, 143, 0.4); cursor: default; }
+.cm-flag { font-size: 11px; color: #ffb1b1; padding: 0 4px; white-space: nowrap; }
+.chat-msg.flagged .cm-text { box-shadow: inset 0 0 0 1px rgba(229, 72, 77, 0.55); }
+.chat-form input:disabled { opacity: 0.6; cursor: not-allowed; }

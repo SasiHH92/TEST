@@ -234,7 +234,9 @@ class Game {
       goneSince: p.goneSince || null,
       score: p.score,
       profile: p.profile || null,
-      isBot: !!p.isBot
+      isBot: !!p.isBot,
+      // a házigazda elnémította a szobai csevegőben (a kulcsokat a server.js kezeli: játékos-azonosító vagy név)
+      chatMuted: !!(this.chatMutes && (this.chatMutes.has('p:' + p.id) || this.chatMutes.has('n:' + String(p.name).normalize('NFKC').trim().toLocaleLowerCase('hu-HU'))))
     }));
   }
 

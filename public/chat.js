@@ -11,6 +11,8 @@
   const MAX_SHOWN = 120;
   const DOCK_MIN_WIDTH = 1560; // ennél szélesebb képernyőn a lobbiban a csevegő a tartalom mellé dokkol
   const room = { msgs: [], seen: new Set(), unread: 0 };
+  const reported = new Set();   // 'csatorna:azonosító' – amit én már jelentettem
+  const flags = new Map();      // szobai üzenet azonosítója -> hányan jelentették
   const board = { msgs: [], seen: new Set(), unread: 0 };
   let ads = [];
   let channel = 'room';
@@ -28,6 +30,9 @@
   const mine = (m) => typeof MY !== 'undefined' && m.pid && m.pid === MY.playerId;
   const myBoardName = () => (typeof MY !== 'undefined' && MY.name) || (window.kbAccount && window.kbAccount.username) || '';
   const visible = () => (screen() === 'game' ? gameTab : open);
+  const meInRoom = () => (typeof S !== 'undefined' && S && S.players && typeof MY !== 'undefined' ? S.players.find((p) => p.id === MY.playerId) : null);
+  const iAmHost = () => !!(typeof S !== 'undefined' && S && typeof MY !== 'undefined' && S.hostId && S.hostId === MY.playerId);
+  const playerOf = (pid) => (typeof S !== 'undefined' && S && S.players ? S.players.find((p) => p.id === pid) : null);
 
   function timeText(ts) {
     const d = new Date(ts);
@@ -37,9 +42,23 @@
   function messageHtml(m, prev, c) {
     const own = c === 'room' ? mine(m) : (m.name === myBoardName() && !!m.name);
     const same = prev && prev.kind !== 'ad' && m.kind !== 'ad' && (c === 'room' ? prev.pid === m.pid : prev.name === m.name) && m.ts - prev.ts < 90000;
-    return '<div class="chat-msg' + (own ? ' me' : '') + (same ? ' cont' : '') + (m.kind === 'ad' ? ' is-ad' : '') + '" data-id="' + m.id + '">' +
+    // Moderáció: más üzenetét jelenthetem (⚑); a szoba házigazdája a küldőt némíthatja is (🔇 / 🔊).
+    let actions = '';
+    if (!own) {
+      const done = reported.has(c + ':' + m.id);
+      const count = c === 'room' ? (flags.get(m.id) || 0) : 0;
+      if (count) actions += '<span class="cm-flag" title="Ennyien jelentették ezt az üzenetet">⚑ ' + count + '</span>';
+      actions += '<button type="button" class="cm-act' + (done ? ' done' : '') + '" data-report="' + m.id + '"' + (done ? ' disabled' : '') +
+        ' title="' + (done ? 'Már jelentetted' : 'Üzenet jelentése') + '" aria-label="' + (done ? 'Már jelentetted' : 'Üzenet jelentése') + '">' + (done ? '✓' : '⚑') + '</button>';
+      if (c === 'room' && iAmHost() && m.pid) {
+        const muted = !!(playerOf(m.pid) && playerOf(m.pid).chatMuted);
+        actions += '<button type="button" class="cm-act' + (muted ? ' on' : '') + '" data-mute="' + escapeHtml(m.pid) + '" data-muted="' + (muted ? '1' : '0') + '"' +
+          ' title="' + (muted ? 'Némítás feloldása' : 'Némítás a szoba csevegőjében') + '" aria-label="' + (muted ? 'Némítás feloldása' : 'Némítás a szoba csevegőjében') + '">' + (muted ? '🔊' : '🔇') + '</button>';
+      }
+    }
+    return '<div class="chat-msg' + (own ? ' me' : '') + (same ? ' cont' : '') + (m.kind === 'ad' ? ' is-ad' : '') + (c === 'room' && flags.get(m.id) ? ' flagged' : '') + '" data-id="' + m.id + '">' +
       (same ? '' : '<span class="cm-name" style="color:hsl(' + nameHue(m.name) + ',70%,72%)">' + escapeHtml(own ? 'Te' : m.name) + '<time>' + timeText(m.ts) + '</time></span>') +
-      '<span class="cm-text">' + escapeHtml(m.text) + '</span></div>';
+      '<span class="cm-row"><span class="cm-text">' + escapeHtml(m.text) + '</span>' + (actions ? '<span class="cm-actions">' + actions + '</span>' : '') + '</span></div>';
   }
 
   const qrOpen = new Set(); // azok a hirdetések, amelyeknél a QR-kód ki van nyitva
@@ -91,12 +110,15 @@
     $c('#chTabBoard').setAttribute('aria-selected', String(c === 'board'));
     $c('#chTabBoard').classList.toggle('only', !rin);
     const players = typeof S !== 'undefined' && S && S.players ? S.players.filter((p) => p.connected && !p.isBot).length : 0;
-    $c('#chatSub').textContent = c === 'room' ? (players ? players + ' játékos a szobában' : '')
+    const mutedCount = typeof S !== 'undefined' && S && S.players ? S.players.filter((p) => p.chatMuted).length : 0;
+    $c('#chatSub').textContent = c === 'room' ? (players ? players + ' játékos a szobában' : '') + (iAmHost() && mutedCount ? ' · némítva: ' + mutedCount : '')
       : 'Közös tér: az egész oldal látja. Hirdesd meg a szobád, ha embereket keresel.';
     const adsEl = $c('#chatAds');
     adsEl.classList.toggle('hidden', c !== 'board' || !ads.length);
     if (c === 'board') adsEl.innerHTML = adsHtml();
-    $c('#chatInput').placeholder = c === 'room' ? 'Írj a teremnek…' : 'Írj mindenkinek…';
+    const me = meInRoom(), muted = c === 'room' && !!(me && me.chatMuted);
+    $c('#chatInput').placeholder = muted ? 'A házigazda elnémított a szoba csevegőjében' : (c === 'room' ? 'Írj a teremnek…' : 'Írj mindenkinek…');
+    $c('#chatInput').disabled = muted;
     // hirdetni csak nyitott lobbi-szobából lehet
     $c('#chatAdBtn').classList.toggle('hidden', !(c === 'board' && here().lobby));
   }
@@ -195,7 +217,8 @@
   const load = (list) => loadInto('room', list);
 
   function clearRoom() {
-    room.msgs = []; room.seen = new Set(); room.unread = 0;
+    room.msgs = []; room.seen = new Set(); room.unread = 0; flags.clear();
+    for (const k of [...reported]) if (k.startsWith('room:')) reported.delete(k);
     $c('#chatLog').dataset.channel = '';
   }
 
@@ -230,6 +253,31 @@
     };
     if (c === 'room') socket.emit('chat_send', { text }, done);
     else socket.emit('board_send', { text, name: myBoardName() }, done);
+  });
+
+  // Jelentés és némítás (gombok az üzenetek mellett)
+  $c('#chatLog').addEventListener('click', (e) => {
+    const b = e.target.closest('button.cm-act');
+    if (!b) return;
+    const c = current();
+    if (b.dataset.report) {
+      const id = Number(b.dataset.report), key = c + ':' + id;
+      if (reported.has(key)) return;
+      socket.emit(c === 'room' ? 'chat_report' : 'board_report', { id }, (res) => {
+        if (res && res.error) { setNote(res.error); return; }
+        reported.add(key);
+        if (visible()) renderLog();
+        setNote(res && res.hidden ? '⚑ Az üzenet több jelentés miatt lekerült.' : '⚑ Jelentetted az üzenetet. Köszönjük, az üzemeltető megnézi.');
+      });
+      return;
+    }
+    if (b.dataset.mute) {
+      const muted = b.dataset.muted !== '1';
+      socket.emit('chat_mute', { playerId: b.dataset.mute, muted }, (res) => {
+        if (res && res.error) { setNote(res.error); return; }
+        setNote(muted ? '🔇 Elnémítottad a szoba csevegőjében. A gombbal bármikor feloldhatod.' : '🔊 Feloldottad a némítást.');
+      });
+    }
   });
 
   $c('#chatAdBtn').addEventListener('click', () => {
@@ -291,6 +339,26 @@
 
   socket.on('chat_msg', (m) => add('room', m));
   socket.on('board_msg', (m) => add('board', m));
+  // Moderáció: egy szobai üzenetet jelentettek (jelzés mindenkinek), vagy egy közös-téri üzenet lekerült (jelentések / üzemeltető).
+  socket.on('chat_flag', (p) => {
+    if (!p || typeof p.id !== 'number') return;
+    flags.set(p.id, Number(p.count) || 1);
+    if (visible() && current() === 'room') renderLog();
+  });
+  socket.on('board_remove', (p) => {
+    if (!p || typeof p.id !== 'number') return;
+    board.msgs = board.msgs.filter((m) => m.id !== p.id);
+    if (visible() && current() === 'board') renderLog();
+  });
+  // A szoba állapota változott (pl. a házigazda némított valakit): a gombok és a beviteli mező frissül.
+  // (csak akkor rajzol újra, ha a házigazda vagy a némítottak köre tényleg változott: az állapot gyakran érkezik)
+  let modSig = '';
+  socket.on('state', () => {
+    const sig = (typeof S !== 'undefined' && S && S.players ? (S.hostId || '') + '|' + S.players.filter((p) => p.chatMuted).map((p) => p.id).join(',') : '');
+    if (sig === modSig) return;
+    modSig = sig;
+    if (visible() && inRoom()) { renderHead(); if (current() === 'room') renderLog(); }
+  });
   socket.on('board_ads', (list) => {
     ads = Array.isArray(list) ? list : [];
     if (visible() && current() === 'board') renderHead();

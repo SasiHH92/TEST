@@ -17,6 +17,8 @@ data/dms.json
 data/dms.json.*.tmp
 data/errors.json
 data/errors.json.*.tmp
+data/moderation.json
+data/moderation.json.*.tmp
 
 # helyi adatbázis-másolatok (scripts/db-backup.js): jelszó-hash-eket tartalmaznak
 backups/

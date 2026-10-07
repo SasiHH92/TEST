@@ -24,6 +24,7 @@ const {createDms} = require('./dms');
 const {createErrorLog} = require('./errorlog');
 const {securityHeaders} = require('./security-headers');
 const {createAdmin} = require('./admin');
+const {createModeration} = require('./moderation');
 const {cleanText} = require('./textclean');
 const {budapestDate, weekStart, msUntilWeekReset} = require('./quests');
 const lb = require('./leaderboard');
@@ -125,6 +126,8 @@ app.use('/api/shop',shopApi.router);
 // de csak futás közben használjuk őket).
 // Privát üzenetek a barátok között: fájlban él, és a külső adatbázisba is feltöltődik (újraindítás után sem vész el).
 const dms = createDms({ file: path.resolve(__dirname, process.env.KB_DMS_FILE || 'data/dms.json'), persist: () => storage.push('dms') });
+// Moderáció: jelentések és időzített némítások (fájlban él, és a külső adatbázisba is feltöltődik, így az újraindítás nem oldja fel a némítást).
+const moderation = createModeration({ file: path.resolve(__dirname, process.env.KB_MODERATION_FILE || 'data/moderation.json'), persist: () => storage.push('moderation') });
 const socialApi = createSocial({
   auth: authApi,
   dms,
@@ -139,7 +142,7 @@ const socialApi = createSocial({
 app.use('/api/friends',socialApi.router);
 
 // Üzemeltetői felület: csak ADMIN_TOKEN (legalább 24 karakter) beállításakor él, egyébként 404 (lásd admin.js).
-const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi });
+const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, hideBoardMessage: (id) => hideBoardMessage(id) });
 app.use('/api/admin', adminApi.router);
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
@@ -463,7 +466,29 @@ function chatVisible(viewerSocketId, entry) {
   const viewer = socialApi.userOf(viewerSocketId);
   return !(viewer && entry.uid && socialApi.hides(viewer, entry.uid));
 }
-const chatPublic = ({ id, pid, name, text, ts }) => ({ id, pid, name, text, ts });
+const chatPublic = ({ id, pid, name, text, ts }) => ({ id, pid, name, text, ts }); // (a küldő kulcsai és fiók-azonosítója nem megy ki a kliensekhez)
+
+// ---- Moderáció ----
+// Házigazdai némítás: a szoba lapja (game.chatMutes) játékos-azonosítót ÉS nevet tárol, így a név újracsatlakozással nem kerülhető meg.
+// Az üzemeltetői némítás (moderation) a közös térre és a szobai csevegőre is vonatkozik. A jelentett közös-téri üzenet
+// BOARD_HIDE_REPORTS különböző jelentő után automatikusan lekerül.
+const BOARD_HIDE_REPORTS = 3;
+const allowReport = makeLimiter(Math.max(1, parseInt(process.env.REPORTS_PER_10_MIN, 10) || 6), 10 * 60 * 1000); // jelentőnként 10 percenként legfeljebb 6 jelentés (REPORTS_PER_10_MIN)
+const adminMutedMs = (socket) => moderation.mutedFor(socialApi.userOf(socket.id), clientIpOf(socket));
+const mutedText = (ms) => 'Ideiglenesen el vagy némítva (még kb. ' + Math.max(1, Math.ceil(ms / 60000)) + ' perc).';
+const senderKeysOf = (socket) => moderation.keysFor(socialApi.userOf(socket.id), clientIpOf(socket));
+function hostMuted(game, player) {
+  return !!(game.chatMutes && (game.chatMutes.has('p:' + player.id) || game.chatMutes.has('n:' + normName(player.name))));
+}
+// Közös-téri üzenet (és a hozzá tartozó hirdetés) eltávolítása mindenkinek; az üzemeltető és az automatikus elrejtés is ezt használja.
+function hideBoardMessage(id) {
+  const i = board.msgs.findIndex((m) => m.id === id);
+  if (i < 0) return false;
+  const [entry] = board.msgs.splice(i, 1);
+  if (entry.kind === 'ad' && entry.code && board.ads.delete(entry.code)) { lastAdsJson = ''; refreshAds(); }
+  io.to('board').emit('board_remove', { id });
+  return true;
+}
 function chatFor(socketId, game) {
   return (game.chatLog || []).filter((m) => chatVisible(socketId, m)).slice(-50).map(chatPublic);
 }
@@ -738,6 +763,9 @@ io.on('connection', (socket) => {
     const game = sess && rooms.get(sess.code);
     const player = game && game.getPlayer(sess.playerId);
     if (!player) return reply({ error: 'Csak szobában lehet csevegni.' });
+    if (hostMuted(game, player)) return reply({ error: 'A házigazda elnémított ebben a szobában.' });
+    const mutedMs = adminMutedMs(socket);
+    if (mutedMs) return reply({ error: mutedText(mutedMs) });
     const clean = cleanChatText(text);
     if (!clean) return reply({ error: 'Üres üzenet.' });
     const now = Date.now();
@@ -749,13 +777,64 @@ io.on('connection', (socket) => {
     recent.push(now);
     chatTimes.set(socket.id, recent);
     game.chatSeq = (game.chatSeq || 0) + 1;
-    const entry = { id: game.chatSeq, pid: player.id, name: player.name, text: clean, ts: now, uid: socialApi.userOf(socket.id) || null };
+    const entry = { id: game.chatSeq, pid: player.id, name: player.name, text: clean, ts: now, uid: socialApi.userOf(socket.id) || null, keys: senderKeysOf(socket) };
     game.chatLog.push(entry);
     if (game.chatLog.length > CHAT_KEEP) game.chatLog.splice(0, game.chatLog.length - CHAT_KEEP);
     for (const [sid, s] of sockets) {
       if (s.code === sess.code && chatVisible(sid, entry)) io.to(sid).emit('chat_msg', chatPublic(entry));
     }
     reply({ ok: true, id: entry.id });
+  });
+
+  // ---- Moderáció: a házigazda némíthat / feloldhat valakit a szoba csevegőjében ----
+  safeOn('chat_mute', ({ playerId, muted } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    if (!game) return reply({ error: 'Nincs szoba.' });
+    if (game.hostId() !== sess.playerId) return reply({ error: 'Csak a házigazda némíthat.' });
+    const target = typeof playerId === 'string' ? game.getPlayer(playerId) : null;
+    if (!target || target.id === sess.playerId) return reply({ error: 'Érvénytelen játékos.' });
+    if (target.isBot) return reply({ error: 'A botok nem csevegnek.' });
+    game.chatMutes = game.chatMutes || new Set();
+    for (const k of ['p:' + target.id, 'n:' + normName(target.name)]) { if (muted) game.chatMutes.add(k); else game.chatMutes.delete(k); }
+    game.broadcast(); // a némítás látszik a játékos-listában (chatMuted)
+    reply({ ok: true, muted: !!muted });
+  });
+
+  // ---- Moderáció: üzenet jelentése (szobai csevegő) ----
+  safeOn('chat_report', ({ id } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    const player = game && game.getPlayer(sess.playerId);
+    if (!player) return reply({ error: 'Csak szobában lehet jelenteni.' });
+    const entry = Number.isInteger(id) ? (game.chatLog || []).find((m) => m.id === id) : null;
+    if (!entry || !chatVisible(socket.id, entry)) return reply({ error: 'Ez az üzenet már nem érhető el.' });
+    if (entry.pid === player.id) return reply({ error: 'A saját üzenetedet nem jelentheted.' });
+    const rkey = moderation.reporterKey(socialApi.userOf(socket.id), clientIpOf(socket));
+    if (!allowReport(rkey)) return reply({ error: 'Túl sok jelentés. Próbáld újra később.' });
+    const r = moderation.report({ channel: 'room', code: sess.code, msgId: entry.id, name: entry.name, text: entry.text, reporter: player.name, reporterKey: rkey, senderKeys: entry.keys });
+    if (r.added) for (const [sid, s] of sockets) if (s.code === sess.code) io.to(sid).emit('chat_flag', { id: entry.id, count: r.count });
+    reply({ ok: true, already: !r.added });
+  });
+
+  // ---- Moderáció: üzenet jelentése (közös tér); BOARD_HIDE_REPORTS különböző jelentés után az üzenet lekerül ----
+  safeOn('board_report', ({ id } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const entry = Number.isInteger(id) ? board.msgs.find((m) => m.id === id) : null;
+    if (!entry || !chatVisible(socket.id, entry)) return reply({ error: 'Ez az üzenet már nem érhető el.' });
+    const uid = socialApi.userOf(socket.id), ip = clientIpOf(socket);
+    const rkey = moderation.reporterKey(uid, ip);
+    // saját üzenet: fióknál a fiók-azonosító, vendégnél a cím egyezik
+    const own = entry.uid ? entry.uid === uid : (!uid && (entry.keys || []).includes(rkey));
+    if (own) return reply({ error: 'A saját üzenetedet nem jelentheted.' });
+    if (!allowReport(rkey)) return reply({ error: 'Túl sok jelentés. Próbáld újra később.' });
+    const sess = sockets.get(socket.id), game = sess && rooms.get(sess.code), player = game && game.getPlayer(sess.playerId);
+    const r = moderation.report({ channel: 'board', code: '', msgId: entry.id, name: entry.name, text: entry.text, reporter: (player && player.name) || (uid && (authApi.directory.byId(uid) || {}).username) || 'vendég', reporterKey: rkey, senderKeys: entry.keys });
+    let hidden = false;
+    if (r.count >= BOARD_HIDE_REPORTS) hidden = hideBoardMessage(entry.id);
+    reply({ ok: true, already: !r.added, hidden });
   });
 
   // ---- Közös tér: feliratkozás (előzmény + aktuális hirdetések) ----
@@ -769,6 +848,8 @@ io.on('connection', (socket) => {
     const reply = (r) => { if (typeof ack === 'function') ack(r); };
     const who = boardNameFor(socket, name);
     if (who.error) return reply({ error: who.error });
+    const mutedMs = adminMutedMs(socket);
+    if (mutedMs) return reply({ error: mutedText(mutedMs) });
     const clean = cleanChatText(text).slice(0, BOARD_MAX_LEN);
     if (!clean) return reply({ error: 'Üres üzenet.' });
     const now = Date.now();
@@ -780,7 +861,7 @@ io.on('connection', (socket) => {
     recent.push(now);
     boardTimes.set(socket.id, recent);
     board.seq += 1;
-    const entry = { id: board.seq, kind: 'msg', name: who.name, text: clean, ts: now, uid: socialApi.userOf(socket.id) || null };
+    const entry = { id: board.seq, kind: 'msg', name: who.name, text: clean, ts: now, uid: socialApi.userOf(socket.id) || null, keys: senderKeysOf(socket) };
     board.msgs.push(entry);
     if (board.msgs.length > BOARD_KEEP) board.msgs.splice(0, board.msgs.length - BOARD_KEEP);
     const members = io.sockets.adapter.rooms.get('board') || new Set();
@@ -795,6 +876,8 @@ io.on('connection', (socket) => {
     const game = sess && rooms.get(sess.code);
     const player = game && game.getPlayer(sess.playerId);
     if (!player) return reply({ error: 'Hirdetni csak a saját szobádból lehet: előbb hozz létre vagy lépj be egy szobába.' });
+    const mutedMs = adminMutedMs(socket);
+    if (mutedMs) return reply({ error: mutedText(mutedMs) });
     if (game.phase !== PHASES.LOBBY) return reply({ error: 'Hirdetni csak a lobbiból lehet, a játék elindulása előtt.' });
     if (game.activePlayers().length >= 8) return reply({ error: 'A szoba tele van, nincs mit hirdetni.' });
     const existing = adsSnapshot().find((a) => a.code === sess.code);
@@ -810,7 +893,7 @@ io.on('connection', (socket) => {
     board.ads.set(sess.code, { id: board.adSeq, name: player.name, text: clean, ts: now, owner: socket.id, uid: socialApi.userOf(socket.id) || null });
     // a közös csevegőben is megjelenik egy sor
     board.seq += 1;
-    const entry = { id: board.seq, kind: 'ad', name: player.name, text: '📣 ' + clean, ts: now, uid: socialApi.userOf(socket.id) || null };
+    const entry = { id: board.seq, kind: 'ad', name: player.name, text: '📣 ' + clean, ts: now, uid: socialApi.userOf(socket.id) || null, keys: senderKeysOf(socket), code: sess.code };
     board.msgs.push(entry);
     if (board.msgs.length > BOARD_KEEP) board.msgs.splice(0, board.msgs.length - BOARD_KEEP);
     const members = io.sockets.adapter.rooms.get('board') || new Set();
@@ -1279,6 +1362,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
       if (avatarsPending) { fs.writeFileSync(AVATARS_FILE, JSON.stringify(PROFILE_AVATARS, null, 2)); storage.push('avatars'); }
       dms.flush(); // a függő privát üzenetek is kiíródnak (és feltöltődnek)
       errors.flush();
+      moderation.flush();
       await storage.flush();
     } catch (e) {
       console.error('Leállítás közbeni mentés sikertelen:', e.message);
