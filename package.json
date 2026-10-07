@@ -22,7 +22,8 @@
     "test:ops": "node test/ops.js",
     "db-backup": "node scripts/db-backup.js",
     "db-restore": "node scripts/db-restore.js",
-    "test:layout": "node test/layout.js"
+    "test:layout": "node test/layout.js",
+    "test:security": "node test/security.js"
   },
   "engines": {
     "node": ">=18"

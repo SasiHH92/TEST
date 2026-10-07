@@ -153,6 +153,18 @@ Minden legendás tesztelő a saját kártyájához kapcsolt fiókot kaphat: egy 
 - **Jelszó-visszaállító levél**: Resend; a beállítás lépései az **[AUTH_BEALLITAS.md](AUTH_BEALLITAS.md)**-ben. Levélküldés nélkül az admin oldalon kézi link készíthető.
 - Teszt: `npm run test:ops` (17 ellenőrzés), a mentésekre a `npm run test:storage` (14).
 
+### Visszaélés-védelem (mit ellenőriz a szerver, és mit nem hisz el a kliensnek)
+
+- **Kiléted a szerver tudja:** minden játékeseményt a socket szerver-oldali munkamenetéhez kötött `playerId` alapján dönt el, a kliens csak a kérést küldi. Szavazni csak a kör szavazó-esküdtjei tudnak, **egyszer** (a szavazat végleges); a kihívást és a tiltakozást csak az adott ügy bírója dönti el; indítás, beállítás, kirúgás, bot, továbblépés csak a házigazdáé; „Rendet a teremben" csak a körbíróé.
+- **Ülés-átvétel:** egy játékos ülésére csak a szobától kapott munkamenet-token birtokosa térhet vissza. A botok ülését senki nem veheti át, és a kliens nem adhat magának `bot_` azonosítót.
+- **Mass assignment:** a kliens profiljából csak a vicces cím, a priusz és a jelvény fogadható el; a fiók-jelzést, a kozmetikumokat és a legenda-kereteket kizárólag a szerver állítja (azonosított fiók alapján). A beállítások és a saját vádak fertőtlenítve, határok közé szorítva érkeznek.
+- **Sebességkorlátok:** 20 socket-esemény/mp kapcsolatonként; csevegő, közös tér, privát üzenet, ajándék, barátkérés, hibajelentés, ranglista, QR és admin-próbálkozás külön korláttal; reakciók ~4/mp játékosonként; az avatár-mentés 3 mp-enként.
+- **Szoba- és kapcsolat-spam:** egy címről egyszerre legfeljebb 6 szoba (`MAX_ROOMS_PER_IP`) és 60 nyitott kapcsolat (`MAX_SOCKETS_PER_IP`) lehet; a szándékosan elhagyott, üres lobbi-szoba azonnal megszűnik, így a szoba-spam nem tölti meg a 50 helyet.
+- **Közönségkedvenc:** a beszélő (és a csapattársa) nevetése nem számít, más játékostól körönként egy beszélőnek legfeljebb 5 😂.
+- **Titkok:** az API-kulcsok, az adatbázis-cím, az `ADMIN_TOKEN` és a `LEGEND_SECRET` csak a szerver környezeti változóiban élnek; a böngészőbe, a repóba és a naplóba nem kerülnek. A játék nem hív fizetős külső (AI) szolgáltatást, és nincs fizetés sem.
+- **Adatbázis:** csak a szerver éri el (a kliens soha nem kapcsolódik közvetlenül a Neonhoz), ezért sorszintű hozzáférés-szabály (RLS) nem szükséges.
+- Teszt: `npm run test:security` (13 ellenőrzés: ülés-átvétel, szoba- és kapcsolat-spam, avatár, szavazat, nevetés, QR).
+
 ## Botokkal tesztelés
 
 Egyedül is ki tudod próbálni a teljes játékot: a házigazda a lobbyban botokat adhat a szobához, és ők önállóan levezetik a tárgyalást.

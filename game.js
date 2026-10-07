@@ -892,6 +892,7 @@ class Game {
     if (this.phase !== PHASES.VERDICT_VOTE || !d) return false;
     if (!d.voters.includes(byId)) return false;
     if (verdict !== 'guilty' && verdict !== 'not_guilty') return false;
+    if (d.votes[byId]) return false; // a szavazat titkos és végleges: nem módosítható, nem ismételhető
     if (this.players.get(byId) && this.players.get(byId).isBot && this.players.get(byId).name) {
       void 0; // bot-szavazat: nem megy a nyilvántartásba (a vádlott számai számítanak)
     }
@@ -1050,6 +1051,7 @@ class Game {
     const ch = d.challenges.find((c) => c.who === who);
     if (!ch) return false;
     if (!d.challengeVotes[byId]) d.challengeVotes[byId] = {};
+    if (d.challengeVotes[byId][who] !== undefined) return false; // egy kihívásról egyszer lehet szavazni
     d.challengeVotes[byId][who] = !!done;
     this.broadcast();
     this.checkChallengeVotesComplete();
@@ -1398,7 +1400,24 @@ class Game {
       };
       const target = speakerOf[this.phase];
       if (!target) return;
-      if (emoji === '😂') d.laughs[target] += 1;
+      const reactor = this.players.get(byId);
+      if (!reactor || !reactor.connected) return;
+      // Lassabban a reakciókkal: játékosonként legfeljebb ~4/mp (a többi kliensét se árassza el).
+      this.reactionAt = this.reactionAt || new Map();
+      const t = Date.now();
+      if (t - (this.reactionAt.get(byId) || 0) < 250) return;
+      this.reactionAt.set(byId, t);
+      if (emoji === '😂') {
+        // A Közönségkedvenc-pontot nem lehet "kinevetéssel" felhajtani: a beszélő (és csapattársa) nevetése nem számít,
+        // más játékostól kört+beszélőnként legfeljebb LAUGH_CAP nevetés.
+        const speakers = target === 'prosecutor' ? [d.prosecutorId] : [d.defendantId, d.defenderId];
+        d.laughBy = d.laughBy || {};
+        const key = byId + ':' + target;
+        if (!speakers.includes(byId) && (d.laughBy[key] || 0) < Game.LAUGH_CAP) {
+          d.laughBy[key] = (d.laughBy[key] || 0) + 1;
+          d.laughs[target] += 1;
+        }
+      }
 
       for (const id of this.players.keys()) {
         this.io.to(this.playerRoom(id)).emit('reaction', { emoji, target, by: byId });
@@ -1414,6 +1433,7 @@ class Game {
   // KEGYELMI IDŐ: hálózati kiesésnél a szerep csak akkor adódik át, ha a
   // játékos 20 mp-en belül nem jön vissza (a házigazda-jog 30 mp után vándorol).
   // Kirúgásnál és explicit kilépésnél nincs kegyelem – azonnal átadjuk.
+  static LAUGH_CAP = 5; // egy játékos legfeljebb ennyi 😂-t számíthat be egy körben egy beszélőnek (Közönségkedvenc)
   static GRACE_ROLE_MS = 20000;
   static GRACE_HOST_MS = 30000;
 

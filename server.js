@@ -169,6 +169,7 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 // így a telefontokkal egy koppintással be lehet lépni.
 // A Render proxy mögött az eredeti Host fejléc áll elő (trust proxy), ez a megbízható cím.
 app.get('/qr', (req, res) => {
+  if (!allowQr(req.ip)) return res.status(429).send('Túl sok kérés');
   const room = String(req.query.room || '').trim().toUpperCase().slice(0, 8);
   const proto = req.protocol; // trust proxy miatt a külső https-t adja vissza
   const host = req.get('host');
@@ -499,8 +500,48 @@ function nameProblem(socket, rawName) {
 
 function cleanPlayerId(playerId, socketId) {
   const p = String(playerId || socketId).slice(0, 64).trim();
-  return p || socketId;
+  // A botok azonosítója ("bot_…") látszik az állapotban: kliens nem használhatja, különben átvehetné a bot ülését.
+  if (!p || /^bot_/i.test(p)) return socketId;
+  return p;
 }
+
+// ---- Visszaélés-védelem: kliens-IP, sebességkorlát, kapcsolat- és szobakorlátok ----
+// A Render proxy a valódi címet a X-Forwarded-For lista VÉGÉRE fűzi (az elejét a kliens hamisíthatja), ezért az utolsó elemet vesszük.
+function clientIpOf(socket) {
+  const list = String(socket.handshake.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return list.length ? list[list.length - 1] : (socket.handshake.address || '');
+}
+// Egyszerű csúszóablakos korlát: allow(kulcs) hamis, ha az ablakon belül már elfogyott a keret.
+function makeLimiter(max, windowMs, cap = 5000) {
+  const hits = new Map();
+  return (key) => {
+    const now = Date.now();
+    const list = (hits.get(key) || []).filter((t) => now - t < windowMs);
+    if (list.length >= max) { hits.set(key, list); return false; }
+    list.push(now);
+    hits.set(key, list);
+    if (hits.size > cap) hits.delete(hits.keys().next().value);
+    return true;
+  };
+}
+const MAX_ROOMS_PER_IP = Math.max(1, parseInt(process.env.MAX_ROOMS_PER_IP, 10) || 6);   // egy cím egyszerre ennyi szobát tarthat fenn
+const MAX_SOCKETS_PER_IP = Math.max(5, parseInt(process.env.MAX_SOCKETS_PER_IP, 10) || 60); // és ennyi nyitott kapcsolatot
+const AVATAR_SAVE_GAP_MS = 3000;
+const avatarSavedAt = new Map(); // socketId -> utolsó avatár-mentés ideje
+const allowQr = makeLimiter(30, 60 * 1000);
+
+const socketsPerIp = new Map();
+io.use((socket, next) => {
+  const ip = clientIpOf(socket);
+  const n = socketsPerIp.get(ip) || 0;
+  if (n >= MAX_SOCKETS_PER_IP) return next(new Error('Túl sok nyitott kapcsolat erről a címről.'));
+  socketsPerIp.set(ip, n + 1);
+  socket.once('disconnect', () => {
+    const left = (socketsPerIp.get(ip) || 1) - 1;
+    if (left > 0) socketsPerIp.set(ip, left); else socketsPerIp.delete(ip);
+  });
+  next();
+});
 // Beállítások fertőtlenítése: szám-típusok határai, csak érvényes mód-kulcsok,
 // saját vádak max. 30 db × 200 karakter. (A partial merge logika is itt él:
 // csak a beküldött kulcsok íródnak felül a `prev`-ben.)
@@ -762,10 +803,17 @@ io.on('connection', (socket) => {
   safeOn('set_avatar', ({ name, avatar } = {}) => {
     if (typeof name !== 'string' || !REGISTRY.some((r) => r.nev === name)) return;
     if (typeof avatar !== 'string' || !AVATAR_ID_RE.test(avatar)) return;
+    // Az igényelt (fiókhoz kötött) legenda kártyájának avatárját csak a gazdája írhatja át, bejelentkezve.
+    const owner = authApi.directory.byName(name);
+    if (owner && owner.legend && socialApi.userOf(socket.id) !== owner.id) return;
     // Aki épp játékban van (ŐRIZETBEN), annak az avatárját más nem írhatja át.
     for (const game of rooms.values()) {
       for (const p of game.players.values()) if (p.connected && p.name === name) return;
     }
+    if (PROFILE_AVATARS[name] === avatar) return; // nincs változás: nem írunk lemezre / adatbázisba
+    const at = Date.now();
+    if (at - (avatarSavedAt.get(socket.id) || 0) < AVATAR_SAVE_GAP_MS) return; // a mentés (lemez + adatbázis) ne legyen ismételgethető
+    avatarSavedAt.set(socket.id, at);
     PROFILE_AVATARS[name] = avatar;
     saveProfileAvatars();
   });
@@ -778,12 +826,32 @@ io.on('connection', (socket) => {
     socket.leave(pidRoom(prev.playerId, prev.code));
     const game=rooms.get(prev.code);
     if (game && ![...sockets.values()].some((x)=>x.code===prev.code&&x.playerId===prev.playerId)) game.handleLeave(prev.playerId);
+    dropIfAbandoned(prev.code);
     presenceChanged();
+  }
+
+  // Szándékos kilépés után az üres lobbi-szoba azonnal megszűnik (különben a 10 perces takarításig lefoglalná a helyet).
+  // Kapcsolatvesztésnél NEM hívjuk: ott a szoba szándékosan marad, hogy a frissítés / újracsatlakozás után visszalehessen térni.
+  function dropIfAbandoned(code) {
+    const game = rooms.get(code);
+    if (!game || game.phase !== PHASES.LOBBY) return;
+    if ([...game.players.values()].some((p) => !p.isBot && p.connected)) return; // a botok nem tartanak életben szobát
+    if ([...sockets.values()].some((x) => x.code === code)) return;
+    game.dispose();
+    rooms.delete(code);
+    refreshAds();
+    console.log('room removed (abandoned):', code);
   }
 
   // ---- Szoba létrehozása ----
   safeOn('create_room', ({ name, avatar, playerId, profile }, ack) => {
     if (rooms.size >= MAX_ROOMS) return ack && ack({ error: 'A szerver jelenleg betelt – próbálj meg később csatlakozni!' });
+    // Egy címről egyszerre csak néhány szoba: egyetlen kapcsolat se tölthesse meg az összes helyet.
+    // (A szándékosan elhagyott üres lobbi-szoba azonnal megszűnik, ezért a normál játék ezt nem éri el.)
+    const ip = clientIpOf(socket);
+    if ([...rooms.values()].filter((g) => g.creatorIp === ip).length >= MAX_ROOMS_PER_IP) {
+      return ack && ack({ error: 'Túl sok szobád van nyitva egyszerre. Lépj ki a feleslegesekből, vagy várd meg, míg megszűnnek.' });
+    }
     const code = newCode();
     if (!code) return ack && ack({ error: 'Nem sikerült szobát létrehozni.' });
     const pid = cleanPlayerId(playerId, socket.id);
@@ -791,6 +859,7 @@ io.on('connection', (socket) => {
     if (nameIssue) return ack && ack({ error: nameIssue });
     detachPreviousRoom();
     const game = new Game(code, io);
+    game.creatorIp = ip;
     rooms.set(code, game);
     game.addPlayer(pid, name, cleanAvatar(avatar), true);
     game.getPlayer(pid).profile = profileFor(socket, name, profile);
@@ -820,7 +889,9 @@ io.on('connection', (socket) => {
     }
     const returning = game.players.has(pid);
     const existing = game.getPlayer(pid);
-    if (returning && existing.sessionToken && existing.sessionToken !== sessionToken) {
+    // Visszatérő ülést csak az vehet át, akinél a szobától kapott munkamenet-token van. A botoknak és a tokenje nincs ülésnek
+    // sosincs "gazdája" kliens-oldalon, ezért ezeket senki nem veheti át.
+    if (returning && (existing.isBot || !existing.sessionToken || existing.sessionToken !== sessionToken)) {
       return ack && ack({error:'Ez a játékosazonosító másik munkamenethez tartozik.'});
     }
     if (!returning) {
@@ -1076,11 +1147,13 @@ io.on('connection', (socket) => {
     socket.leave(sess.code);
     socket.leave(pidRoom(sess.playerId, sess.code));
     if (game) game.handleLeave(sess.playerId);
+    dropIfAbandoned(sess.code);
     presenceChanged();
     ack && ack({ ok: true });
   });
   safeOn('disconnect', () => {
     rateWindows.delete(socket.id); // rate-limit ablak felszabadítása
+    avatarSavedAt.delete(socket.id);
     chatTimes.delete(socket.id);
     boardTimes.delete(socket.id);
     refreshAds(); // a lecsatlakozó szoba hirdetése frissül / eltűnik
