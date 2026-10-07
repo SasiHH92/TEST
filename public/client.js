@@ -752,6 +752,15 @@ function layoutStagePlates() {
     el.style.left=100*best.x/g.width+'%';el.style.top=100*best.y/g.height+'%';
     placed.push(best.box);
   });
+  // A bíró buborékja csak díszítés (a HUD ugyanazt írja): ha egy kis telefonon a fázispanel takarná, elrejtjük, hogy ne lógjon ki alóla.
+  const bubble=$('#judgeBubble');
+  if(bubble) {
+    const b=bubble.getBoundingClientRect(), p=panel.getBoundingClientRect();
+    const area=Math.max(1,b.width*b.height);
+    const covered=bubble.textContent && !panel.classList.contains('hidden') && p.height>0 &&
+      Math.max(0,Math.min(b.right,p.right)-Math.max(b.left,p.left))*Math.max(0,Math.min(b.bottom,p.bottom)-Math.max(b.top,p.top))>area*.25;
+    bubble.classList.toggle('bubble-covered',!!covered);
+  }
 }
 // Melyik fázisban ki a beszélő (szerepkulcs).
 const SPEAKER_OF = {

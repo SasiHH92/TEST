@@ -1,0 +1,179 @@
+/* ============================================================
+   KAMU BÍRÓSÁG – "magyar tárgyalótermi TV-show" réteg
+   1) design tokenek (--court-*): a színek, árnyékok, méretek és z-sorrend egyetlen helyen
+   2) kamera-keret és élő terem (fény, por, sodródás)
+   3) közös komponensek: gomb, kártya, jelvény, pecsét, pergamen, időzítő
+   A régi stílusok (style.css) megmaradnak; ez a fájl utána töltődik, és csak kiegészít / felülír.
+   ============================================================ */
+
+/* ---------------- 1) DESIGN TOKENEK ---------------- */
+:root {
+  /* paletta: sötét fa, bordó, arany, pergamen */
+  --court-bg: #17110e;
+  --court-wood: #4a3020;
+  --court-wood-dark: #2a1c12;
+  --court-red: #b3353a;
+  --court-red-bright: #e5484d;
+  --court-gold: #f2c14e;
+  --court-gold-dark: #8a6420;
+  --court-paper: #f6efdc;
+  --court-paper-edge: #d8c9a3;
+  --court-ink: #2b2620;
+  --court-green: #22c55e;
+  --court-purple: #a78bfa;
+  --court-blue: #3b82f6;
+  --court-amber: #f5a524;
+  --court-text: #f4ecd8;
+  --court-text-dim: #c9bca0;
+
+  /* szerepszínek (egyeznek a client.js ROLE_COLOR-jával) */
+  --court-role-prosecutor: #e5484d;
+  --court-role-defendant: #f5a524;
+  --court-role-defender: #3b82f6;
+  --court-role-witness: #22c55e;
+  --court-role-juror: #a78bfa;
+  --court-role-judge: #f2c14e;
+
+  /* felületek */
+  --court-panel: rgba(18, 12, 9, 0.86);
+  --court-panel-line: rgba(223, 185, 109, 0.45);
+  --court-radius: 12px;
+  --court-radius-sm: 8px;
+  --court-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --court-glow-gold: 0 0 22px rgba(242, 193, 78, 0.45);
+
+  /* mozgás */
+  --court-ease: cubic-bezier(0.22, 0.8, 0.3, 1);
+  --court-ease-bounce: cubic-bezier(0.2, 1.5, 0.4, 1);
+  --court-dur-fast: 0.18s;
+  --court-dur: 0.45s;
+  --court-dur-slow: 0.9s;
+
+  /* z-sorrend (a jelenet 0, a HUD fölötte, a jelenet-rétegek a HUD fölött, a hibák legfölül) */
+  --z-court-scene: 0;
+  --z-court-hud: 80;
+  --z-court-layer: 120;
+  --z-court-stamp: 130;
+  --z-court-toast: 150;
+}
+
+/* ---------------- 2) KAMERA ÉS ÉLŐ TEREM ---------------- */
+/* A kamera a fókuszt mozgatja (court.js állítja a --cam-* változókat); a drift a lassú, alig látható sodródás. */
+.court-camera {
+  position: absolute; inset: 0; z-index: 0; overflow: hidden;
+  transform-origin: var(--cam-ox, 50%) var(--cam-oy, 55%);
+  transform: translate3d(var(--cam-x, 0), var(--cam-y, 0), 0) scale(var(--cam-s, 1));
+  transition: transform var(--court-dur-slow) var(--court-ease);
+  will-change: transform;
+}
+.court-drift {
+  position: absolute; inset: 0;
+  animation: court-drift 52s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes court-drift {
+  from { transform: translate3d(-0.35%, 0.1%, 0) scale(1.012); }
+  to   { transform: translate3d(0.35%, -0.25%, 0) scale(1.03); }
+}
+
+/* Fény-rétegek: a háttér fölött, a karakterek alatt; csak opacity/transform animálódik. */
+.court-ambience { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+.ca-ray {
+  position: absolute; top: -10%; width: 20%; height: 120%;
+  background: linear-gradient(180deg, rgba(255, 226, 160, 0.30), rgba(255, 226, 160, 0.0) 72%);
+  mix-blend-mode: screen; opacity: 0.16; transform: rotate(14deg);
+  animation: ca-ray 11s ease-in-out infinite alternate;
+}
+.ca-ray-1 { left: 6%; }
+.ca-ray-2 { left: 21%; width: 12%; animation-delay: -4s; animation-duration: 14s; }
+.ca-ray-3 { left: 63%; width: 14%; animation-delay: -7s; opacity: 0.1; transform: rotate(-12deg); }
+@keyframes ca-ray { from { opacity: 0.07; } to { opacity: 0.2; } }
+
+.ca-lamp {
+  position: absolute; top: 14%; width: 11%; aspect-ratio: 1;
+  border-radius: 50%; transform: translate(-50%, 0);
+  background: radial-gradient(circle, rgba(255, 214, 130, 0.55), rgba(255, 214, 130, 0) 68%);
+  mix-blend-mode: screen; opacity: 0.55;
+  animation: ca-lamp 7s ease-in-out infinite alternate;
+}
+.ca-lamp-l { left: 7%; }
+.ca-lamp-r { left: 90%; animation-delay: -3s; animation-duration: 9s; }
+@keyframes ca-lamp { from { opacity: 0.38; } to { opacity: 0.62; } }
+
+/* Lebegő porszemek: tíz apró pont (a 6.–15. gyerek), mindegyik saját pályán, nagyon halványan. */
+.ca-dust {
+  position: absolute; width: 3px; height: 3px; border-radius: 50%;
+  background: rgba(255, 238, 200, 0.85); opacity: 0;
+  animation: ca-dust 18s linear infinite;
+}
+.ca-dust:nth-child(6)  { left: 12%; top: 70%; animation-delay: -1s;  animation-duration: 20s; }
+.ca-dust:nth-child(7)  { left: 24%; top: 60%; animation-delay: -6s;  animation-duration: 17s; }
+.ca-dust:nth-child(8)  { left: 33%; top: 78%; animation-delay: -11s; animation-duration: 23s; }
+.ca-dust:nth-child(9)  { left: 46%; top: 66%; animation-delay: -3s;  animation-duration: 19s; }
+.ca-dust:nth-child(10)  { left: 55%; top: 74%; animation-delay: -9s;  animation-duration: 21s; }
+.ca-dust:nth-child(11)  { left: 63%; top: 58%; animation-delay: -14s; animation-duration: 18s; }
+.ca-dust:nth-child(12)  { left: 72%; top: 80%; animation-delay: -5s;  animation-duration: 24s; }
+.ca-dust:nth-child(13)  { left: 81%; top: 64%; animation-delay: -12s; animation-duration: 16s; }
+.ca-dust:nth-child(14)  { left: 89%; top: 72%; animation-delay: -8s;  animation-duration: 22s; }
+.ca-dust:nth-child(15) { left: 40%; top: 52%; animation-delay: -16s; animation-duration: 25s; }
+@keyframes ca-dust {
+  0%   { transform: translate3d(0, 0, 0); opacity: 0; }
+  12%  { opacity: 0.5; }
+  80%  { opacity: 0.35; }
+  100% { transform: translate3d(14px, -90px, 0); opacity: 0; }
+}
+
+/* Mozgás-csökkentés: a kamera áll, a fény statikus, a por nem látszik. (A régi szabály az animációkat és átmeneteket amúgy is leállítja.) */
+.reduced-motion .court-drift, .reduced-motion .court-camera { animation: none !important; transition: none !important; transform: none !important; }
+.reduced-motion .ca-dust { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .court-drift, .court-camera { animation: none !important; transition: none !important; transform: none !important; }
+  .ca-dust { display: none; }
+}
+
+/* ---------------- 3) KÖZÖS KOMPONENSEK ---------------- */
+/* Pergamen: a vád, a bizonyíték, a kihívás és a pecsét alapja. */
+.court-parchment {
+  position: relative; color: var(--court-ink);
+  background: linear-gradient(180deg, #fbf5e4, var(--court-paper) 55%, #ead9ae);
+  border: 1px solid var(--court-paper-edge); border-radius: 6px;
+  box-shadow: var(--court-shadow), inset 0 0 40px rgba(138, 100, 32, 0.18);
+}
+/* Pecsét: nagy, kissé elforgatott, vörös (vagy zöld / arany) körvonalas felirat. */
+.court-stamp {
+  display: inline-block; padding: 4px 16px;
+  font-family: var(--font-disp); letter-spacing: 6px; text-transform: uppercase;
+  color: var(--stamp, var(--court-red)); border: 5px double var(--stamp, var(--court-red)); border-radius: 8px;
+  transform: rotate(-6deg); text-shadow: 0 0 1px currentColor;
+  background: rgba(255, 248, 230, 0.06); mix-blend-mode: normal;
+}
+/* Jelvény: szerep, HOST, VENDÉG, READY. */
+.court-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px;
+  font: 600 11px var(--font-disp); letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap;
+  color: var(--badge, var(--court-gold)); border: 1px solid var(--badge, var(--court-gold)); border-radius: 999px;
+  background: rgba(10, 8, 6, 0.55);
+}
+.court-badge.fill { color: #1a1208; background: var(--badge, var(--court-gold)); }
+/* Lebegő felirat-kártya a jelenetben (intro, bizonyíték, kihívás, fázis-HUD): sötét fa + arany keret. */
+.court-card {
+  background: linear-gradient(180deg, rgba(44, 28, 18, 0.94), rgba(20, 13, 9, 0.94));
+  border: 2px solid var(--court-gold-dark); border-radius: var(--court-radius);
+  box-shadow: var(--court-shadow), inset 0 0 0 1px rgba(242, 193, 78, 0.18);
+  color: var(--court-text);
+}
+/* Látható fókusz mindenhol, ahol a játék gombjai és kártyái billentyűzettel is elérhetők. */
+.court-focusable:focus-visible, .btn:focus-visible, .cm-act:focus-visible, .react-btn:focus-visible {
+  outline: 3px solid var(--court-gold); outline-offset: 2px;
+}
+/* Képernyőolvasónak szóló, látszólag rejtett szöveg. */
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* A széles lobbiban a csevegő a bal oldalra dokkol: a sarok-kapcsolók a panel mellé kerülnek, nem alá. */
+body.chat-docked .comfort-dock { left: 372px; }
+
+/* A fázispanel takarná a bíró buborékját (kis telefon): ilyenkor a díszítő buborék rejtve marad. */
+.judge-bubble.bubble-covered { visibility: hidden; }

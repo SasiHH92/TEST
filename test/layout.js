@@ -36,11 +36,15 @@ const REQUIRE = process.env.LAYOUT_REQUIRE === '1';
 const VIEWPORTS = [
   [320, 568, 'régi telefon', false],
   [360, 640, 'kis Android', true],
+  [360, 800, 'Android', false],
   [375, 812, 'iPhone', false],
   [390, 844, 'iPhone 14', true],
   [414, 896, 'nagy telefon', false],
   [768, 1024, 'tablet', false],
-  [1366, 768, 'laptop', true]
+  [1024, 768, 'kis laptop / tablet fekvő', true],
+  [1366, 768, 'laptop', true],
+  [1440, 900, 'nagy laptop', false],
+  [1920, 1080, 'full HD', true]
 ];
 
 let passed = 0, failed = 0;
@@ -170,11 +174,13 @@ async function walk(browser, vp) {
     });
 
     await check(tag + ' – csevegő a lobbiban: megnyílik, a képernyőn belül marad, nem fed semmit', async () => {
-      await page.waitForSelector('#chatFab:not(.hidden)', { timeout: 5000 });
-      await page.evaluate(() => document.getElementById('chatFab').click());
+      // széles képernyőn a csevegő a lobbiban magától, dokkolva nyílik (ilyenkor a lebegő gomb rejtve): a kbChat.open() mindkét esetben nyit
+      await page.evaluate(() => window.kbChat.open());
       await page.waitForTimeout(500);
+      assert.ok(await page.isVisible('#chatPanel'), 'a csevegő panel látszik');
       await expectClean(page, 'lobby-chat', vp);
-      await page.evaluate(() => document.getElementById('chatFab').click());
+      if (await page.isVisible('#chatFab')) await page.evaluate(() => document.getElementById('chatFab').click());
+      else await page.evaluate(() => { const c = document.getElementById('chatClose'); if (c) c.click(); });
     });
 
     // Moderáció a csevegőben: egy másik játékos üzenete mellett ott a jelentés (⚑) és (a házigazdának) a némítás (🔇) gomb.
@@ -357,7 +363,7 @@ async function main() {
     console.log('Böngésző: ' + browser.version() + ', ' + VIEWPORTS.length + ' méret');
     // A játékos-méretek párhuzamosan futnak (külön böngészőkörnyezet és szoba mindegyiknek).
     await Promise.all(VIEWPORTS.map((vp) => walk(browser, vp).catch((e) => { failed++; console.error('FAIL: ' + vp[0] + 'x' + vp[1] + ' – megszakadt: ' + (e && e.message)); })));
-    for (const vp of [VIEWPORTS[1], VIEWPORTS[3], VIEWPORTS[6]]) await walkAccount(browser, vp).catch((e) => { failed++; console.error('FAIL: fiókos ' + vp[0] + 'x' + vp[1] + ' – megszakadt: ' + (e && e.message)); });
+    for (const vp of [VIEWPORTS[1], VIEWPORTS[4], VIEWPORTS[8]]) await walkAccount(browser, vp).catch((e) => { failed++; console.error('FAIL: fiókos ' + vp[0] + 'x' + vp[1] + ' – megszakadt: ' + (e && e.message)); });
     // A tartalom-biztonsági szabály (CSP) mellett is működnie kell az /admin oldal külső szkriptjének (ADMIN_TOKEN nélkül a szerver 404-et ad, ezt a szkript kiírja).
     await check('/admin oldal: a külső szkript fut a CSP mellett, nincs CSP-sértés', async () => {
       const context = await browser.newContext({ viewport: { width: 390, height: 844 } });

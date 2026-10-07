@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/court.css">
   <link rel="preload" href="/assets/terem-hatter.webp" as="image">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
 </head>
@@ -423,7 +424,17 @@
       <!-- A) SZÍNPAD: a tárgyalóterem teljes fényerővel, karakterekkel -->
       <section class="stage-zone" id="stageZone">
         <div class="stage-canvas" id="stage">
+          <!-- KAMERA: a fókusz-mozgás (court.js) és a lassú, szinte észrevétlen sodródás. A háttér, a bútorlapok, a karakterek és a
+               fény-rétegek EGYÜTT mozognak, így a bútorlapok takarása pontos marad; a névtáblák, a buborék és a villanás kívül maradnak. -->
+          <div class="court-camera" id="courtCamera"><div class="court-drift" id="courtDrift">
           <img class="stage-bg" src="/assets/targyalotterem.jpg" alt="">
+
+          <!-- élő terem: napsugarak, lámpafény, por (csak díszítés, court.js / court.css) -->
+          <div class="court-ambience" id="courtAmbience" aria-hidden="true">
+            <i class="ca-ray ca-ray-1"></i><i class="ca-ray ca-ray-2"></i><i class="ca-ray ca-ray-3"></i>
+            <i class="ca-lamp ca-lamp-l"></i><i class="ca-lamp ca-lamp-r"></i>
+            <i class="ca-dust"></i><i class="ca-dust"></i><i class="ca-dust"></i><i class="ca-dust"></i><i class="ca-dust"></i><i class="ca-dust"></i><i class="ca-dust"></i><i class="ca-dust"></i><i class="ca-dust"></i><i class="ca-dust"></i>
+          </div>
 
           <!-- a terem bírója: mindig látszik, a pulpitus mögül emelkedik ki
                (a stageSlots újratelepítéskor nem törlődhet, ezért azon kívül van) -->
@@ -436,6 +447,7 @@
           <div id="stageSlots" class="stage-slots"></div>
           <!-- A háttér ugyanazon képrészletei takarják a bútorok mögötti alakokat. -->
           <div id="sceneFurniture" class="scene-furniture" aria-hidden="true"></div>
+          </div></div>
           <div id="stagePlates" class="stage-plates">
             <div id="judgePlate" class="stage-plate judge-plate" data-role="judge"></div>
           </div>
