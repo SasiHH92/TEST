@@ -1025,7 +1025,7 @@ io.on('connection', (socket) => {
   });
 
   // ---- Csatlakozás kóddal (visszacsatlakozás is ez) ----
-  safeOn('join_room', ({ code, name, avatar, playerId, profile, sessionToken }, ack) => {
+  safeOn('join_room', ({ code, name, avatar, playerId, profile, sessionToken, resume }, ack) => {
     const norm = String(code || '').trim().toUpperCase();
     const game = rooms.get(norm);
     if (!game) {
@@ -1041,6 +1041,11 @@ io.on('connection', (socket) => {
     }
     const returning = game.players.has(pid);
     const existing = game.getPlayer(pid);
+    // VISSZATÉRÉS (F5 / újracsatlakozás): csak a saját, korábbi ülésre. Ha nincs ilyen ülés, a szoba "megszűnt" a kliens számára – nem léptetjük be új játékosként
+    // (pl. időközben megszűnt, majd azonos kóddal újranyílt szobába).
+    if (resume === true && !returning) {
+      return ack && ack({ error: 'A szoba megszűnt, hozz létre egy újat! (' + norm + ')' });
+    }
     // Visszatérő ülést csak az vehet át, akinél a szobától kapott munkamenet-token van. A botoknak és a tokenje nincs ülésnek
     // sosincs "gazdája" kliens-oldalon, ezért ezeket senki nem veheti át.
     if (returning && (existing.isBot || !existing.sessionToken || existing.sessionToken !== sessionToken)) {

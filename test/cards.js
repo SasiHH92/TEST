@@ -332,7 +332,7 @@ const inside = (r, vw, vh) => r && r.l >= -1 && r.t >= -1 && r.r <= vw + 1 && r.
       if (majors.length > 1) out.problems.push('egyszerre több nagy overlay: ' + majors.join(','));
       out.info.majors = majors;
       // kihívás-ellenőrzés: a nagy kártya és a kompakt sáv nem látszik egyszerre
-      const strip = document.querySelector('#scenePanel .rv-strip');
+      const strip = document.querySelector('#scenePanel .rv-strip, #scenePanel .cv-strip');
       if (strip && panelShown && majors.includes('courtChallenge')) out.problems.push('kihívás-kártya és ellenőrző sáv egyszerre látszik');
       // biztonságos zónák: tartós UI nem takarja a karaktereket (átmeneti overlay és kinyitott kéz alatt nem mérünk)
       // (a végeredmény-képernyő szándékosan a jelenet közepén áll: a játék véget ért, a végső pontlista és a díjak az esemény)

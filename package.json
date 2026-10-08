@@ -30,7 +30,9 @@
     "test:gamestate": "node test/gamestate.js",
     "test:assets": "node test/asset-policy.js",
     "test:flow": "node test/flow.js",
-    "test:cards": "node test/cards.js"
+    "test:cards": "node test/cards.js",
+    "test:juror": "node test/juror-verdict.js",
+    "test:rejoin": "node test/rejoin.js"
   },
   "engines": {
     "node": ">=18"

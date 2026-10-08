@@ -1411,7 +1411,7 @@ function autoConnectAfterName() {
     $('#codeInput').value = roomParam.toUpperCase();
     joinRoom(roomParam.toUpperCase());
   } else if (MY.code) {
-    joinRoom(MY.code);
+    joinRoom(MY.code, true); // F5 / visszatérés: csak a saját ülés
   }
 }
 
@@ -1473,7 +1473,8 @@ $('#btnCreate').addEventListener('click', () => {
   ensureAudio();
   INTENTIONAL_LEAVE = false;
   sessionStorage.removeItem('kb_left');
-  if (!socket.connected) socket.connect();
+  // (a kapcsolat az io() hívásakor magától épül; kapcsolódás KÖZBEN újra connect()-et hívni másodszor is CONNECT csomagot küld, amitől a szerver lezárja az átvitelt)
+  if (!socket.connected && !socket.active) socket.connect();
   if (!MY.playerId) MY.playerId = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   LS.setItem('kb_playerId', MY.playerId);
   afterIdentified(() => socket.emit('create_room', { name: MY.name, avatar: MY.avatar, playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload() }, (res) => {
@@ -1489,17 +1490,21 @@ $('#btnJoin').addEventListener('click', () => {
   joinRoom(code);
 });
 
-function joinRoom(code) {
+// resume: a tárolt (F5 / újracsatlakozás) ülésre térünk vissza – a szerver ilyenkor csak a saját, tokennel igazolt ülést engedi, új játékosként nem léptet be
+// (így egy időközben megszűnt, majd azonos kóddal újranyílt szobába sem lépünk be véletlenül).
+function joinRoom(code, resume) {
   INTENTIONAL_LEAVE = false;
   sessionStorage.removeItem('kb_left');
-  if (!socket.connected) socket.connect();
+  // (a kapcsolat az io() hívásakor magától épül; kapcsolódás KÖZBEN újra connect()-et hívni másodszor is CONNECT csomagot küld, amitől a szerver lezárja az átvitelt)
+  if (!socket.connected && !socket.active) socket.connect();
   if (!MY.playerId) MY.playerId = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   LS.setItem('kb_playerId', MY.playerId);
-  afterIdentified(() => socket.emit('join_room', { code, name: MY.name, avatar: MY.avatar, playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload() }, (res) => {
+  afterIdentified(() => socket.emit('join_room', { code, name: MY.name, avatar: MY.avatar, playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload(), resume: !!resume }, (res) => {
     if (res && res.error) {
       $('#menuError').textContent = res.error;
       show('menu');
       LS.removeItem('kb_code');
+      MY.code = null; S = null; // nincs ülés ebben a szobában: nincs elavult állapot, nincs ismételt próbálkozás
       return;
     }
     enterLobby(res);
@@ -2547,6 +2552,25 @@ function revealedCardsHtml() {
 }
 
 let vdOpen = false; // az ítélet-részletek lenyitva maradnak a state-frissítések közt
+let cvIdx = 0, cvCase = '', cvAdvance = false; // eskütt-mód: melyik kihívás látszik; az új ügynél az elsőre áll
+
+// Hosszú szöveg a kompakt sávokban (ítélet-mondat, kihívás): 3 sorra vágva; ha vágódott, koppintásra / kattintásra / Enterre teljesen kinyílik (nem csak hoverre:
+// mobilon nincs hover), újabb koppintásra összecsukódik. A kinyitott állapot megmarad a state-frissítések közt.
+const clampOpen = {};
+function bindClamp(root) {
+  root.querySelectorAll('[data-clamp]').forEach((e) => {
+    const key = e.dataset.clamp, wasOpen = !!clampOpen[key];
+    e.classList.remove('open');
+    const clipped = e.scrollHeight > e.clientHeight + 1;
+    e.classList.toggle('is-clamped', clipped);
+    if (!clipped) { clampOpen[key] = false; e.removeAttribute('role'); e.removeAttribute('tabindex'); e.removeAttribute('aria-expanded'); return; }
+    e.setAttribute('role', 'button'); e.tabIndex = 0;
+    const set = (open) => { clampOpen[key] = open; e.classList.toggle('open', open); e.setAttribute('aria-expanded', open ? 'true' : 'false'); e.setAttribute('aria-label', (open ? 'Összecsukás: ' : 'Teljes szöveg megnyitása: ') + e.textContent); };
+    set(wasOpen);
+    e.addEventListener('click', () => set(!e.classList.contains('open')));
+    e.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); set(!e.classList.contains('open')); } });
+  });
+}
 function renderPhaseContent() {
   const el = $('#phaseContent');
   const role = myRole();
@@ -2651,7 +2675,7 @@ function renderPhaseContent() {
       html = '<div class="rv-strip" style="--role:' + col + '">' +
         '<div class="rv-main"><span class="rv-count">KIHÍVÁS ' + (rev.current + 1) + ' / ' + rev.total + (ch.difficulty ? ' · NEHEZÍTÉS (dupla pont)' : '') + '</span>' +
         '<span class="rv-who"><b>' + escapeHtml(ch.name) + '</b> · ' + (WHO_LABEL[ch.who] || '') + '</span>' +
-        '<span class="rv-text" title="' + escapeHtml(ch.text) + '">„' + escapeHtml(ch.text) + '”</span>' +
+        '<span class="rv-text" data-clamp="rv" title="' + escapeHtml(ch.text) + '">„' + escapeHtml(ch.text) + '”</span>' +
         (ch.noted ? '<span class="rv-noted">✔ A bíró beszéd közben jelölte</span>' : '') + '</div>' +
         '<div class="rv-actions">' +
         (ch.iAmJudge && !ch.judged
@@ -2666,39 +2690,34 @@ function renderPhaseContent() {
       break;
     }
     case 'challenge_vote': {
+      // ESKÜDT-MÓD: a kihívásokról (legfeljebb 3: ügyész, vádlott, védő) az esküdtek szavaznak. Egyszerre EGY kihívás látszik (kompakt sáv), sorszám-gombokkal
+      // lehet lapozni; a szavazott kihívás ✓ jelet kap, a szavazás után a következő még nem szavazottra ugrunk. Egy kihívásról a szerver szerint egyszer lehet szavazni.
       const cv = S.challengeVote || {};
-      // A fázis címe ("KIHÍVÁS-ELLENŐRZÉS") a fázis-sávban van – itt csak a kérdés.
-      html = '';
+      const list = cv.challenges || [];
+      if (cvCase !== (S.caseNo || '')) { cvCase = S.caseNo || ''; cvIdx = 0; cvAdvance = false; }
+      const mineOf = (c) => (cv.myVotes ? cv.myVotes[c.who] : undefined);
+      if (cvAdvance) { cvAdvance = false; const nxt = list.findIndex((c) => mineOf(c) === undefined); if (nxt >= 0) cvIdx = nxt; }
+      cvIdx = Math.max(0, Math.min(cvIdx, list.length - 1));
+      const cur = list[cvIdx];
+      if (!cur) { html = '<div class="drumroll">Nincs kihívás…</div>'; break; }
       const whoLabel = { prosecutor: 'Az ügyész', defendant: 'A vádlott', defender: 'A védőügyvéd' };
-      html += '<div class="cv-rows">';
-      (cv.challenges || []).forEach((ch, i) => {
-        html += '<div class="challenge-results"><div class="cr"><b>' + whoLabel[ch.who] + ' kihívása' +
-          (ch.difficulty ? ' (NEHEZÍTÉS – dupla pont!)' : '') + ':</b> ' + escapeHtml(ch.text) + '</div>';
-        if (cv.canVote) {
-          // A saját szavazatod kiemelve (a szerver myVotes-ban küldi vissza); módosítható.
-          const mine = cv.myVotes ? cv.myVotes[ch.who] : undefined;
-          const cvCls = (yes) => ' cv-btn' + (mine === yes ? ' chosen' : '') + (mine !== undefined && mine !== yes ? ' faded' : '');
-          html += '<div style="margin:0" class="cv-btns">' +
-            '<button class="btn green' + cvCls(true) + '" id="cv' + i + 'Yes" aria-pressed="' + (mine === true) + '">IGEN</button> ' +
-            '<button class="btn red' + cvCls(false) + '" id="cv' + i + 'No" aria-pressed="' + (mine === false) + '">NEM</button></div>';
-        }
-        html += '</div>';
-      });
-      html += '</div>';
-      if (!cv.canVote) html += '<p class="next-step">Az esküdtek döntenek…</p>';
-      if (cv.voterCount) {
-        const minCount = Math.min(...(cv.challenges || []).map((c) => (cv.counts || {})[c.who] || 0));
-        html += '<div class="vote-status">Szavazatok: ' + minCount + ' / ' + cv.voterCount + '</div>';
-      }
-      // gomb-kötések az új gombokhoz
-      setTimeout(() => {
-        (cv.challenges || []).forEach((ch, i) => {
-          const y = $('#cv' + i + 'Yes');
-          const n = $('#cv' + i + 'No');
-          if (y) y.addEventListener('click', () => socket.emit('vote_challenge', { who: ch.who, done: true }));
-          if (n) n.addEventListener('click', () => socket.emit('vote_challenge', { who: ch.who, done: false }));
-        });
-      }, 0);
+      const roleCol = { prosecutor: ROLE_COLOR.prosecutor, defendant: ROLE_COLOR.defendant, defender: ROLE_COLOR.defender }[cur.who] || '#f2c14e';
+      const minCount = list.length ? Math.min(...list.map((c) => (cv.counts || {})[c.who] || 0)) : 0;
+      const chips = list.length > 1 ? '<span class="cv-chips" role="group" aria-label="Kihívások">' + list.map((c, i) => {
+        const voted = cv.canVote && mineOf(c) !== undefined;
+        return '<button type="button" class="cv-chip' + (i === cvIdx ? ' on' : '') + (voted ? ' done' : '') + '" data-cvi="' + i + '" aria-current="' + (i === cvIdx ? 'true' : 'false') + '" aria-label="' +
+          (i + 1) + '. kihívás' + (voted ? ', már szavaztál' : '') + '">' + (i + 1) + (voted ? ' ✓' : '') + '</button>';
+      }).join('') + '</span>' : '';
+      const mine = mineOf(cur);
+      const cvCls = (yes) => ' cv-btn' + (mine === yes ? ' chosen' : '') + (mine !== undefined && mine !== yes ? ' faded' : '');
+      const buttons = cv.canVote
+        ? '<span class="cv-btns"><button class="btn green' + cvCls(true) + '" id="cv' + cvIdx + 'Yes" data-who="' + cur.who + '" data-done="1" aria-pressed="' + (mine === true) + '"' + (mine !== undefined ? ' disabled' : '') + '>IGEN</button>' +
+          '<button class="btn red' + cvCls(false) + '" id="cv' + cvIdx + 'No" data-who="' + cur.who + '" data-done="0" aria-pressed="' + (mine === false) + '"' + (mine !== undefined ? ' disabled' : '') + '>NEM</button></span>'
+        : '<span class="rv-wait">Az esküdtek döntenek…</span>';
+      html = '<div class="cv-strip" style="--role:' + roleCol + '">' +
+        '<div class="cv-top">' + chips + '<span class="cv-who"><b>' + whoLabel[cur.who] + ' kihívása</b>' + (cur.difficulty ? ' · NEHEZÍTÉS (dupla pont)' : '') + '</span>' +
+        (cv.voterCount ? '<span class="vote-status">Szavazatok: ' + minCount + ' / ' + cv.voterCount + '</span>' : '') + '</div>' +
+        '<div class="cv-main"><span class="cv-text" data-clamp="cv" title="' + escapeHtml(cur.text) + '">„' + escapeHtml(cur.text) + '”</span>' + buttons + '</div></div>';
       break;
     }
     case 'verdict': {
@@ -2719,7 +2738,7 @@ function renderPhaseContent() {
       const details = '<details class="vd-details"' + (vdOpen ? ' open' : '') + '><summary>RÉSZLETEK ▾</summary><div class="vd-body">' + votes + results + '</div></details>';
       html = '<div class="vd-strip">' +
         '<span class="vd-word ' + (v.guilty ? 'guilty' : 'not-guilty') + '">' + (v.guilty ? 'BŰNÖS' : 'ÁRTATLAN') + '</span>' +
-        '<div class="vd-mid"><div class="sentence-card" title="' + escapeHtml(v.sentence) + '">' + '<span class="sc-text">' + escapeHtml(v.sentence) + '</span><span class="sentence-stamp">ÍTÉLET</span></div>' +
+        '<div class="vd-mid"><div class="sentence-card" title="' + escapeHtml(v.sentence) + '">' + '<span class="sc-text" data-clamp="vd">' + escapeHtml(v.sentence) + '</span><span class="sentence-stamp">ÍTÉLET</span></div>' +
         (v.unanimous ? '<span class="favorite-note">EGYHANGÚ ÍTÉLET – bónusz pont!</span>' : '') + '</div>' +
         '<div class="vd-actions"><button class="btn" id="btnProceed" ' + (S.hostId === MY.playerId ? '' : 'disabled') + '>Tovább</button>' +
         '<span class="vd-small"><button class="btn small ghost" id="btnRecord">Jegyzőkönyv</button>' + details + '</span></div></div>';
@@ -2833,6 +2852,9 @@ function renderPhaseContent() {
     });
   });
   // (a kihívás-szavazásgombok a challenge_vote ágban kötődnek meg)
+  el.querySelectorAll('[data-cvi]').forEach((b) => b.addEventListener('click', () => { cvIdx = +b.dataset.cvi; renderPhaseContent(); }));
+  el.querySelectorAll('.cv-btn[data-who]').forEach((b) => b.addEventListener('click', () => { cvAdvance = true; socket.emit('vote_challenge', { who: b.dataset.who, done: b.dataset.done === '1' }); }));
+  bindClamp(el);
   const vdEl = el.querySelector('.vd-details');
   if (vdEl) vdEl.addEventListener('toggle', () => { vdOpen = vdEl.open; });
   if (S.phase !== 'verdict') vdOpen = false;
@@ -3272,7 +3294,7 @@ socket.on('connect', () => {
     if (!IDENTITY_READY || !MY.code || INTENTIONAL_LEAVE || KICKED_FROM_ROOM) return; // nem voltunk szobában – nincs teendő
     afterIdentified(() => socket.emit('join_room', {
       code: MY.code, name: MY.name, avatar: MY.avatar,
-      playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload()
+      playerId: MY.playerId, sessionToken: MY.sessionToken, profile: myProfilePayload(), resume: true
     }, (res) => {
       if (res && res.error) {
         // A szerver újraindult (a szobák memóriában élnek és elvesztek):
