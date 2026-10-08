@@ -100,6 +100,9 @@ const authApi = createAuth({
     const reg=REGISTRY.find((r)=>r.nev===name);
     return reg&&verifyLegendCode(LEGEND_SECRET,reg.nev,code)?reg.nev:null;
   },
+  // az üzemeltető által létrehozott fióknál: a pontos legenda-név (vagy null), és a legendák listája a választóhoz
+  legendByName:(name)=>{ const reg=REGISTRY.find((r)=>r.nev===name); return reg?reg.nev:null; },
+  legendNames:()=>REGISTRY.map((r)=>r.nev),
   // az igényelt fiók kártyája a legenda adataival indul (a hosszkorlátok a fiók-szabályokhoz igazítva)
   legendProfile:(name)=>{
     const reg=REGISTRY.find((r)=>r.nev===name)||{};

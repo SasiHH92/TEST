@@ -2355,7 +2355,7 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
 .auth-features b { font-size: 23px; }
 .auth-tabs { display: none; }
 .auth-help { z-index: 5; color: #ffe3aa; background: #341b10bd; border-color: #bd8b55; }
-.auth-recovery { width: min(430px, calc(100vw - 24px)); border: 0; padding: 0; overflow: auto; max-height: 90dvh; background: transparent; border-radius: 13px; color: #3d271b; }
+.auth-recovery { margin: auto; width: min(430px, calc(100vw - 24px)); border: 0; padding: 0; overflow: auto; max-height: 90dvh; background: transparent; border-radius: 13px; color: #3d271b; }
 .auth-recovery::backdrop { background: #160d09c7; backdrop-filter: blur(5px); }
 .auth-recovery .auth-card { padding-top: 30px; }
 .auth-close { position: absolute; right: 7px; top: 3px; width: 40px; height: 40px; font-size: 28px; border: 0; background: transparent; color: #795437; cursor: pointer; }

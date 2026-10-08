@@ -117,6 +117,23 @@
     </form>
   </dialog>
 
+  <!-- Kötelező jelszócsere: az üzemeltető által adott ideiglenes jelszóval belépett fiók addig nem használható, amíg a játékos saját jelszót nem választ. Nem zárható be (Esc / háttér), csak kijelentkezni lehet. -->
+  <dialog id="authForce" class="auth-recovery" aria-labelledby="authForceTitle">
+    <form id="authForceForm" class="auth-card">
+      <h2 id="authForceTitle">Válassz saját jelszót</h2>
+      <p id="authForceIntro" class="auth-card-intro">Ideiglenes jelszóval léptél be. Mielőtt játszol, adj meg egy saját, legalább 12 karakteres jelszót – ezt csak te fogod tudni.</p>
+      <label for="authForceCurrent">Ideiglenes jelszó (amit kaptál)</label>
+      <input id="authForceCurrent" type="password" autocomplete="current-password" maxlength="128" required>
+      <label for="authForceNew">Új jelszó (legalább 12 karakter)</label>
+      <input id="authForceNew" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+      <label for="authForceConfirm">Új jelszó még egyszer</label>
+      <input id="authForceConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+      <p id="authForceMessage" class="auth-form-message" role="status" aria-live="polite"></p>
+      <button id="authForceSubmit" type="submit" class="auth-submit">JELSZÓ MENTÉSE</button>
+      <p class="auth-switch"><button id="authForceLogout" type="button" class="auth-text-button">Kijelentkezés</button></p>
+    </form>
+  </dialog>
+
   <!-- ===================== KI VAGY TE, GYANÚSÍTOTT? ===================== -->
   <div id="screen-name" class="screen screen-station">
     <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>

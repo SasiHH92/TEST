@@ -13,18 +13,23 @@
   h1 { font-size:22px; margin:6px 0 14px; color:var(--gold); }
   h2 { font-size:16px; margin:0 0 10px; color:var(--gold); }
   section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
-  input { background:#0f0d14; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:9px 10px; font:inherit; min-width:0; }
+  input, select, textarea { background:#0f0d14; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:9px 10px; font:inherit; min-width:0; }
+  textarea { width:100%; min-height:110px; resize:vertical; }
   button { background:var(--gold); color:#241a06; border:0; border-radius:6px; padding:9px 14px; font:inherit; font-weight:700; cursor:pointer; }
   button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
   button:disabled { opacity:.5; cursor:default; }
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .row input { flex:1 1 220px; }
+  .row input, .row select { flex:1 1 200px; }
+  .pw { font-size:17px; font-weight:700; letter-spacing:.04em; color:var(--gold); user-select:all; }
+  .warn { border:1px solid var(--red); border-radius:8px; padding:8px 10px; margin:0 0 8px; color:var(--ink); background:rgba(229,72,77,.12); }
+  .acct-list { max-height:520px; overflow:auto; }
   .kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; }
   .kv dt { color:var(--dim); } .kv dd { margin:0; word-break:break-word; }
   .ok { color:var(--green); } .bad { color:var(--red); } .dim { color:var(--dim); }
   .err { border-top:1px solid var(--line); padding:10px 0; }
   .err:first-child { border-top:0; }
   .tag { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--gold); margin-right:6px; }
+  .tag.bad { color:var(--red); border-color:var(--red); }
   pre { margin:6px 0 0; padding:8px; background:#0f0d14; border-radius:6px; overflow:auto; font-size:12px; color:var(--dim); }
   .msg { margin-top:8px; min-height:1.3em; }
   code { background:#0f0d14; padding:1px 5px; border-radius:4px; word-break:break-all; }
@@ -49,6 +54,34 @@
     <section>
       <h2>Áttekintés <button class="ghost" id="reload" style="float:right;padding:4px 10px">Frissítés</button></h2>
       <dl class="kv" id="status"></dl>
+    </section>
+
+    <section id="accounts">
+      <h2>Fiókok <span class="dim" id="acctSummary" style="font-weight:400"></span></h2>
+      <p class="dim">Itt látod az összes regisztrált fiókot, és te hozhatsz létre fiókot bárkinek (teszt-fiókok is). A rendszer <b>ideiglenes jelszót</b> készít, amit egyszer látsz: küldd el a játékosnak (pl. Discordon). Belépéskor a játékosnak <b>kötelező saját, új jelszót</b> választania, addig nem használhatja a fiókot. Az ideiglenes jelszó 14 napig érvényes.</p>
+
+      <h2 style="margin-top:14px">Új fiók</h2>
+      <form class="row" id="newAcctForm" autocomplete="off">
+        <input id="newName" type="text" maxlength="20" placeholder="felhasználónév (3–20 karakter)" aria-label="Felhasználónév">
+        <input id="newEmail" type="email" maxlength="254" placeholder="e-mail cím" aria-label="E-mail cím" required>
+        <select id="newLegend" aria-label="Legendás kártya"></select>
+        <button type="submit" id="newAcctBtn">FIÓK LÉTREHOZÁSA</button>
+      </form>
+      <p class="dim" style="margin:6px 0 0">Ha legendás kártyát választasz, a fiók annak a kártyának a nevét, címét és avatárját kapja (a név mezőt ilyenkor nem kell kitölteni).</p>
+      <p class="msg" id="newAcctMsg" role="status"></p>
+
+      <h2 style="margin-top:14px">Több fiók egyszerre</h2>
+      <p class="dim">Soronként egy fiók: <code>név; e-mail</code> (vessző vagy tabulátor is jó, táblázatból bemásolhatod). Legfeljebb 40 sor. Ha a név egy legendás kártya pontos neve, a fiók ahhoz kötődik.</p>
+      <textarea id="bulkText" spellcheck="false" aria-label="Fiókok soronként" placeholder="Teszt Elek; elek@pelda.hu&#10;Minta Mari; mari@pelda.hu"></textarea>
+      <div class="row" style="margin-top:6px"><button id="bulkBtn" type="button">MINDEN SOR LÉTREHOZÁSA</button></div>
+      <p class="msg" id="bulkMsg" role="status"></p>
+
+      <div id="acctResult" class="hidden" style="margin:10px 0"></div>
+
+      <h2 style="margin-top:14px">Regisztráltak</h2>
+      <div class="row" style="margin-bottom:8px"><input id="acctFilter" type="search" placeholder="keresés név vagy e-mail szerint" aria-label="Keresés a fiókok között"></div>
+      <div id="acctList" class="acct-list"></div>
+      <p class="msg" id="acctMsg" role="status"></p>
     </section>
 
     <section>

@@ -88,7 +88,45 @@
     clearTimeout(rejoinTimer);
     INTENTIONAL_LEAVE=false;KICKED_FROM_ROOM=false;sessionStorage.removeItem('kb_left');
   }
+  // Kötelező jelszócsere: az ideiglenes jelszóval belépett fiókot a szerver addig vendégként kezeli, a kliens sem engedi tovább a játékba.
+  const force=$('#authForce');
+  let forcing=false; // amíg igaz, az ablak nem maradhat zárva
+  function requireNewPassword(user) {
+    account=null;IDENTITY_READY=false;forcing=true;
+    const typed=$('#authLoginPassword').value; // az épp beírt ideiglenes jelszó átvétele (a mező szerkeszthető marad)
+    for(const input of $$('.auth-password input')) input.value='';
+    $('#authForceCurrent').value=typed;$('#authForceNew').value='';$('#authForceConfirm').value='';
+    $('#authForceIntro').textContent=(user?.username?user.username+', ':'')+'ideiglenes jelszóval léptél be. Mielőtt játszol, adj meg egy saját, legalább 12 karakteres jelszót – ezt csak te fogod tudni.';
+    message('#authForceMessage','');
+    $('#authContinue').classList.add('hidden');
+    show('auth');
+    if(!force.open) force.showModal();
+    ($('#authForceCurrent').value?$('#authForceNew'):$('#authForceCurrent')).focus();
+  }
+  // Esc nem zárja be; a böngésző a második Esc-nél mégis lezárja, ezért bezáráskor (amíg a csere nincs kész) azonnal újranyitjuk.
+  force.addEventListener('cancel',event=>event.preventDefault());
+  force.addEventListener('keydown',event=>{if(event.key==='Escape') event.preventDefault();});
+  force.addEventListener('close',()=>{if(forcing) setTimeout(()=>{if(forcing&&!force.open) force.showModal();},0);});
+  $('#authForceForm').addEventListener('submit',event=>{
+    event.preventDefault();
+    const body={currentPassword:$('#authForceCurrent').value,password:$('#authForceNew').value,confirmPassword:$('#authForceConfirm').value};
+    if(body.password!==body.confirmPassword) {message('#authForceMessage','A két jelszó nem egyezik.');$('#authForceConfirm').focus();return;}
+    submit(event.currentTarget,'#authForceMessage',async()=>{
+      const result=await api('change-password',body);
+      for(const id of ['Current','New','Confirm']) $('#authForce'+id).value='';
+      forcing=false;force.close();
+      enter(result.user,true);
+    });
+  });
+  $('#authForceLogout').addEventListener('click',async()=>{
+    try {await api('logout',{});} catch(_) { /* a kilépés a kliens oldalon így is megtörténik */ }
+    for(const id of ['Current','New','Confirm']) $('#authForce'+id).value='';
+    forcing=false;force.close();account=null;IDENTITY_READY=false;
+    LS.removeItem('kb_accountId');sessionStorage.removeItem('kb_guest');sessionStorage.removeItem('kb_tab');
+    show('auth');tab('login');message('#authStatus','Kijelentkeztél. Az új jelszó beállítása a következő belépéskor folytatódik.');
+  });
   function enter(user,fresh) {
+    if(user?.mustChangePassword) {requireNewPassword(user);return;}
     const previous=LS.getItem('kb_accountId')||'guest', identity=user?.id||'guest';
     if(previous!==identity) clearRoomIdentity();
     account=user||null;LS.setItem('kb_accountId',identity);
@@ -411,7 +449,8 @@
       if(resetToken||legendClaim) { /* a belépett fiók gombja ilyenkor nem zavarja a folyamatot */ }
       else if(availability.user) {
         // Az oldal betöltésekor MINDIG a bejelentkezés jön először; a megjegyzett fiókkal egy gombbal lehet folytatni.
-        if(externalReturn) {
+        if(availability.user.mustChangePassword) requireNewPassword(availability.user); // ideiglenes jelszó: előbb saját jelszót kell választani
+        else if(externalReturn) {
           enter(availability.user,true);
           if(error) {message('#accountMessage',errors[error]||errors.provider);openProfile();}
         } else if(!resumeAfterReload(availability.user)) showContinue(availability.user);

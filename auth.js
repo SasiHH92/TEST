@@ -12,6 +12,13 @@ const COOKIE = 'kb_account';
 const SESSION_MS = 8*60*60*1000;
 const REMEMBER_MS = 30*24*60*60*1000;
 const OAUTH_MS = 10*60*1000;
+const TEMP_PASSWORD_MS = 14*24*60*60*1000; // az üzemeltető által adott ideiglenes jelszó ennyi ideig használható (utána újat kell kérni)
+const TEMP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; // félreérthető karakterek (I, O, l, 0, 1) nélkül
+// Ideiglenes jelszó: 12 véletlen karakter, 4-esével kötőjellel (pl. "Kp7x-Qm3a-Zt9R"), kriptográfiai véletlenből; legalább 12 karakter, így a jelszó-szabálynak is megfelel.
+function temporaryPassword() {
+  const pick = () => TEMP_ALPHABET[crypto.randomInt(TEMP_ALPHABET.length)];
+  return [0,1,2].map(() => pick()+pick()+pick()+pick()).join('-');
+}
 const PROVIDERS = {
   google:{authorize:'https://accounts.google.com/o/oauth2/v2/auth',
     token:'https://oauth2.googleapis.com/token',
@@ -135,14 +142,20 @@ function createAuth(options={}) {
   // A fix (alapító) kártyák nevei nem foglalhatók le fiókkal.
   const reserved=name=>(options.reservedNames?options.reservedNames():[]).some(r=>normalize(r)===normalize(name));
   const publicUser=user=>user?{id:user.id,username:user.username,email:user.email,
-    hasPassword:!!user.password,providers:Object.keys(user.providers||{}),legend:user.legend||'',
+    hasPassword:!!user.password,mustChangePassword:!!user.mustChangePassword,providers:Object.keys(user.providers||{}),legend:user.legend||'',
     profile:{titulus:'',priusz:'',jelveny:'',avatar:'',...(user.profile||{})}}:null;
-  const session=req=>{
+  const rawSession=req=>{
     if(!store) return null;
     const token=cookies(req)[COOKIE];
     if(!token || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
     const entry=store.state.sessions.find(s=>s.hash===digest(token) && s.expiresAt>now());
     return entry?store.state.users.find(user=>user.id===entry.userId)||null:null;
+  };
+  // A bejelentkezett fiók, DE: amíg az ideiglenes jelszót nem cserélte le (mustChangePassword), a fiók-funkciók (profil, barátok, bolt, socket-azonosítás,
+  // törlés) nem érhetők el: a többi modul vendégként látja. A státusz és a jelszócsere a rawSession-t használja.
+  const session=req=>{
+    const user=rawSession(req);
+    return user && !user.mustChangePassword?user:null;
   };
   const cookieOptions=req=>({httpOnly:true,sameSite:'lax',secure:origin.startsWith('https:')||req.secure,path:'/'});
   const remember=req=>req.body?.remember===true;
@@ -153,6 +166,8 @@ function createAuth(options={}) {
       data.sessions=data.sessions.filter(s=>s.expiresAt>now() && (!old || s.hash!==digest(old)));
       data.resets=data.resets.filter(r=>r.expiresAt>now());
       data.sessions.push({hash:digest(token),userId:user.id,expiresAt:now()+duration});
+      const account=data.users.find(u=>u.id===user.id);
+      if(account) account.lastLoginAt=now();
       const mine=data.sessions.filter(s=>s.userId===user.id);
       if(mine.length>10) data.sessions=data.sessions.filter(s=>!mine.slice(0,mine.length-10).includes(s));
     });
@@ -211,7 +226,7 @@ function createAuth(options={}) {
     if(!req.body || Array.isArray(req.body)) return res.status(400).json({error:'Hiányzó űrlapadatok.'});
     rate(req,res,next);
   });
-  router.get('/status',(req,res)=>res.json({user:publicUser(session(req)),
+  router.get('/status',(req,res)=>res.json({user:publicUser(rawSession(req)),
     available:!storageError,providers:{google:enabled('google'),discord:enabled('discord')},
     passwordReset:mailEnabled && !storageError}));
   router.use((req,res,next)=>storageError?res.status(503).json({error:'A fiókkezelés most nem elérhető. Próbáld újra később.'}):next());
@@ -243,7 +258,32 @@ function createAuth(options={}) {
     if(typeof req.body.password!=='string' || !req.body.password.length || req.body.password.length>128) fail(400,'Add meg a jelszavad.');
     const user=store.state.users.find(u=>u.email===address);
     if(!(await verify(req.body.password,user?.password))) fail(401,'Hibás e-mail cím vagy jelszó.');
+    if(user.mustChangePassword && user.tempPasswordExpiresAt && user.tempPasswordExpiresAt<now()) {
+      fail(401,'Az ideiglenes jelszó lejárt. Kérj újat attól, aki a fiókot létrehozta.');
+    }
     createSession(user,req,res,remember(req));res.json({user:publicUser(user)});
+  }));
+  // Jelszócsere: a mostani (ideiglenes) jelszó ellenőrzésével, új jelszóval (12–128 karakter). Az ideiglenes jelszó kötelező cseréje itt zárul: a fiók
+  // korlátozása megszűnik, a többi munkamenet kilép, a mostani marad.
+  router.post('/change-password',wrap(async(req,res)=>{
+    const current=rawSession(req);
+    if(!current) fail(401,'Előbb jelentkezz be.');
+    if(!current.password) fail(400,'Ehhez a fiókhoz nem tartozik jelszó (Google / Discord belépés).');
+    const given=req.body.currentPassword;
+    if(typeof given!=='string' || !given.length || given.length>128) fail(400,'Add meg a mostani (ideiglenes) jelszavad.');
+    if(!(await verify(given,current.password))) fail(401,'A mostani jelszó hibás.');
+    const next=newPassword(req.body);
+    if(next===given) fail(400,'Az új jelszó legyen más, mint a mostani.');
+    const record=await hash(next), keep=digest(cookies(req)[COOKIE]);
+    const user=store.commit(data=>{
+      const account=data.users.find(u=>u.id===current.id);
+      if(!account) fail(401,'Előbb jelentkezz be.');
+      account.password=record;delete account.mustChangePassword;delete account.tempPasswordExpiresAt;
+      data.sessions=data.sessions.filter(s=>s.userId!==account.id || s.hash===keep);
+      data.resets=data.resets.filter(r=>r.userId!==account.id);
+      return account;
+    });
+    res.json({user:publicUser(user)});
   }));
   // Saját kártya szerkesztése: név, vicces cím, priusz-szöveg, jelvény, avatár (csak bejelentkezve).
   router.post('/profile',rate,wrap((req,res)=>{
@@ -353,7 +393,7 @@ function createAuth(options={}) {
       if(!reset) fail(400,'A link lejárt vagy már felhasználtad.');
       const user=data.users.find(u=>u.id===reset.userId);
       if(!user) fail(400,'A link érvénytelen.');
-      user.password=record;
+      user.password=record;delete user.mustChangePassword;delete user.tempPasswordExpiresAt;
       data.sessions=data.sessions.filter(s=>s.userId!==user.id);
       data.resets=data.resets.filter(r=>r.userId!==user.id);
       return user;
@@ -465,6 +505,57 @@ function createAuth(options={}) {
     async sendTestMail(to) {
       if(!mailEnabled) fail(503,'A levélküldés nincs beállítva (AUTH_MAIL_API_KEY, AUTH_MAIL_FROM, AUTH_BASE_URL).');
       await deliver({to:email(to),subject:'Kamu Bíróság – próbalevél',text:'Ez egy próbalevél a Kamu Bíróság szerveréről. Ha ezt olvasod, a levélküldés működik.'});
+    },
+    // Az összes fiók (jelszó-kivonat nélkül): az admin-oldal listájához.
+    legendNames:()=>options.legendNames?options.legendNames():[],
+    listAccounts() {
+      if(!store) fail(503,'A fiókkezelés most nem elérhető.');
+      return store.state.users.map(u=>({id:u.id,username:u.username,email:u.email,legend:u.legend||'',createdAt:u.createdAt||0,lastLoginAt:u.lastLoginAt||0,
+        password:!!u.password,providers:Object.keys(u.providers||{}),mustChangePassword:!!u.mustChangePassword,tempPasswordExpiresAt:u.tempPasswordExpiresAt||0}))
+        .sort((a,b)=>b.createdAt-a.createdAt);
+    },
+    // Új fiók ideiglenes jelszóval. Ha a név egy legendás kártya pontos neve (vagy megadják a `legend` mezőt), a fiók ahhoz a kártyához kötődik
+    // (ugyanúgy, mint az igénylő-linknél). Az első belépéskor kötelező az új jelszó. Az ideiglenes jelszót csak ez a válasz tartalmazza (nem tároljuk, nem naplózzuk).
+    async createAccount(body) {
+      if(!store) fail(503,'A fiókkezelés most nem elérhető.');
+      body=body||{};
+      const address=email(body.email);
+      const wanted=typeof body.legend==='string'?body.legend.trim():'';
+      const typed=typeof body.username==='string'?body.username.trim():'';
+      const legendName=options.legendByName?(options.legendByName(wanted||typed)||null):null;
+      if(wanted && !legendName) fail(400,'Ismeretlen legendás kártya: '+wanted.slice(0,30));
+      const name=legendName||username(typed);
+      const password=temporaryPassword(), record=await hash(password);
+      const user=store.commit(data=>{
+        if(data.users.some(u=>u.email===address)) fail(409,'Ezzel az e-mail címmel már van fiók.');
+        if(data.users.some(u=>normalize(u.username)===normalize(name))) fail(409,legendName?'Ezt a legendás kártyát már igényelték.':'Ez a felhasználónév már foglalt.');
+        if(!legendName && reserved(name)) fail(409,'Ez a felhasználónév már foglalt (alapító karakter).');
+        const account={id:crypto.randomUUID(),username:name,email:address,password:record,providers:{},createdAt:now(),
+          mustChangePassword:true,tempPasswordExpiresAt:now()+TEMP_PASSWORD_MS,createdBy:'admin'};
+        if(legendName) {
+          account.legend=legendName;
+          account.profile=cleanProfile(options.legendProfile?options.legendProfile(legendName):{});
+        }
+        data.users.push(account);return account;
+      });
+      return {username:user.username,email:user.email,legend:user.legend||'',temporaryPassword:password,expiresInDays:TEMP_PASSWORD_MS/86400000};
+    },
+    // Új ideiglenes jelszó egy meglévő jelszavas fiókhoz (pl. elfelejtett jelszó, vagy az előző lejárt): a régi jelszó és a munkamenetek megszűnnek.
+    async newTemporaryPassword(id) {
+      if(!store) fail(503,'A fiókkezelés most nem elérhető.');
+      const found=store.state.users.find(u=>u.id===id);
+      if(!found) fail(404,'Nincs ilyen fiók.');
+      if(!found.password) fail(409,'Ez a fiók Google / Discord belépést használ, nincs jelszava.');
+      const password=temporaryPassword(), record=await hash(password);
+      const user=store.commit(data=>{
+        const account=data.users.find(u=>u.id===id);
+        if(!account) fail(404,'Nincs ilyen fiók.');
+        account.password=record;account.mustChangePassword=true;account.tempPasswordExpiresAt=now()+TEMP_PASSWORD_MS;
+        data.sessions=data.sessions.filter(s=>s.userId!==id);
+        data.resets=data.resets.filter(r=>r.userId!==id);
+        return account;
+      });
+      return {username:user.username,email:user.email,temporaryPassword:password,expiresInDays:TEMP_PASSWORD_MS/86400000};
     },
     resetLinkFor(address) {
       if(!store) fail(503,'A fiókkezelés most nem elérhető.');

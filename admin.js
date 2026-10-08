@@ -14,6 +14,10 @@
 //   POST /api/admin/backups       – azonnali mentés
 //   POST /api/admin/mail-test     – próbalevél {to}
 //   POST /api/admin/reset-link    – kézi jelszó-visszaállító link {email} (ha nincs levélküldés)
+//   GET  /api/admin/accounts      – az összes fiók (jelszó-kivonat nélkül) + a legendás kártyák nevei
+//   POST /api/admin/accounts      – új fiók ideiglenes jelszóval {username, email, legend?}; az első belépéskor kötelező az új jelszó
+//   POST /api/admin/accounts/bulk – több fiók egyszerre {accounts:[{username, email}]} (legfeljebb 40), soronként eredménnyel
+//   POST /api/admin/accounts/temp-password – új ideiglenes jelszó egy meglévő jelszavas fióknak {id}
 //   GET  /api/admin/reports       – jelentett üzenetek + aktuális némítások
 //   POST /api/admin/reports/mute  – a jelentett üzenet küldőjének némítása {id, minutes}
 //   POST /api/admin/reports/hide  – a jelentett közös-téri üzenet eltávolítása {id}
@@ -55,7 +59,7 @@ function createAdmin({ token = '', errors, storage, auth, moderation, hideBoardM
     failures.delete(req.ip);
     next();
   });
-  router.use(express.json({ limit: '4kb' }));
+  router.use(express.json({ limit: '16kb' }));
 
   const wrap = (fn) => (req, res) => Promise.resolve().then(() => fn(req, res)).catch((e) => {
     const status = e && Number.isInteger(e.status) ? e.status : 500;
@@ -130,6 +134,36 @@ function createAdmin({ token = '', errors, storage, auth, moderation, hideBoardM
   router.post('/mutes/remove', wrap((req, res) => {
     if (!moderation.unmute(String(req.body && req.body.id || ''))) { const e = new Error('Nincs ilyen némítás.'); e.status = 404; throw e; }
     res.json({ ok: true });
+  }));
+
+  // ---- Fiókok: lista, létrehozás (ideiglenes jelszóval), új ideiglenes jelszó ----
+  const MAX_BULK = 40;
+  router.get('/accounts', wrap((req, res) => res.json({ accounts: auth.admin.listAccounts(), legends: auth.admin.legendNames() })));
+  router.post('/accounts', wrap(async (req, res) => {
+    res.status(201).json(await auth.admin.createAccount(req.body));
+  }));
+  // Több fiók egyszerre: egymás után (a jelszó-kivonatolás nem sorakozhat fel), soronként külön eredménnyel – egy hibás sor nem állítja meg a többit.
+  router.post('/accounts/bulk', wrap(async (req, res) => {
+    const list = req.body && req.body.accounts;
+    if (!Array.isArray(list) || !list.length) { const e = new Error('Adj meg legalább egy fiókot.'); e.status = 400; throw e; }
+    if (list.length > MAX_BULK) { const e = new Error('Egyszerre legfeljebb ' + MAX_BULK + ' fiók hozható létre.'); e.status = 400; throw e; }
+    const results = [];
+    for (const item of list) {
+      try {
+        const created = await auth.admin.createAccount(item);
+        results.push({ ok: true, ...created });
+      } catch (e) {
+        const status = e && Number.isInteger(e.status) ? e.status : 500;
+        if (status >= 500) errors.record('http', e, { path: '/api/admin/accounts/bulk' });
+        results.push({ ok: false, username: String(item && item.username || '').slice(0, 30), email: String(item && item.email || '').slice(0, 80), error: status >= 500 ? 'Belső hiba, próbáld újra.' : e.message });
+      }
+    }
+    res.json({ results });
+  }));
+  router.post('/accounts/temp-password', wrap(async (req, res) => {
+    const id = req.body && req.body.id;
+    if (typeof id !== 'string' || id.length > 64) { const e = new Error('Érvénytelen azonosító.'); e.status = 400; throw e; }
+    res.json(await auth.admin.newTemporaryPassword(id));
   }));
 
   router.post('/reset-link', wrap(async (req, res) => {
