@@ -307,21 +307,13 @@ function createAuth(options={}) {
     if(saved.username!==oldName) {try {options.onRename?.(oldName,saved.username);} catch(_) { /* a statisztika átvitele nem állíthatja meg a mentést */ }}
     res.json({user:publicUser(saved)});
   }));
-  // Fiók törlése (végleges). Újra-azonosítás kell: jelszavas fióknál a jelszó, jelszó nélkülinél (Google/Discord) a felhasználónév begépelése.
-  // Egy mentésben: a fiók, a munkamenetei és a visszaállító tokenjei megszűnnek, és a MÁS fiókok kapcsolatai közül (barát, kérés, tiltás) is kikerül.
-  // A játék többi adatát (privát üzenetek, statisztika, élő kapcsolatok) a server.js `onDelete` kezelője takarítja.
-  router.post('/delete',wrap(async(req,res)=>{
-    const current=session(req);
-    if(!current) fail(401,'Előbb jelentkezz be.');
-    if(current.password) {
-      if(typeof req.body.password!=='string' || !req.body.password.length || req.body.password.length>128) fail(400,'A törléshez add meg a jelszavad.');
-      if(!(await verify(req.body.password,current.password))) fail(401,'Hibás jelszó.');
-    } else if(typeof req.body.confirmName!=='string' || normalize(req.body.confirmName)!==normalize(current.username)) {
-      fail(400,'A törléshez írd be pontosan a felhasználóneved.');
-    }
+  // A fiók végleges eltávolítása (a saját törlés és az üzemeltetői törlés közös útja). Egy mentésben: a fiók, a munkamenetei és a visszaállító tokenjei megszűnnek,
+  // és a MÁS fiókok kapcsolatai közül (barát, kérés, tiltás) is kikerül. A játék többi adatát (privát üzenetek, statisztika, élő kapcsolatok)
+  // a server.js `onDelete` kezelője takarítja.
+  function removeAccount(userId) {
     const gone=store.commit(data=>{
-      const user=data.users.find(u=>u.id===current.id);
-      if(!user) fail(401,'Előbb jelentkezz be.');
+      const user=data.users.find(u=>u.id===userId);
+      if(!user) fail(404,'Nincs ilyen fiók.');
       const friends=[...(user.social?.friends||[])];
       data.users=data.users.filter(u=>u.id!==user.id);
       data.sessions=data.sessions.filter(s=>s.userId!==user.id);
@@ -335,6 +327,19 @@ function createAuth(options={}) {
       return {id:user.id,username:user.username,legend:user.legend||'',friends};
     });
     try {options.onDelete?.(gone);} catch(error) {console.error('A fiók-törlés utólagos takarítása hibázott:',scrub(error&&error.message,200));}
+    return gone;
+  }
+  // Fiók törlése (végleges). Újra-azonosítás kell: jelszavas fióknál a jelszó, jelszó nélkülinél (Google/Discord) a felhasználónév begépelése.
+  router.post('/delete',wrap(async(req,res)=>{
+    const current=session(req);
+    if(!current) fail(401,'Előbb jelentkezz be.');
+    if(current.password) {
+      if(typeof req.body.password!=='string' || !req.body.password.length || req.body.password.length>128) fail(400,'A törléshez add meg a jelszavad.');
+      if(!(await verify(req.body.password,current.password))) fail(401,'Hibás jelszó.');
+    } else if(typeof req.body.confirmName!=='string' || normalize(req.body.confirmName)!==normalize(current.username)) {
+      fail(400,'A törléshez írd be pontosan a felhasználóneved.');
+    }
+    removeAccount(current.id);
     res.clearCookie(COOKIE,cookieOptions(req));
     res.json({ok:true});
   }));
@@ -539,6 +544,16 @@ function createAuth(options={}) {
         data.users.push(account);return account;
       });
       return {username:user.username,email:user.email,legend:user.legend||'',temporaryPassword:password,expiresInDays:TEMP_PASSWORD_MS/86400000};
+    },
+    // Fiók végleges törlése az üzemeltetőtől (pl. elrontott teszt-fiók): a felhasználónevet pontosan meg kell adni, hogy véletlenül ne törlődjön semmi.
+    // A legendás kártya statisztikája megmarad, a legenda újra odaadható.
+    deleteAccount(id,confirmName) {
+      if(!store) fail(503,'A fiókkezelés most nem elérhető.');
+      const found=store.state.users.find(u=>u.id===id);
+      if(!found) fail(404,'Nincs ilyen fiók.');
+      if(typeof confirmName!=='string' || normalize(confirmName)!==normalize(found.username)) fail(400,'A törléshez a felhasználónevet pontosan be kell írni.');
+      const gone=removeAccount(id);
+      return {ok:true,username:gone.username,legend:gone.legend};
     },
     // Új ideiglenes jelszó egy meglévő jelszavas fiókhoz (pl. elfelejtett jelszó, vagy az előző lejárt): a régi jelszó és a munkamenetek megszűnnek.
     async newTemporaryPassword(id) {

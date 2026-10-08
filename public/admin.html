@@ -6,39 +6,99 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Kamu Bíróság – üzemeltetés</title>
 <style>
-  :root { --bg:#14121a; --panel:#1d1a24; --line:#3a3347; --ink:#efe8d8; --dim:#a79f8f; --gold:#f2c14e; --red:#e5484d; --green:#3fbf6b; }
+  :root { --bg:#14121a; --panel:#1d1a24; --panel2:#262230; --line:#3a3347; --ink:#efe8d8; --dim:#a79f8f; --gold:#f2c14e; --red:#e5484d; --green:#3fbf6b; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif; }
-  main { max-width:900px; margin:0 auto; padding:16px; }
-  h1 { font-size:22px; margin:6px 0 14px; color:var(--gold); }
+  main { max-width:980px; margin:0 auto; padding:16px; }
+  h1 { font-size:22px; margin:6px 0; color:var(--gold); }
   h2 { font-size:16px; margin:0 0 10px; color:var(--gold); }
+  h3 { font-size:14px; margin:16px 0 8px; color:var(--gold); }
   section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
   input, select, textarea { background:#0f0d14; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:9px 10px; font:inherit; min-width:0; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
   textarea { width:100%; min-height:110px; resize:vertical; }
+  input[type=checkbox] { width:18px; height:18px; padding:0; accent-color:var(--gold); }
   button { background:var(--gold); color:#241a06; border:0; border-radius:6px; padding:9px 14px; font:inherit; font-weight:700; cursor:pointer; }
   button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
-  button:disabled { opacity:.5; cursor:default; }
+  button.ghost:hover:not(:disabled) { border-color:var(--gold); }
+  button.danger { background:transparent; color:var(--red); border:1px solid var(--red); }
+  button.danger:hover:not(:disabled) { background:var(--red); color:#fff; }
+  button.solid-danger { background:var(--red); color:#fff; }
+  button.small { padding:5px 10px; font-size:13px; }
+  button:disabled { opacity:.45; cursor:default; }
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .row input, .row select { flex:1 1 200px; }
-  .pw { font-size:17px; font-weight:700; letter-spacing:.04em; color:var(--gold); user-select:all; }
-  .warn { border:1px solid var(--red); border-radius:8px; padding:8px 10px; margin:0 0 8px; color:var(--ink); background:rgba(229,72,77,.12); }
-  .acct-list { max-height:520px; overflow:auto; }
   .kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; }
   .kv dt { color:var(--dim); } .kv dd { margin:0; word-break:break-word; }
   .ok { color:var(--green); } .bad { color:var(--red); } .dim { color:var(--dim); }
   .err { border-top:1px solid var(--line); padding:10px 0; }
   .err:first-child { border-top:0; }
-  .tag { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--gold); margin-right:6px; }
+  .tag { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--gold); margin-right:6px; white-space:nowrap; }
   .tag.bad { color:var(--red); border-color:var(--red); }
+  .tag.good { color:var(--green); border-color:var(--green); }
   pre { margin:6px 0 0; padding:8px; background:#0f0d14; border-radius:6px; overflow:auto; font-size:12px; color:var(--dim); }
   .msg { margin-top:8px; min-height:1.3em; }
   code { background:#0f0d14; padding:1px 5px; border-radius:4px; word-break:break-all; }
-  .hidden { display:none; }
+  .hidden { display:none !important; }
+  .pw { font-size:17px; font-weight:700; letter-spacing:.04em; color:var(--gold); user-select:all; }
+  .warn { border:1px solid var(--red); border-radius:8px; padding:8px 10px; margin:0 0 8px; background:rgba(229,72,77,.12); }
+
+  /* fejléc + összesítő kártyák + fülek */
+  .top { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:14px; }
+  .stat { text-align:left; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-weight:400; }
+  .stat:hover { border-color:var(--gold); }
+  .stat b { display:block; font-size:22px; line-height:1.2; color:var(--gold); }
+  .stat b.bad { color:var(--red); } .stat b.ok { color:var(--green); }
+  .stat span { display:block; font-size:12px; color:var(--dim); }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:14px; overflow-x:auto; }
+  .tabs button { background:transparent; color:var(--dim); border:0; border-bottom:3px solid transparent; border-radius:0; padding:10px 14px; white-space:nowrap; }
+  .tabs button[aria-selected=true] { color:var(--gold); border-bottom-color:var(--gold); }
+  .count { display:inline-block; min-width:20px; text-align:center; font-size:12px; padding:0 6px; border-radius:999px; background:var(--panel2); color:var(--ink); margin-left:4px; }
+  .count.bad { background:var(--red); color:#fff; }
+  .count:empty { display:none; }
+
+  /* fiók-lista */
+  details.fold { border:1px solid var(--line); border-radius:8px; margin-bottom:12px; background:var(--panel2); }
+  details.fold > summary { cursor:pointer; padding:10px 12px; font-weight:700; color:var(--gold); }
+  details.fold > div { padding:0 12px 12px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+  .chip { background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:999px; padding:4px 11px; font-size:13px; font-weight:400; }
+  .chip[aria-pressed=true] { background:var(--gold); color:#241a06; border-color:var(--gold); font-weight:700; }
+  .selbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .selbar label { display:flex; gap:6px; align-items:center; cursor:pointer; }
+  .acct-list { max-height:640px; overflow:auto; }
+  .acct { display:grid; grid-template-columns:auto 1fr auto; gap:4px 12px; align-items:start; padding:10px 4px; border-bottom:1px solid var(--line); }
+  .acct:last-child { border-bottom:0; }
+  .acct.picked { background:rgba(242,193,78,.07); }
+  .acct .pick { margin-top:3px; }
+  .acct-name { overflow-wrap:anywhere; }
+  .acct-mail, .acct-dates { font-size:13px; color:var(--dim); overflow-wrap:anywhere; }
+  .acct-note { font-size:13px; color:var(--red); margin-top:2px; }
+  .acct-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  @media (max-width:640px) {
+    main { padding:12px; }
+    .acct { grid-template-columns:auto 1fr; }
+    .acct-actions { grid-column:2; justify-content:flex-start; }
+  }
+
+  /* megerősítő ablak */
+  dialog { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:18px; width:min(460px, calc(100vw - 24px)); }
+  dialog::backdrop { background:rgba(10,8,14,.75); }
+  dialog p { margin:0 0 10px; }
+  dialog input { width:100%; margin:4px 0 12px; }
+  dialog .row { justify-content:flex-end; }
 </style>
 </head>
 <body>
 <main>
-  <h1>⚖️ Kamu Bíróság – üzemeltetés</h1>
+  <header class="top">
+    <h1>⚖️ Kamu Bíróság – üzemeltetés</h1>
+    <div class="row hidden" id="topActions">
+      <button class="ghost small" id="reload" type="button">Frissítés</button>
+      <button class="ghost small" id="adminLogout" type="button">Kilépés</button>
+    </div>
+  </header>
 
   <section id="login">
     <h2>Belépés</h2>
@@ -51,76 +111,127 @@
   </section>
 
   <div id="panel" class="hidden">
-    <section>
-      <h2>Áttekintés <button class="ghost" id="reload" style="float:right;padding:4px 10px">Frissítés</button></h2>
-      <dl class="kv" id="status"></dl>
-    </section>
+    <div class="stats" id="stats"></div>
 
-    <section id="accounts">
+    <nav class="tabs" role="tablist" aria-label="Szakaszok">
+      <button type="button" role="tab" id="tabbtn-accounts" data-tab="accounts" aria-selected="true" aria-controls="accounts">Fiókok <span class="count" id="cntAccounts"></span></button>
+      <button type="button" role="tab" id="tabbtn-reports" data-tab="reports" aria-selected="false" aria-controls="tab-reports">Jelentések <span class="count" id="cntReports"></span></button>
+      <button type="button" role="tab" id="tabbtn-errors" data-tab="errors" aria-selected="false" aria-controls="tab-errors">Hibák <span class="count" id="cntErrors"></span></button>
+      <button type="button" role="tab" id="tabbtn-system" data-tab="system" aria-selected="false" aria-controls="tab-system">Rendszer</button>
+    </nav>
+
+    <!-- ===================== FIÓKOK ===================== -->
+    <section id="accounts" role="tabpanel" aria-labelledby="tabbtn-accounts">
       <h2>Fiókok <span class="dim" id="acctSummary" style="font-weight:400"></span></h2>
       <p class="dim">Itt látod az összes regisztrált fiókot, és te hozhatsz létre fiókot bárkinek (teszt-fiókok is). A rendszer <b>ideiglenes jelszót</b> készít, amit egyszer látsz: küldd el a játékosnak (pl. Discordon). Belépéskor a játékosnak <b>kötelező saját, új jelszót</b> választania, addig nem használhatja a fiókot. Az ideiglenes jelszó 14 napig érvényes.</p>
 
-      <h2 style="margin-top:14px">Új fiók</h2>
-      <form class="row" id="newAcctForm" autocomplete="off">
-        <input id="newName" type="text" maxlength="20" placeholder="felhasználónév (3–20 karakter)" aria-label="Felhasználónév">
-        <input id="newEmail" type="email" maxlength="254" placeholder="e-mail cím" aria-label="E-mail cím" required>
-        <select id="newLegend" aria-label="Legendás kártya"></select>
-        <button type="submit" id="newAcctBtn">FIÓK LÉTREHOZÁSA</button>
-      </form>
-      <p class="dim" style="margin:6px 0 0">Ha legendás kártyát választasz, a fiók annak a kártyának a nevét, címét és avatárját kapja (a név mezőt ilyenkor nem kell kitölteni).</p>
-      <p class="msg" id="newAcctMsg" role="status"></p>
+      <details class="fold" id="createBox" open>
+        <summary>➕ Új fiók létrehozása</summary>
+        <div>
+          <h3>Egy fiók</h3>
+          <form class="row" id="newAcctForm" autocomplete="off">
+            <input id="newName" type="text" maxlength="20" placeholder="felhasználónév (3–20 karakter)" aria-label="Felhasználónév">
+            <input id="newEmail" type="email" maxlength="254" placeholder="e-mail cím" aria-label="E-mail cím" required>
+            <select id="newLegend" aria-label="Legendás kártya"></select>
+            <button type="submit" id="newAcctBtn">FIÓK LÉTREHOZÁSA</button>
+          </form>
+          <p class="dim" style="margin:6px 0 0">Ha legendás kártyát választasz, a fiók annak a kártyának a nevét, címét és avatárját kapja (a név mezőt ilyenkor nem kell kitölteni).</p>
+          <p class="msg" id="newAcctMsg" role="status"></p>
 
-      <h2 style="margin-top:14px">Több fiók egyszerre</h2>
-      <p class="dim">Soronként egy fiók: <code>név; e-mail</code> (vessző vagy tabulátor is jó, táblázatból bemásolhatod). Legfeljebb 40 sor. Ha a név egy legendás kártya pontos neve, a fiók ahhoz kötődik.</p>
-      <textarea id="bulkText" spellcheck="false" aria-label="Fiókok soronként" placeholder="Teszt Elek; elek@pelda.hu&#10;Minta Mari; mari@pelda.hu"></textarea>
-      <div class="row" style="margin-top:6px"><button id="bulkBtn" type="button">MINDEN SOR LÉTREHOZÁSA</button></div>
-      <p class="msg" id="bulkMsg" role="status"></p>
+          <h3>Több fiók egyszerre</h3>
+          <p class="dim">Soronként egy fiók: <code>név; e-mail</code> (vessző vagy tabulátor is jó, táblázatból bemásolhatod). Legfeljebb 40 sor. Ha a név egy legendás kártya pontos neve, a fiók ahhoz kötődik.</p>
+          <textarea id="bulkText" spellcheck="false" aria-label="Fiókok soronként" placeholder="Teszt Elek; elek@pelda.hu&#10;Minta Mari; mari@pelda.hu"></textarea>
+          <div class="row" style="margin-top:6px"><button id="bulkBtn" type="button">MINDEN SOR LÉTREHOZÁSA</button></div>
+          <p class="msg" id="bulkMsg" role="status"></p>
+        </div>
+      </details>
 
-      <div id="acctResult" class="hidden" style="margin:10px 0"></div>
+      <div id="acctResult" class="hidden" style="margin:0 0 12px"></div>
 
-      <h2 style="margin-top:14px">Regisztráltak</h2>
-      <div class="row" style="margin-bottom:8px"><input id="acctFilter" type="search" placeholder="keresés név vagy e-mail szerint" aria-label="Keresés a fiókok között"></div>
+      <h3 style="margin-top:4px">Regisztráltak</h3>
+      <div class="row">
+        <input id="acctFilter" type="search" placeholder="keresés név vagy e-mail szerint" aria-label="Keresés a fiókok között">
+        <select id="acctSort" aria-label="Rendezés" style="flex:0 1 220px">
+          <option value="newest">Legújabb elöl</option>
+          <option value="oldest">Legrégebbi elöl</option>
+          <option value="name">Név szerint (A–Z)</option>
+          <option value="login">Utolsó belépés szerint</option>
+        </select>
+      </div>
+      <div class="chips" id="acctChips" role="group" aria-label="Szűrés"></div>
+      <div class="selbar">
+        <label><input type="checkbox" id="selAll" aria-label="A látható fiókok kijelölése"> Mind kijelölése</label>
+        <span class="dim" id="selCount"></span>
+        <button type="button" class="ghost small" id="selTemp" disabled>Új ideiglenes jelszó a kijelöltnek</button>
+        <button type="button" class="danger small" id="selDelete" disabled>Kijelöltek törlése</button>
+      </div>
       <div id="acctList" class="acct-list"></div>
       <p class="msg" id="acctMsg" role="status"></p>
     </section>
 
-    <section>
-      <h2>Hibák</h2>
-      <div class="row" style="margin-bottom:8px"><button class="ghost" id="clearErrors">Napló törlése</button><span class="dim" id="errSummary"></span></div>
-      <div id="errors"></div>
-    </section>
-
-    <section>
+    <!-- ===================== JELENTÉSEK ===================== -->
+    <section id="tab-reports" class="hidden" role="tabpanel" aria-labelledby="tabbtn-reports">
       <h2>Jelentések és némítások</h2>
       <p class="dim">A játékosok jelentései a szobai és a közös csevegőből. A közös tér üzenete 3 különböző jelentés után magától lekerül. Némításkor a fiókos küldőt a fiókja, a vendéget a címe szerint állítjuk meg (a közös térben és a szobai csevegőben is).</p>
-      <div class="row" style="margin-bottom:8px"><button class="ghost" id="clearReports">Jelentések törlése</button><span class="dim" id="repSummary"></span></div>
+      <div class="row" style="margin-bottom:8px"><button class="ghost" id="clearReports" type="button">Jelentések törlése</button><span class="dim" id="repSummary"></span></div>
       <div id="reports"></div>
-      <h2 style="margin-top:14px">Aktív némítások</h2>
+      <h3>Aktív némítások</h3>
       <div id="mutes"></div>
       <p class="msg" id="repMsg" role="status"></p>
     </section>
 
-    <section>
-      <h2>Adatbázis-mentések (Neon)</h2>
-      <div class="row" style="margin-bottom:8px"><button id="backupNow">Mentés most</button><span class="dim">Naponta automatikusan is készül, a legutóbbi 14 marad meg.</span></div>
-      <div id="backups"></div>
-      <p class="msg" id="backupMsg" role="status"></p>
+    <!-- ===================== HIBÁK ===================== -->
+    <section id="tab-errors" class="hidden" role="tabpanel" aria-labelledby="tabbtn-errors">
+      <h2>Hibák</h2>
+      <div class="row" style="margin-bottom:8px"><button class="ghost" id="clearErrors" type="button">Napló törlése</button><span class="dim" id="errSummary"></span></div>
+      <div id="errors"></div>
     </section>
 
-    <section>
-      <h2>Levélküldés (Resend)</h2>
-      <form class="row" id="mailForm"><input id="mailTo" type="email" placeholder="címzett e-mail" aria-label="Címzett" required><button type="submit">PRÓBALEVÉL</button></form>
-      <p class="msg" id="mailMsg" role="status"></p>
-    </section>
+    <!-- ===================== RENDSZER ===================== -->
+    <div id="tab-system" class="hidden" role="tabpanel" aria-labelledby="tabbtn-system">
+      <section>
+        <h2>Áttekintés</h2>
+        <dl class="kv" id="status"></dl>
+      </section>
 
-    <section>
-      <h2>Kézi jelszó-visszaállító link</h2>
-      <p class="dim">Ha a levélküldés nincs beállítva: add meg a játékos e-mail címét, és a kapott linket küldd el neki (Discordon). A link 1 óráig, egyszer használható.</p>
-      <form class="row" id="resetForm"><input id="resetEmail" type="email" placeholder="a játékos e-mail címe" aria-label="Játékos e-mail címe" required><button type="submit">LINK KÉSZÍTÉSE</button></form>
-      <p class="msg" id="resetMsg" role="status"></p>
-    </section>
+      <section>
+        <h2>Adatbázis-mentések (Neon)</h2>
+        <div class="row" style="margin-bottom:8px"><button id="backupNow" type="button">Mentés most</button><span class="dim">Naponta automatikusan is készül, a legutóbbi 14 marad meg.</span></div>
+        <div id="backups"></div>
+        <p class="msg" id="backupMsg" role="status"></p>
+      </section>
+
+      <section>
+        <h2>Levélküldés (Resend)</h2>
+        <form class="row" id="mailForm"><input id="mailTo" type="email" placeholder="címzett e-mail" aria-label="Címzett" required><button type="submit">PRÓBALEVÉL</button></form>
+        <p class="msg" id="mailMsg" role="status"></p>
+      </section>
+
+      <section>
+        <h2>Kézi jelszó-visszaállító link</h2>
+        <p class="dim">Ha a levélküldés nincs beállítva: add meg a játékos e-mail címét, és a kapott linket küldd el neki (Discordon). A link 1 óráig, egyszer használható. (Az „Új ideiglenes jelszó” a Fiókok fülön ugyanerre jó, és a játékos a belépéskor úgyis új jelszót választ.)</p>
+        <form class="row" id="resetForm"><input id="resetEmail" type="email" placeholder="a játékos e-mail címe" aria-label="Játékos e-mail címe" required><button type="submit">LINK KÉSZÍTÉSE</button></form>
+        <p class="msg" id="resetMsg" role="status"></p>
+      </section>
+    </div>
   </div>
 </main>
+
+<!-- Megerősítő ablak (törlés, új jelszó, napló-törlés): veszélyes műveletnél a nevet / a TÖRLÖM szót be kell gépelni -->
+<dialog id="askDialog" aria-labelledby="askTitle">
+  <form id="askForm" method="dialog">
+    <h2 id="askTitle"></h2>
+    <div id="askBody"></div>
+    <div id="askWordBox" class="hidden">
+      <label for="askWord" id="askWordLabel"></label>
+      <input id="askWord" type="text" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="row">
+      <button type="button" class="ghost" id="askCancel">Mégse</button>
+      <button type="submit" id="askOk">OK</button>
+    </div>
+  </form>
+</dialog>
 <script src="/admin.js"></script>
 </body>
 </html>

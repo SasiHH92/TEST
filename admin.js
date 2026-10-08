@@ -18,6 +18,7 @@
 //   POST /api/admin/accounts      – új fiók ideiglenes jelszóval {username, email, legend?}; az első belépéskor kötelező az új jelszó
 //   POST /api/admin/accounts/bulk – több fiók egyszerre {accounts:[{username, email}]} (legfeljebb 40), soronként eredménnyel
 //   POST /api/admin/accounts/temp-password – új ideiglenes jelszó egy meglévő jelszavas fióknak {id}
+//   POST /api/admin/accounts/delete – fiók végleges törlése {id, confirmName}; a felhasználónevet pontosan meg kell adni
 //   GET  /api/admin/reports       – jelentett üzenetek + aktuális némítások
 //   POST /api/admin/reports/mute  – a jelentett üzenet küldőjének némítása {id, minutes}
 //   POST /api/admin/reports/hide  – a jelentett közös-téri üzenet eltávolítása {id}
@@ -159,6 +160,11 @@ function createAdmin({ token = '', errors, storage, auth, moderation, hideBoardM
       }
     }
     res.json({ results });
+  }));
+  router.post('/accounts/delete', wrap((req, res) => {
+    const b = req.body || {};
+    if (typeof b.id !== 'string' || b.id.length > 64) { const e = new Error('Érvénytelen azonosító.'); e.status = 400; throw e; }
+    res.json(auth.admin.deleteAccount(b.id, b.confirmName));
   }));
   router.post('/accounts/temp-password', wrap(async (req, res) => {
     const id = req.body && req.body.id;

@@ -120,7 +120,7 @@ async function startServer() {
     await check('Admin: keresés név / e-mail szerint, "új jelszót kell választania" jelvény, legenda-fiók', async () => {
       await ap.waitForFunction(() => /4 regisztrált/.test(document.getElementById('acctSummary').textContent));
       await ap.fill('#acctFilter', 'cili');
-      assert.equal(await ap.$$eval('#acctList .err', (e) => e.length), 1);
+      assert.equal(await ap.$$eval('#acctList .acct', (e) => e.length), 1);
       await ap.fill('#acctFilter', 'nincs-ilyen');
       assert.match(await ap.textContent('#acctList'), /Nincs találat/);
       await ap.fill('#acctFilter', '');
@@ -134,6 +134,7 @@ async function startServer() {
     await check('Admin: "Új ideiglenes jelszó" gomb → új jelszó jelenik meg, a régi nem működik', async () => {
       await ap.fill('#acctFilter', 'ui.dani');
       await ap.click('#acctList button:has-text("Új ideiglenes jelszó")');
+      await ap.waitForSelector('#askDialog[open]'); await ap.click('#askOk');
       await ap.waitForFunction(() => /Ui Dani/.test(document.getElementById('acctResult').textContent) && document.querySelector('#acctResult .pw'));
       const fresh = (await ap.textContent('#acctResult .pw')).trim();
       assert.match(fresh, TEMP_RE); assert.notEqual(fresh, created['Ui Dani']);
@@ -142,7 +143,113 @@ async function startServer() {
       created['Ui Dani'] = fresh; await ap.fill('#acctFilter', '');
     });
 
+    await check('Admin: fülek és összesítő kártyák (a kártya a fülre ugrik), a fülválasztás F5 után megmarad', async () => {
+      assert.equal(await ap.$$eval('#stats .stat', (e) => e.length), 6);
+      assert.match(await ap.textContent('#stats .stat:first-child'), /5\s*regisztrált fiók/);
+      await ap.click('#tabbtn-errors'); await ap.waitForSelector('#tab-errors', { state: 'visible' });
+      assert.equal(await ap.isVisible('#accounts'), false, 'egyszerre egy fül látszik');
+      await ap.click('#tabbtn-system'); await ap.waitForSelector('#status', { state: 'visible' });
+      await ap.click('#stats .stat:first-child'); await ap.waitForSelector('#accounts', { state: 'visible' });
+      await ap.click('#tabbtn-reports'); await ap.waitForSelector('#tab-reports', { state: 'visible' });
+      await ap.reload({ waitUntil: 'domcontentloaded' });
+      await ap.waitForSelector('#tab-reports', { state: 'visible' });
+      assert.equal(await ap.isVisible('#accounts'), false);
+      await ap.click('#tabbtn-accounts'); await ap.waitForSelector('#accounts', { state: 'visible' });
+    });
+
+    await check('Admin: szűrő-gombok (számlálóval) és rendezés', async () => {
+      await ap.waitForSelector('#acctChips .chip');
+      await ap.click('#acctChips .chip:has-text("Legenda")');
+      assert.equal(await ap.$$eval('#acctList .acct', (e) => e.length), 1);
+      assert.match(await ap.textContent('#acctList'), /Kyrashi/);
+      assert.equal(await ap.getAttribute('#acctChips .chip:has-text("Legenda")', 'aria-pressed'), 'true');
+      await ap.click('#acctChips .chip:has-text("Mind")');
+      assert.equal(await ap.$$eval('#acctList .acct', (e) => e.length), 5);
+      await ap.selectOption('#acctSort', 'name');
+      const names = await ap.$$eval('#acctList .acct-name b', (e) => e.map((x) => x.textContent));
+      assert.deepEqual(names, [...names].sort((a, b) => a.localeCompare(b, 'hu')), 'név szerint rendezve');
+      await ap.selectOption('#acctSort', 'oldest');
+      assert.equal((await ap.$$eval('#acctList .acct-name b', (e) => e.map((x) => x.textContent)))[0], 'Ui Anna', 'a legrégebbi elöl');
+      await ap.selectOption('#acctSort', 'newest');
+      assert.equal((await ap.$$eval('#acctList .acct-name b', (e) => e.map((x) => x.textContent)))[0], 'Kyrashi', 'a legújabb elöl');
+      await ap.click('#acctChips .chip:has-text("Google")');
+      assert.match(await ap.textContent('#acctList'), /Nincs találat/);
+      await ap.click('#acctChips .chip:has-text("Mind")');
+    });
+
+    await check('Admin: törlés – a név begépeléséig nem enged, a Mégse nem töröl, helyes névvel (kis/nagybetűre nem érzékenyen) töröl, a belépés megszűnik', async () => {
+      await ap.fill('#acctFilter', 'ui.cili');
+      await ap.click('#acctList button:has-text("Törlés")');
+      await ap.waitForSelector('#askDialog[open]');
+      assert.equal(await ap.isDisabled('#askOk'), true);
+      await ap.fill('#askWord', 'Ui Cil'); assert.equal(await ap.isDisabled('#askOk'), true, 'részleges név nem elég');
+      await ap.click('#askCancel');
+      assert.equal(await ap.evaluate(() => document.getElementById('askDialog').open), false);
+      assert.equal(await ap.$$eval('#acctList .acct', (e) => e.length), 1, 'a Mégse nem töröl');
+      await ap.click('#acctList button:has-text("Törlés")');
+      await ap.waitForSelector('#askDialog[open]');
+      await ap.fill('#askWord', 'ui cili');
+      assert.equal(await ap.isDisabled('#askOk'), false);
+      await ap.click('#askOk');
+      await ap.waitForFunction(() => /1 fiók törölve/.test(document.getElementById('acctMsg').textContent));
+      await ap.waitForFunction(() => /4 regisztrált/.test(document.getElementById('acctSummary').textContent));
+      const r = await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: BASE }, body: JSON.stringify({ email: 'ui.cili@example.invalid', password: created['Ui Cili'] }) });
+      assert.equal(r.status, 401, 'a törölt fiókkal nem lehet belépni');
+      await ap.fill('#acctFilter', '');
+    });
+
+    await check('Admin: kijelölés, "mind kijelölése", tömeges új jelszó és tömeges törlés (TÖRLÖM szó kell)', async () => {
+      await ap.fill('#bulkText', 'Eldobhato Egy; egy@example.invalid\nEldobhato Ketto; ketto@example.invalid');
+      await ap.click('#bulkBtn');
+      await ap.waitForFunction(() => /2 fiók elkészült/.test(document.getElementById('bulkMsg').textContent));
+      await ap.fill('#acctFilter', 'eldobhato');
+      assert.equal(await ap.isDisabled('#selDelete'), true, 'kijelölés nélkül tiltva');
+      await ap.check('#selAll');
+      assert.match(await ap.textContent('#selCount'), /2 kijelölve/);
+      assert.equal(await ap.$$eval('#acctList .acct.picked', (e) => e.length), 2);
+      await ap.uncheck('#acctList .acct:first-child .pick');
+      assert.match(await ap.textContent('#selCount'), /1 kijelölve/);
+      await ap.check('#acctList .acct:first-child .pick');
+      await ap.click('#selTemp'); await ap.waitForSelector('#askDialog[open]'); await ap.click('#askOk');
+      await ap.waitForFunction(() => document.querySelectorAll('#acctResult .pw').length === 2);
+      await ap.click('#selDelete'); await ap.waitForSelector('#askDialog[open]');
+      assert.equal(await ap.isDisabled('#askOk'), true, 'a TÖRLÖM szóig tiltva');
+      await ap.fill('#askWord', 'TÖRLÖM'); await ap.click('#askOk');
+      await ap.waitForFunction(() => /2 fiók törölve/.test(document.getElementById('acctMsg').textContent));
+      assert.match(await ap.textContent('#acctList'), /Nincs találat/);
+      await ap.fill('#acctFilter', '');
+      await ap.waitForFunction(() => /4 regisztrált/.test(document.getElementById('acctSummary').textContent));
+    });
+
+    await check('Admin: kilépés gomb → vissza a belépéshez, F5 után sem marad bent', async () => {
+      await ap.click('#adminLogout');
+      await ap.waitForSelector('#login', { state: 'visible' });
+      assert.equal(await ap.isVisible('#panel'), false);
+      await ap.reload({ waitUntil: 'domcontentloaded' });
+      await ap.waitForSelector('#login', { state: 'visible' });
+      assert.equal(await ap.isVisible('#panel'), false);
+      await ap.fill('#token', TOKEN); await ap.click('#loginForm button[type=submit]');
+      await ap.waitForSelector('#accounts', { state: 'visible' });
+    });
+
     await check('Admin: nincs konzol-hiba (CSP, szkript)', async () => { assert.deepEqual(adminCtx.errors, []); });
+
+    await check('Admin mobilon (390×844): nincs vízszintes görgetés, a kártyák, a fülek és a sor-gombok elérhetők', async () => {
+      const m = await newPage({ width: 390, height: 844 });
+      await m.page.goto(BASE + '/admin', { waitUntil: 'domcontentloaded' });
+      await m.page.fill('#token', TOKEN); await m.page.click('#loginForm button[type=submit]');
+      await m.page.waitForSelector('#acctList .acct');
+      const info = await m.page.evaluate(() => {
+        const first = document.querySelector('#acctList .acct');
+        const buttons = [...first.querySelectorAll('.acct-actions button')].map((b) => { const r = b.getBoundingClientRect(); return { l: r.left, r: r.right, w: r.width, h: r.height }; });
+        return { scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth, buttons, stats: document.querySelectorAll('#stats .stat').length };
+      });
+      assert.ok(info.scrollW <= info.innerW + 1, 'nincs vízszintes görgetés: ' + JSON.stringify(info));
+      assert.ok(info.buttons.length >= 2 && info.buttons.every((b) => b.l >= 0 && b.r <= info.innerW && b.h >= 26), 'a sor-gombok elférnek: ' + JSON.stringify(info.buttons));
+      await m.page.click('#tabbtn-errors'); await m.page.waitForSelector('#tab-errors', { state: 'visible' });
+      assert.deepEqual(m.errors, []);
+      await m.context.close();
+    });
 
     // ======================= B) játékos: kötelező jelszócsere =======================
     const login = async (page, email, password) => {
@@ -233,7 +340,7 @@ async function startServer() {
     await check('Mobil (390×844 és 360×640): az ablak elfér, minden mező és a mentés gomb elérhető, nincs vízszintes görgetés', async () => {
       for (const vp of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
         const m = await newPage(vp);
-        await login(m.page, 'ui.cili@example.invalid', created['Ui Cili']);
+        await login(m.page, 'ui.dani@example.invalid', created['Ui Dani']);
         await m.page.waitForFunction(() => document.getElementById('authForce').open);
         const box = await m.page.evaluate(() => {
           const r = document.getElementById('authForce').getBoundingClientRect();

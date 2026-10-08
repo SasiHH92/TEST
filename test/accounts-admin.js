@@ -239,6 +239,56 @@ async function main() {
       assert.equal((await http('GET', '/api/friends/state', undefined, jar)).status, 200);
     });
 
+    // ---------- törlés ----------
+    await test('Törlés: token kell, az azonosító és a pontos felhasználónév kötelező, a fiók megmarad hibás kérésnél', async () => {
+      assert.equal((await admin('POST', '/accounts/delete', { id: 'x', confirmName: 'x' }, '')).status, 401);
+      const victim = (await admin('GET', '/accounts')).data.accounts.find((a) => a.email === 'tomeges5@example.invalid');
+      assert.ok(victim, 'van mit törölni');
+      assert.equal((await admin('POST', '/accounts/delete', {})).status, 400, 'azonosító nélkül');
+      assert.equal((await admin('POST', '/accounts/delete', { id: 'x'.repeat(80), confirmName: 'x' })).status, 400, 'túl hosszú azonosító');
+      assert.equal((await admin('POST', '/accounts/delete', { id: 'nincs-ilyen', confirmName: 'x' })).status, 404);
+      assert.equal((await admin('POST', '/accounts/delete', { id: victim.id })).status, 400, 'név nélkül');
+      const wrong = await admin('POST', '/accounts/delete', { id: victim.id, confirmName: 'Valaki Más' });
+      assert.equal(wrong.status, 400); assert.match(wrong.data.error, /felhasználónevet/);
+      assert.ok((await admin('GET', '/accounts')).data.accounts.some((a) => a.id === victim.id), 'a fiók megvan');
+    });
+
+    await test('Törlés: a fiók, a munkamenetei megszűnnek, belépni nem lehet, a név és az e-mail újra felhasználható', async () => {
+      const victim = (await admin('GET', '/accounts')).data.accounts.find((a) => a.email === 'tomeges6@example.invalid');
+      const jar = new Map();
+      const temp = (await admin('POST', '/accounts/temp-password', { id: victim.id })).data.temporaryPassword;
+      assert.equal((await login(victim.email, temp, jar)).status, 200);
+      assert.ok((await status(jar)).data.user, 'be van jelentkezve');
+      const r = await admin('POST', '/accounts/delete', { id: victim.id, confirmName: victim.username.toUpperCase() }); // a név kis/nagybetűre nem érzékeny
+      assert.equal(r.status, 200, r.text); assert.equal(r.data.username, victim.username);
+      assert.ok(!(await admin('GET', '/accounts')).data.accounts.some((a) => a.id === victim.id), 'eltűnt a listából');
+      assert.equal((await status(jar)).data.user, null, 'a munkamenet megszűnt');
+      assert.equal((await login(victim.email, temp, new Map())).status, 401, 'belépni nem lehet');
+      assert.equal((await admin('POST', '/accounts/delete', { id: victim.id, confirmName: victim.username })).status, 404, 'másodszor már nincs');
+      const again = await admin('POST', '/accounts', { username: victim.username, email: victim.email });
+      assert.equal(again.status, 201, 'a név és az e-mail újra használható: ' + again.text);
+    });
+
+    await test('Törlés: a másik fiók barátlistájából is kikerül, a legendás kártya újra odaadható', async () => {
+      const mk = async (username, email) => { const r = await admin('POST', '/accounts', { username, email }); const jar = new Map();
+        assert.equal((await login(email, r.data.temporaryPassword, jar)).status, 200);
+        const pw = 'Barati jelszo ' + username.length + '99!';
+        assert.equal((await http('POST', '/api/auth/change-password', { currentPassword: r.data.temporaryPassword, password: pw, confirmPassword: pw }, jar)).status, 200);
+        return jar; };
+      const jx = await mk('Barat Xenia', 'xenia@example.invalid'), jy = await mk('Barat Yvett', 'yvett@example.invalid');
+      assert.equal((await http('POST', '/api/friends/request', { username: 'Barat Yvett' }, jx)).status, 200);
+      const yId = (await admin('GET', '/accounts')).data.accounts.find((a) => a.email === 'yvett@example.invalid').id;
+      assert.equal((await http('POST', '/api/friends/accept', { userId: (await http('GET', '/api/friends/state', undefined, jy)).data.incoming[0].id }, jy)).status, 200);
+      assert.ok(JSON.stringify((await http('GET', '/api/friends/state', undefined, jx)).data).includes('Barat Yvett'), 'barátok voltak');
+      assert.equal((await admin('POST', '/accounts/delete', { id: yId, confirmName: 'Barat Yvett' })).status, 200);
+      assert.ok(!JSON.stringify((await http('GET', '/api/friends/state', undefined, jx)).data).includes('Barat Yvett'), 'a törölt fiók kikerült a barátlistából');
+      // a legendás fiók törlése után a legenda újra odaadható
+      const kyr = (await admin('GET', '/accounts')).data.accounts.find((a) => a.legend === 'Kyrashi');
+      assert.equal((await admin('POST', '/accounts/delete', { id: kyr.id, confirmName: 'Kyrashi' })).status, 200);
+      const back = await admin('POST', '/accounts', { email: 'kyrashi2@example.invalid', legend: 'Kyrashi' });
+      assert.equal(back.status, 201, back.text); assert.equal(back.data.legend, 'Kyrashi');
+    });
+
     // ---------- lejárt ideiglenes jelszó: a tárolt lejáratot átírjuk, és újraindítjuk a szervert ----------
     const dan = { username: 'Teszt Dani', email: 'dani@example.invalid' };
     let danPw = '';
