@@ -134,8 +134,8 @@ async function main() {
 
   await test('Vásárlás: elég pénz kell, egyszer vehető meg, levonódik az ár', async () => {
     const wallet = (await api.req('GET', '/api/shop/state', undefined, { jar: me })).data.wallet;
-    const cheap = CATALOG.targyak.filter((i) => i.ar <= wallet).sort((a, b) => a.ar - b.ar)[0];
-    const dear = CATALOG.targyak.find((i) => i.ar > wallet);
+    const cheap = CATALOG.targyak.filter((i) => !i.feloldas && i.ar <= wallet).sort((a, b) => a.ar - b.ar)[0];
+    const dear = CATALOG.targyak.find((i) => !i.feloldas && i.ar > wallet);
     assert.ok(cheap && dear, 'a teszt-pénztárcával van olcsó és drága tárgy is');
     assert.equal((await api.req('POST', '/api/shop/buy', { itemId: dear.id }, { jar: me })).status, 402, 'kevés pénz');
     const r = await api.req('POST', '/api/shop/buy', { itemId: cheap.id }, { jar: me });
@@ -149,7 +149,7 @@ async function main() {
 
   await test('Felvétel: csak megvásárolt tárgy, csak a saját helyére; levehető', async () => {
     const own = me.cheap;
-    const other = CATALOG.targyak.find((i) => i.id !== own.id && i.slot !== own.slot);
+    const other = CATALOG.targyak.find((i) => !i.feloldas && i.id !== own.id && i.slot !== own.slot);
     assert.equal((await api.req('POST', '/api/shop/equip', { slot: other.slot, itemId: other.id }, { jar: me })).status, 403, 'nem vetted meg');
     assert.equal((await api.req('POST', '/api/shop/equip', { slot: 'nincs_hely', itemId: own.id }, { jar: me })).status, 400, 'ismeretlen hely');
     const wrongSlot = CATALOG.slotok.find((s) => s.id !== own.slot).id;

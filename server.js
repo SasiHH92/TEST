@@ -94,6 +94,8 @@ const authApi = createAuth({
     for(const friendId of gone.friends) io.to('u:'+friendId).emit('friends_refresh',{});
   },
   reservedNames:()=>REGISTRY.map((r)=>r.nev),
+  // Discord-összekapcsolás: a bolt egyszer automatikusan felveszi a Discord-hátteret (ha a kártyahát még üres)
+  onProviderLinked:(user,provider)=>shopApi.onProviderLinked(user,provider),
   onRename:renameStats,
   // érvényes (név, kód) párra a legenda pontos nevét adja vissza, egyébként null
   claimLegend:(name,code)=>{

@@ -3254,6 +3254,16 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
   --bg-anim: cos-waves 5s linear infinite;
 }
 @keyframes cos-waves { from { background-position: 0 0, 0 0, 0 0; } to { background-position: 0 44px, 0 0, 0 0; } }
+/* Discord-háttér: a Discord-fiók összekapcsolásának jutalma (nem vásárolható). sötét Discord-kék (blurple) árnyalás, finom pontrács és egy lassan átfutó fénysáv; a szöveg az egész kártyán olvasható marad (kontraszt-teszt: test/discord-bg-ui.js). */
+.mug-card.cos-bg-discord, .poster.cos-bg-discord {
+  background:
+    linear-gradient(115deg, transparent 38%, rgba(190, 198, 255, 0.12) 50%, transparent 62%),
+    radial-gradient(circle at 11px 11px, rgba(255, 255, 255, 0.12) 1.3px, transparent 2px),
+    radial-gradient(120% 70% at 50% 0%, rgba(130, 145, 255, 0.24), transparent 62%), linear-gradient(180deg, #2f3896, #101340) !important;
+  background-size: 260% 100%, 22px 22px, auto, auto !important; background-repeat: no-repeat, repeat, no-repeat, no-repeat !important;
+  --bg-anim: cos-discord 6.5s ease-in-out infinite alternate;
+}
+@keyframes cos-discord { from { background-position: 100% 0, 0 0, 0 0, 0 0; } to { background-position: 0% 0, 0 0, 0 0, 0 0; } }
 @media (prefers-reduced-motion: reduce) {
   .mug-card.cos-bg-night, .mug-card.cos-bg-court, .mug-card.cos-bg-velvet, .mug-card.cos-bg-sea,
   .poster.cos-bg-night, .poster.cos-bg-court, .poster.cos-bg-velvet, .poster.cos-bg-sea { --bg-anim: none; }
@@ -3888,3 +3898,4 @@ body[data-screen="name"] .comfort-dock, body[data-screen="menu"] .comfort-dock, 
 .cm-flag { font-size: 11px; color: #ffb1b1; padding: 0 4px; white-space: nowrap; }
 .chat-msg.flagged .cm-text { box-shadow: inset 0 0 0 1px rgba(229, 72, 77, 0.55); }
 .chat-form input:disabled { opacity: 0.6; cursor: not-allowed; }
+.it-need.it-perk { color: #c3cbff; } /* nem figyelmeztetés: a Discord-összekapcsolás jutalmát jelzi */

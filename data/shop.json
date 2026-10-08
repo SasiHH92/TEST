@@ -27,6 +27,7 @@
     { "id": "bg_court", "slot": "bg", "nev": "Tárgyalóterem", "leiras": "Meleg, mahagóni árnyalatok.", "ar": 300, "ritkasag": "ritka" },
     { "id": "bg_velvet", "slot": "bg", "nev": "Bordó bársony", "leiras": "A bíró székének fényűző bársonya.", "ar": 350, "ritkasag": "ritka" },
     { "id": "bg_sea", "slot": "bg", "nev": "Mélykék", "leiras": "Hűvös, óceánkék kártyahát.", "ar": 250, "ritkasag": "közönséges" },
+    { "id": "bg_discord", "slot": "bg", "nev": "Discord-háttér", "leiras": "Discord-kék kártyahát mozgó fénysávval. Jutalom a Discord-fiók összekapcsolásáért: nem vásárolható és nem ajándékozható.", "ar": 0, "ritkasag": "ritka", "feloldas": "discord" },
 
     { "id": "name_gold", "slot": "nameFx", "nev": "Aranyozott név", "leiras": "A neved csillogó arany betűkkel.", "ar": 300, "ritkasag": "ritka" },
     { "id": "name_fire", "slot": "nameFx", "nev": "Tüzes név", "leiras": "Lángoló narancs-piros betűk.", "ar": 450, "ritkasag": "epikus" },

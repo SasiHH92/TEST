@@ -34,7 +34,9 @@
     "test:juror": "node test/juror-verdict.js",
     "test:rejoin": "node test/rejoin.js",
     "test:accounts": "node test/accounts-admin.js",
-    "test:accounts-ui": "node test/accounts-ui.js"
+    "test:accounts-ui": "node test/accounts-ui.js",
+    "test:discord": "node test/discord-bg.js",
+    "test:discord-ui": "node test/discord-bg-ui.js"
   },
   "engines": {
     "node": ">=18"

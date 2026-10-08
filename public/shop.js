@@ -150,6 +150,17 @@
     const closed = i.szezon && !i.szezon.aktiv;
     const closedBtn = '<button type="button" class="btn small" disabled title="Szezonon kívül nem kapható">⏳ NEM KAPHATÓ MOST</button>'; // (a szezon-felirat a kártyán / az előnézetben látszik)
     const need = i.ar - s.wallet;
+    // Feloldható tárgy (pl. Discord-háttér): nem vásárolható / ajándékozható; a fiók állapota adja, itt csak felvenni lehet.
+    if (i.feloldas) {
+      if (giftTo) return '<button type="button" class="btn small" disabled title="Ez a tárgy nem ajándékozható">🎁 NEM AJÁNDÉKOZHATÓ</button>';
+      if (s.owned.includes(i.id)) {
+        return s.equipped[i.slot] === i.id
+          ? '<button type="button" class="btn small ghost" data-unequip="' + i.slot + '">LEVESZEM</button>'
+          : '<button type="button" class="btn small" data-equip="' + i.id + '">FELVESZEM</button>';
+      }
+      return '<button type="button" class="btn small" data-unlock="' + escapeHtml(i.feloldas) + '">🔗 ÖSSZEKAPCSOLOM</button>' +
+        '<small class="it-need it-perk">A Discord-fiókod összekapcsolásával ingyen jár.</small>';
+    }
     // Ajándék-mód: a tárgyat a kiválasztott barátnak küldjük (a saját tárgyaidtól függetlenül), a küldő fizet.
     if (giftTo) {
       if (closed) return closedBtn;
@@ -195,7 +206,8 @@
       '<h3>' + escapeHtml(i.nev) + '</h3><p>' + escapeHtml(i.leiras) + '</p>' +
       (i.szezon ? '<p class="it-season">' + escapeHtml(seasonText(i.szezon)) + '</p>' : '') +
       (giftTo ? '<p class="gift-note">🎁 Ajándék neki: <b>' + escapeHtml(giftTo.username) + '</b></p>' : '') +
-      '<p class="pop-price">Ára: <b>' + fmt(i.ar) + ' 🍪</b> · nálad: <b>' + fmt(s.wallet) + ' 🍪</b></p>' +
+      (i.feloldas ? '<p class="pop-price">🔗 <b>Ingyen jár</b> a Discord-fiók összekapcsolásáért</p>'
+        : '<p class="pop-price">Ára: <b>' + fmt(i.ar) + ' 🍪</b> · nálad: <b>' + fmt(s.wallet) + ' 🍪</b></p>') +
       '<div class="it-act">' + actionHtml(i, s) + '</div>' + nav +
       '<p id="shopPopMsg" class="auth-form-message pop-msg" role="status" aria-live="polite"></p>' +
       '<button type="button" class="btn small ghost pop-close" data-pop-close="1">VISSZA A BOLTHOZ</button></div></div>';
@@ -326,6 +338,7 @@
       act('POST', '/gift', { friendId: giftTo.id, itemId: t.dataset.gift }, (d) => '🎁 Elküldted neki (' + (d.gift ? d.gift.to : to) + '): ' + (d.gift ? d.gift.item : (i ? i.nev : '')) + '!');
       return true;
     }
+    if (t.dataset.unlock) { close(); if (window.kbEditProfile) window.kbEditProfile(); return true; } // a FIÓKOM ablakban kapcsolható össze a Discord
     if (t.dataset.equip) { const i = itemById(t.dataset.equip); act('POST', '/equip', { slot: i.slot, itemId: i.id }, '✨ Felvéve: ' + i.nev); return true; }
     if (t.dataset.unequip) { act('POST', '/equip', { slot: t.dataset.unequip, itemId: null }, 'Levéve.'); return true; }
     return false;

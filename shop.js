@@ -4,7 +4,9 @@
 // KAMU BÍRÓSÁG – bolt és napi küldetések
 // A pénznem a pogácsa: napi küldetésekből jár. A pogácsát a bolt tárgyaira lehet költeni
 // (kártyakeret, háttér, névhatás, pecsét, felirat). A fiók pénztárcája és tárgyai a fiókfájlban
-// (és a külső adatbázisban) élnek: user.shop = { wallet, owned, equipped, claims, earned }.
+// (és a külső adatbázisban) élnek: user.shop = { wallet, owned, equipped, claims, earned, offered }.
+// Feloldható tárgy ("feloldas" a katalógusban, pl. a Discord-háttér): nem vásárolható és nem ajándékozható, a fiók ELLENŐRZÖTT állapota adja
+// (az összekapcsolt szolgáltatók a fiókban: user.providers). Ezek nem kerülnek a tárolt "owned" listába, így az összekapcsolással együtt járnak.
 // Végpontok (mind bejelentkezést kér): GET /state, POST /claim, /claim-bonus, /buy, /equip.
 // ============================================================
 
@@ -18,6 +20,10 @@ const ITEMS = new Map(CATALOG.targyak.map((i) => [i.id, i]));
 const SLOTS = new Set(CATALOG.slotok.map((s) => s.id));
 const SEASONS = new Map((CATALOG.szezonok || []).map((s) => [s.id, s]));
 const GIFTS_PER_DAY = 5; // egy játékos naponta legfeljebb ennyi ajándékot küldhet
+const UNLOCKS = { discord: (user) => !!(user && user.providers && user.providers.discord) };
+const UNLOCK_NAMES = { discord: 'a Discord-fiókod összekapcsolásával' };
+// A fiók állapota alapján most feloldott tárgyak azonosítói.
+const grantedIds = (user) => CATALOG.targyak.filter((i) => i.feloldas && UNLOCKS[i.feloldas] && UNLOCKS[i.feloldas](user)).map((i) => i.id);
 
 // Egy szezonális tárgy állapota a megadott napra ("ÉÉÉÉ-HH-NN"): kapható-e most, meddig / mikortól.
 // A szezon minden évben ismétlődik (tol/ig: "HH-NN"); az évhatáron átnyúló szezon (pl. 12-15 … 01-06) is jó.
@@ -45,10 +51,16 @@ function shopOf(user) {
   return {
     wallet: Number.isFinite(s.wallet) && s.wallet > 0 ? Math.floor(s.wallet) : 0,
     earned: Number.isFinite(s.earned) && s.earned > 0 ? Math.floor(s.earned) : 0,
-    owned: Array.isArray(s.owned) ? s.owned.filter((id) => ITEMS.has(id)) : [],
+    owned: [...new Set([...(Array.isArray(s.owned) ? s.owned.filter((id) => ITEMS.has(id)) : []), ...grantedIds(user)])],
     equipped: s.equipped && typeof s.equipped === 'object' ? s.equipped : {},
-    claims: s.claims && typeof s.claims === 'object' ? s.claims : {}
+    claims: s.claims && typeof s.claims === 'object' ? s.claims : {},
+    offered: Array.isArray(s.offered) ? s.offered.filter((id) => ITEMS.has(id)) : [] // a feloldott tárgyak, amiket már egyszer automatikusan felvettünk
   };
+}
+// Mentés előtt: a feloldott tárgyak nem kerülnek a tárolt tulajdon-listába (a fiók állapota adja őket, nem a bolt).
+function storable(user, s) {
+  const granted = new Set(grantedIds(user));
+  return { ...s, owned: s.owned.filter((id) => !granted.has(id)) };
 }
 
 // A felvett, tényleg megvásárolt tárgyak (slot -> azonosító): ez kerül a többi játékos elé is.
@@ -126,7 +138,7 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
       const date = today();
       for (const d of Object.keys(s.claims)) if (d < addDays(date, -10)) delete s.claims[d];
       edit(s, date);
-      u.shop = s;
+      u.shop = storable(u, s);
       return u;
     });
   }
@@ -170,6 +182,7 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
     const user = requireUser(req); throttle(user);
     const item = ITEMS.get(String(req.body.itemId || ''));
     if (!item) fail(404, 'Ilyen tárgy nincs a boltban.');
+    if (item.feloldas) fail(403, 'Ez a tárgy nem vásárolható: ' + (UNLOCK_NAMES[item.feloldas] || 'különleges módon') + ' kapod meg.');
     assertAvailable(item);
     const updated = change(user, (s) => {
       if (s.owned.includes(item.id)) fail(409, 'Ez a tárgy már a tiéd.');
@@ -193,6 +206,7 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
     const user = requireUser(req); throttle(user);
     const item = ITEMS.get(String(req.body.itemId || ''));
     if (!item) fail(404, 'Ilyen tárgy nincs a boltban.');
+    if (item.feloldas) fail(403, 'Ez a tárgy nem ajándékozható: ' + (UNLOCK_NAMES[item.feloldas] || 'különleges módon') + ' lehet megkapni.');
     const friendId = typeof req.body.friendId === 'string' ? req.body.friendId.slice(0, 64) : '';
     if (!friendId || friendId === user.id) fail(400, 'Magadnak nem ajándékozhatsz, válassz egy barátot.');
     if (!areFriends(user.id, friendId)) fail(403, 'Ajándékot csak a barátaidnak küldhetsz.');
@@ -209,7 +223,7 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
       if (mine.wallet < item.ar) fail(402, 'Nincs elég pogácsád ehhez (' + item.ar + ' kell, ' + mine.wallet + ' van).');
       mine.wallet -= item.ar;
       theirs.owned.push(item.id);
-      me.shop = mine; other.shop = theirs;
+      me.shop = storable(me, mine); other.shop = storable(other, theirs);
       recipient = { id: other.id, username: other.username };
       return me;
     });
@@ -243,7 +257,21 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
     res.status(503).json({ error: 'A bolt most nem elérhető. Próbáld újra később.' });
   });
 
-  return { router, cosmeticsFor };
+  // Egy szolgáltatót épp most kapcsolt össze a fiókkal (vagy belépett vele): a hozzá tartozó feloldott tárgyat EGYSZER automatikusan felveszi,
+  // ha az adott hely (pl. kártyahát) még üres. Utána a játékos szabadon levehet / cserélhet, nem vesszük vissza. A hívó a mentés (commit) belsejéből hívja.
+  function onProviderLinked(user, provider) {
+    const s = shopOf(user);
+    let changed = false;
+    for (const item of CATALOG.targyak) {
+      if (item.feloldas !== provider || s.offered.includes(item.id) || !s.owned.includes(item.id)) continue;
+      s.offered.push(item.id); changed = true;
+      if (!s.equipped[item.slot]) s.equipped[item.slot] = item.id;
+    }
+    if (changed) user.shop = storable(user, s);
+    return changed;
+  }
+
+  return { router, cosmeticsFor, onProviderLinked };
 }
 
 module.exports = { createShop, cosmeticsFor, shopOf, seasonInfo, CATALOG, ITEMS, GIFTS_PER_DAY };

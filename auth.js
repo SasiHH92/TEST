@@ -121,6 +121,9 @@ function createAuth(options={}) {
   try {store=new AccountStore(file,options.persist);} catch(error) {
     storageError=error;console.error('A fióktár nem olvasható:',error.message);
   }
+  // Egy külső szolgáltató (Google / Discord) hozzáadódott a fiókhoz vagy belépett vele: a bolt feloldhat hozzá tárgyat (pl. Discord-háttér).
+  // A hívás a mentés belsejében történik, a hiba nem állíthatja meg a belépést.
+  const perk=(user,provider)=>{try {options.onProviderLinked?.(user,provider);} catch(_) { /* a jutalom hibája nem számít */ }};
   let origin='';
   if(env.AUTH_BASE_URL) {
     try {
@@ -460,10 +463,15 @@ function createAuth(options={}) {
         if(existing && existing.id!==state.userId) return bounce('provider_used');
         user=store.commit(data=>{
           const user=data.users.find(u=>u.id===state.userId);
-          user.providers[provider]=providerId;return user;
+          user.providers[provider]=providerId;perk(user,provider);return user;
         });
-      } else if(existing) user=existing;
-      else {
+      } else if(existing) {
+        user=options.onProviderLinked?store.commit(data=>{
+          const found=data.users.find(u=>u.id===existing.id);
+          if(found) perk(found,provider);
+          return found||existing;
+        }):existing;
+      } else {
         // Matching an email alone never links a provider to an existing password account.
         if(store.state.users.some(u=>u.email===address)) return bounce('email_used');
         const raw=String(profile.global_name||profile.name||profile.username||'Játékos')
@@ -473,6 +481,7 @@ function createAuth(options={}) {
           while(data.users.some(u=>normalize(u.username)===normalize(name)) || reserved(name)) name=raw.slice(0,14)+'-'+suffix++;
           const user={id:crypto.randomUUID(),username:name,email:address,password:null,
             providers:{[provider]:providerId},createdAt:now()};
+          perk(user,provider);
           data.users.push(user);return user;
         });
       }
