@@ -39,7 +39,7 @@ A stinger vékony, nem „major”: nagy overlay alatt kimarad.
 
 ## Videó-háttér a belépőoldalon
 
-Lásd `assets/video/README.md`. Röviden: `login-loop.webm` / `.mp4` (+ `-mobile`, `login-poster.webp`) bekerül a mappába → a belépőoldal automatikusan használja.
+Lásd `assets/video/README.md`. A végleges `assets/video/login-loop.mp4` (2560×1440, 8 s) a projektben van, a belépőoldal automatikusan használja (`/api/media` listázza); a statikus háttérkép a poster és a tartalék. Telefonon mobil-fájl nélkül a statikus háttér marad. További fájlok (`.webm`, `-mobile`, `login-poster.webp`) opcionálisak.
 Visszaesik a statikus háttérre: nincs fájl, csökkentett mozgás, adattakarékos/2G, keskeny képernyő mobil-fájl nélkül, hiba, 6 mp-nél lassabb indulás, rejtett lap.
 A videó csak a belépőoldalon él; elhagyásakor `remove()` (nincs szivárgás).
 
@@ -74,5 +74,5 @@ Minden **információ** (szerep, ítélet, pontok, győztes) ugyanúgy látszik.
 ## Ismert korlátok
 
 * **VISSZA A LOBBYBA:** a szervernek nincs „vissza a lobbiba” eseménye (a `new_game` azonnal új játékot indít, csak a házigazda). A kliens ezt nem hamisítja; a játék végén ÚJ TÁRGYALÁS (házigazda) és KILÉPÉS van.
-* Valódi videó- és hangfájl nincs a projektben: a mechanizmus kész és tesztelt (a tesztben előállított WebM-mel), de nem próbáltam valódi gyártású anyaggal.
+* Hangfájl nincs a projektben (minden hang szintetizált). A belépő videó valódi (`login-loop.mp4`), a lejátszását asztali felbontásokon teszt ellenőrzi; mobilra nincs videó (mobil-fájl hiányában statikus háttér).
 * Fekvő telefon (844×390): a felső sáv és a nagy overlay-címek szoros helyen vannak; ott a felfedés/győztes cím a sávhoz közel ül (nem takarja az információt).

@@ -23,6 +23,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const crypto = require('crypto');
 
 let chromium;
 try { ({ chromium } = require('playwright-core')); } catch (_) { /* hiányzik: lent SKIP */ }
@@ -188,7 +189,7 @@ async function partMediaApi() {
       assert.ok(new RegExp('\\b' + cat + ': \\[').test(media), 'kategória hiányzik a media.js-ből: ' + cat);
     }
     const video = fs.readFileSync(path.join(ROOT, 'assets/video/README.md'), 'utf8');
-    for (const f of ['login-loop.webm', 'login-loop.mp4', 'login-loop-mobile', 'login-poster.webp', 'ASSET NEEDED']) assert.ok(video.includes(f), 'assets/video/README.md: ' + f);
+    for (const f of ['login-loop.webm', 'login-loop.mp4', 'login-loop-mobile', 'login-poster.webp', 'poster', 'tartalék']) assert.ok(video.includes(f), 'assets/video/README.md: ' + f);
   });
 }
 
@@ -217,10 +218,10 @@ async function partLoginVideo(browser, servers) {
   const goAuth = async (page, base) => { await page.goto(base + '/', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#authGuest'); await page.evaluate(() => window.kbMedia.ready); await page.waitForTimeout(250); };
   const videoReq = (reqs) => reqs.filter((u) => /\/assets\/video\//.test(u)).length;
 
-  await check('B1 nincs videó-fájl: nincs <video>, nincs kérés, a statikus háttér marad', async () => {
+  await check('B1 nincs videó-fájl (üres médiamappa): nincs <video>, nincs kérés, a statikus háttér marad', async () => {
     const c = await newPage(browser, { width: 1366, height: 768 });
     try {
-      await goAuth(c.page, BASE);
+      await goAuth(c.page, BASE3);
       assert.equal(await c.page.locator('video.auth-video').count(), 0);
       assert.equal(videoReq(c.requests), 0, 'felesleges videó-kérés');
       assert.equal(await c.page.evaluate(() => window.kbMedia.state().video.length), 0);
@@ -258,6 +259,78 @@ async function partLoginVideo(browser, servers) {
       assert.equal(videoReq(c.requests), 0, 'a telefon nem tölthet nagy videót');
     } finally { await c.context.close(); }
   });
+
+  // ---- a projektbe tett valódi videó (assets/video/login-loop.mp4) ----
+  const REAL = path.join(ROOT, 'assets/video/login-loop.mp4');
+  if (fs.existsSync(REAL)) {
+    await check('B6a a valódi login-loop.mp4: a /api/media felismeri, a szerver bájtra azonosan és Range-kéréssel is kiszolgálja', async () => {
+      const local = fs.readFileSync(REAL);
+      const media = await (await fetch(BASE + '/api/media')).json();
+      assert.equal(media.video['login-loop.mp4'], local.length, '/api/media: a fájl és a mérete');
+      const url = BASE + '/assets/video/login-loop.mp4?v=' + media.v;
+      const part = await fetch(url, { headers: { Range: 'bytes=0-31' } });
+      assert.equal(part.status, 206, 'Range-kérés (a böngésző így kéri a videót)');
+      assert.ok(/video\/mp4/.test(part.headers.get('content-type') || ''), 'content-type: ' + part.headers.get('content-type'));
+      assert.equal(part.headers.get('accept-ranges'), 'bytes');
+      assert.equal(Buffer.from(await part.arrayBuffer()).toString('latin1', 4, 8), 'ftyp', 'MP4 fejléc');
+      const full = Buffer.from(await (await fetch(url)).arrayBuffer());
+      assert.equal(crypto.createHash('sha256').update(full).digest('hex'), crypto.createHash('sha256').update(local).digest('hex'), 'a kiszolgált fájl bájtra azonos');
+      assert.ok(/max-age=\d+/.test((await fetch(url, { method: 'HEAD' })).headers.get('cache-control') || ''), 'gyorsítótárazható (?v= verzióval)');
+    });
+    for (const [w, h] of [[1920, 1080], [1366, 768]]) {
+      await check('B6b valódi videó ' + w + '×' + h + ': autoplay + muted + loop + playsinline fut, a teljes hátteret kitölti (object-fit: cover), a statikus kép a poster / tartalék', async () => {
+        const c = await newPage(browser, { width: w, height: h });
+        try {
+          await c.page.addInitScript(() => { document.addEventListener('kb:login-video', (e) => { if (e.detail === 'playing' && !window.__vidAt) window.__vidAt = performance.now(); }); });
+          await goAuth(c.page, BASE);
+          const can = await c.page.evaluate(() => document.createElement('video').canPlayType('video/mp4; codecs="avc1.640032"'));
+          if (!can) { skip('B6b ' + w + '×' + h, 'ez a böngésző nem játszik le H.264-et'); return; }
+          await c.page.waitForFunction(() => window.kbMedia.loginVideoActive(), null, { timeout: 9000 });
+          const startMs = Math.round(await c.page.evaluate(() => window.__vidAt || -1));
+          assert.ok(startMs > 0, 'a "playing" esemény időbélyege');
+          const info = await c.page.evaluate(async () => {
+            const v = document.querySelector('video.auth-video'), cs = getComputedStyle(v), r = v.getBoundingClientRect(), bg = document.querySelector('.auth-background');
+            const t1 = v.currentTime; await new Promise((res) => setTimeout(res, 800));
+            return { muted: v.muted, loop: v.loop, autoplay: v.autoplay, inline: v.playsInline, fit: cs.objectFit, paused: v.paused, advanced: v.currentTime - t1, vw: v.videoWidth, vh: v.videoHeight, dur: v.duration,
+              type: [...v.querySelectorAll('source')].map((x) => x.type), src: v.currentSrc, poster: v.getAttribute('poster'), still: bg ? bg.getAttribute('src') : '', stillOk: !!bg && bg.complete && bg.naturalWidth > 0,
+              rect: { l: r.left, t: r.top, r: r.right, b: r.bottom }, win: { w: innerWidth, h: innerHeight }, on: document.documentElement.classList.contains('auth-video-on'), scrollW: document.documentElement.scrollWidth };
+          });
+          assert.deepEqual({ muted: info.muted, loop: info.loop, autoplay: info.autoplay, inline: info.inline, fit: info.fit, paused: info.paused, on: info.on }, { muted: true, loop: true, autoplay: true, inline: true, fit: 'cover', paused: false, on: true });
+          assert.ok(info.advanced > 0.3, 'a videó halad (currentTime): ' + info.advanced.toFixed(2));
+          assert.ok(info.vw >= 1920 && info.vh >= 1080, 'a forrás legalább 2K: ' + info.vw + '×' + info.vh);
+          assert.ok(info.dur > 3 && info.dur < 30, 'hurok-hossz: ' + info.dur);
+          assert.deepEqual(info.type, ['video/mp4']);
+          assert.ok(/\/assets\/video\/login-loop\.mp4/.test(info.src), info.src);
+          assert.ok(info.rect.l <= 0 && info.rect.t <= 0 && info.rect.r >= info.win.w && info.rect.b >= info.win.h, 'a videó a teljes viewportot lefedi: ' + JSON.stringify(info.rect) + ' / ' + JSON.stringify(info.win));
+          assert.equal(info.poster, info.still, 'poster = a statikus háttérkép'); assert.ok(info.stillOk, 'a statikus háttérkép betöltött (tartalék)');
+          assert.ok(info.scrollW <= info.win.w + 1, 'nincs vízszintes görgetés');
+          assert.ok(startMs < 6000, 'a videó ' + startMs + ' ms alatt indult');
+          console.log('  (' + w + '×' + h + ': indulás ' + startMs + ' ms, forrás ' + info.vw + '×' + info.vh + ', ' + info.dur + ' s)');
+          await shot(c.page, 'login_real_' + w);
+          assert.deepEqual(c.errors, []);
+        } finally { await c.context.close(); }
+      });
+    }
+    await check('B6c telefonon (≤700 px) mobil-fájl nélkül a nagy videó nem töltődik: statikus háttér, nincs videó-kérés', async () => {
+      const c = await newPage(browser, { width: 390, height: 844 });
+      try {
+        await goAuth(c.page, BASE);
+        assert.equal(await c.page.locator('video.auth-video').count(), 0);
+        assert.equal(videoReq(c.requests), 0, 'a telefon nem tölthet 2K videót');
+        assert.equal(await c.page.evaluate(() => { const bg = document.querySelector('.auth-background'); return !!bg && bg.complete && bg.naturalWidth > 0; }), true, 'statikus háttér');
+      } finally { await c.context.close(); }
+    });
+    await check('B6d a valódi videó sem tölt be (megszakított kérés): a statikus háttérkép marad, a login nem sérül', async () => {
+      const c = await newPage(browser, { width: 1366, height: 768 });
+      try {
+        await c.page.route('**/assets/video/login-loop.mp4*', (route) => route.abort());
+        await goAuth(c.page, BASE);
+        await c.page.waitForFunction(() => document.documentElement.classList.contains('auth-video-off'), null, { timeout: 8000 });
+        const st = await c.page.evaluate(() => { const bg = document.querySelector('.auth-background'); return { video: document.querySelectorAll('video.auth-video').length, still: !!bg && bg.complete && bg.naturalWidth > 0 && getComputedStyle(bg).display !== 'none', form: !!document.querySelector('#authGuest') }; });
+        assert.deepEqual(st, { video: 0, still: true, form: true });
+      } finally { await c.context.close(); }
+    });
+  } else skip('B6 valódi login-loop.mp4', 'a fájl nincs a projektben (assets/video/login-loop.mp4)');
 
   const b64 = await recordWebm(browser).catch(() => '');
   if (!b64) { skip('B5 elérhető videó lejátszása', 'a böngésző nem tud WebM-et rögzíteni (MediaRecorder) – valódi videó-asset nincs, a teszt-videót is így állítjuk elő'); return; }
@@ -835,6 +908,8 @@ async function partResponsive(browser) {
     const vdir = path.join(tmp, 'v2'); fs.mkdirSync(vdir, { recursive: true });
     fs.writeFileSync(path.join(vdir, 'login-loop.webm'), 'not-a-video');
     servers.push(await startServer(PORT2, { KB_VIDEO_DIR: vdir }));
+    const emptyDir = path.join(tmp, 'v-empty'); fs.mkdirSync(emptyDir, { recursive: true });
+    servers.push(await startServer(PORT3, { KB_VIDEO_DIR: emptyDir })); // nincs videó-fájl (a projektben már van valódi: assets/video/login-loop.mp4)
     await partLoginVideo(browser, servers);
     await partMain(browser);
     await partReduced(browser);

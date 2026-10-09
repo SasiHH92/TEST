@@ -1,6 +1,6 @@
 # Bejelentkező-oldali videó-háttér (opcionális)
 
-A belépőoldal (login / regisztráció) háttere most a **statikus** `assets/terem-hatter.webp`. Ha ide videót teszel, a játék **automatikusan** ezt használja háttérnek – kód nem kell hozzá.
+**Jelenlegi állapot:** a belépőoldal háttere a végleges **`login-loop.mp4`** (2560×1440, H.264 High, 8 s-os hurok); a statikus `assets/terem-hatter.webp` a **poster** (amíg a videó tölt) és a **tartalék** (ha a videó nem tölthető be / nem játszható le). Korábban a belépőoldal háttere kizárólag a **statikus** `assets/terem-hatter.webp` volt. Ha ide videót teszel, a játék **automatikusan** ezt használja háttérnek – kód nem kell hozzá.
 A bejelentkező űrlap (HTML/CSS) **nincs beégetve a videóba**; a videó fölött finom, filmes vignetta + sötétítés van, hogy az űrlap mindig olvasható marad.
 
 ## Fájlnevek
@@ -25,8 +25,13 @@ A fájlok neve kisbetűs, ékezet és szóköz nélkül. A `webm` a böngészőn
 
 A videó `autoplay muted loop playsinline`, `preload="metadata"`, `object-fit: cover`; a betöltés **nem blokkolja** az oldalt (a `/api/media` válasza után, a belépőoldalon jön létre).
 
-## Mi hiányzik még?
+## Állapot és ami még hiányzik
 
-**ASSET NEEDED:** `login-loop.webm` + `login-loop.mp4` (+ `login-loop-mobile.*`, `login-poster.webp`) – 16:9, 6–12 mp-es hurok, a magyar tárgyalóterem lassú, filmes kamera-mozgással
-(napsugarak a bordó függönyökön, lebegő por, a bírói pulpitus; karakter nélkül vagy a meglévő karakterekkel), sötét mahagóni / bordó / arany színvilág, **UI nélkül**.
-Jelenleg **nincs** videó-fájl: a mechanizmus kész és tesztelt (`npm run test:cinema`), de valódi videóval még nem próbáltam (nincs asset).
+**Kész:** `login-loop.mp4` (a megadott végleges anyag, bájtra azonosan; 4,56 MB, 2560×1440, 8,00 s, H.264 / avc1, van benne hangsáv – a `muted` miatt nem szól).
+A játék `/api/media` felismeri, a login oldalon `autoplay muted loop playsinline` módban fut, `object-fit: cover` a teljes hátteret kitölti; a Render a repóból építi, így a fájl a deployban is megvan (`npm run test:cinema` B6 ellenőrzi; élesben a push után külön).
+
+**Opcionális / még nincs** (nem blokkoló):
+* `login-loop-mobile.webm` / `.mp4` (720×1280 vagy 960×540, ≤ 1,5 MB): **amíg nincs, telefonon (≤ 700 px) a statikus háttér marad** – a 2K videót mobilon szándékosan nem töltjük.
+* `login-loop.webm` (VP9 / AV1): kisebb fájl, a böngésző ezt kínálja előbb; az mp4 nélküle is minden böngészőben megy.
+* `login-poster.webp` (az első kocka, 1920×1080): nélküle a meglévő háttérkép a poster.
+* Javaslat: az mp4 **nem „faststart”** (a `moov` a fájl végén van) – ez a lokális próbán nem okozott késést (~0,5–1 s az induláshoz), de lassú hálózaton a `+faststart` remux (`ffmpeg -i in.mp4 -c copy -movflags +faststart out.mp4`) gyorsabb indulást adna. Nem változtattam a megadott fájlon.
