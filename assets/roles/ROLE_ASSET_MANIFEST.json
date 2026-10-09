@@ -1,5 +1,5 @@
 {
-  "status": "TEMPORARY_PLACEHOLDER_ROLE_ASSETS",
+  "status": "PARTIAL_REAL_ROLE_ASSETS",
   "count": 250,
   "avatars": 50,
   "roles_per_avatar": 5,
@@ -10,5 +10,112 @@
     "witness",
     "juror"
   ],
-  "warning": "These 250 files intentionally reuse the original avatar artwork. They exist only to wire and test the gameplay integration. Replace them later with identity-preserving role-specific artwork; do not replace them with SVG characters."
+  "warning": "The listed \"real\" files are final role artwork (OpenArt, chroma-keyed, head-normalized). All other avatar_NN_<role>.webp files intentionally reuse the original avatar artwork: they keep the 50 x 5 file contract alive but are NOT served as role sprites (the game falls back to the avatar portrait + role badge). Replace them with real role artwork, then add them to \"real\". Never replace them with SVG characters.",
+  "real_count": 72,
+  "placeholder_count": 178,
+  "version": "06875f28",
+  "real": {
+    "av01": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av02": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av03": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av04": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av05": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av06": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av07": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av25": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness"
+    ],
+    "av22": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av21": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av20": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness"
+    ],
+    "av11": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av10": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av09": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness",
+      "juror"
+    ],
+    "av29": [
+      "judge",
+      "prosecutor",
+      "defendant",
+      "witness"
+    ]
+  }
 }

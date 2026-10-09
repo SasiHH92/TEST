@@ -371,18 +371,42 @@ function characterFigure(role, pid, jurorIndex=0) {
   const base = kind === 'sprite' ? window.kbAvatarRoles.spriteFor(p.avatar, role)
     : hasAv ? avatarSrc(p.avatar) : (role === 'juror' ? '/assets/eskudt' + (jurorIndex % 3 + 1) + '.png' : ROLE_IMG[role]);
   const costume = kind === 'portrait' && window.kbAvatarRoles ? window.kbAvatarRoles.costumeHtml(role) : '';
-  return '<div class="st-fig"><div class="st-art' + (kind === 'portrait' ? ' av-figure' : kind === 'sprite' ? ' role-sprite' : '') + '"><img class="st-base" src="' + base + '" alt="' + roleLabel(role) + '">' + costume +
+  return '<div class="st-fig"><div class="st-art' + (kind === 'portrait' ? ' av-figure' : kind === 'sprite' ? ' role-sprite' : '') + '"><img class="st-base" src="' + base + '" alt="' + roleLabel(role) + '" decoding="async"' + (kind === 'sprite' ? ' data-sprite="' + p.avatar + ':' + role + '"' : '') + '>' + costume +
     '<div class="st-fallback"><span>' + (p ? avatarEmoji(p.avatar) : '⚖️') + '</span><small>' + escapeHtml(p?.name || roleLabel(role)) + '</small></div></div></div>';
 }
 
+// A szerep-kép (sprite) addig rejtve van, amíg be nem töltődött (nincs villanás, nincs törött kép); utána lép be a belépő-animációval (court.css).
+// Ha a kép nem tölthető be, a szerep-kép kikerül a készletből (kbAvatarRoles.markMissing), és a következő rajzoláskor az eredeti avatár portréja + szerep-jelvény áll a helyén.
+function figureLoaded(slot,base) {
+  const loaded=!!base.naturalWidth;
+  slot.classList.toggle('asset-missing',!loaded);
+  const art=base.closest('.st-art');
+  if(art&&loaded) art.classList.add('sprite-ready');
+}
+function figureFailed(slot,base) {
+  figureLoaded(slot,base);
+  const key=base.dataset.sprite;
+  if(!key||!window.kbAvatarRoles) return;
+  const [avatar,role]=key.split(':');
+  if(window.kbAvatarRoles.markMissing(avatar,role)) { delete $('#stage').dataset.key; renderStage(); }
+}
 function bindCharacterFallback(slot) {
   const base=slot.querySelector('.st-base');
   if (!base || base.dataset.bound) return;
   base.dataset.bound='1';
-  const update=()=>slot.classList.toggle('asset-missing',!base.naturalWidth);
-  base.addEventListener('load',update,{once:true});
-  base.addEventListener('error',update,{once:true});
-  if(base.complete) update();
+  base.addEventListener('load',()=>figureLoaded(slot,base),{once:true});
+  base.addEventListener('error',()=>figureFailed(slot,base),{once:true});
+  if(base.complete) { if(base.naturalWidth) figureLoaded(slot,base); else if(base.getAttribute('src')) figureFailed(slot,base); }
+}
+// A (már megkötött) bírói kép cseréje: a régi kép rejtve, az új betöltés után lép be.
+function setFigureSrc(slot,base,art,src,spriteKey) {
+  if(base.getAttribute('src')===src) return;
+  if(art) art.classList.remove('sprite-ready');
+  base.dataset.sprite=spriteKey||'';
+  base.onload=()=>figureLoaded(slot,base);
+  base.onerror=()=>figureFailed(slot,base);
+  base.setAttribute('src',src);
+  if(base.complete&&base.naturalWidth) figureLoaded(slot,base);
 }
 
 // Karakteranimációs rendszer
@@ -712,6 +736,10 @@ const STAGE_POS = SCENE.pos;
 const JUROR_X = SCENE.jurorX;
 const ROOM_SIZE = {width:SCENE.width,height:SCENE.height-SCENE.cropTop}; // a látható (levágott) terem
 const ROOM_FURNITURE = SCENE.furniture;
+// A szerep-képek (3:4, derékig látszó mellszobrok) nagyobbak a régi, teljes alakos figuráknál: a hátsó sor (esküdtek) elhelyezéséhez a tanú / az esküdtek tényleges
+// nagyítását ismerni kell (1 = régi figura / portré). A renderStage tölti fel, mielőtt a scenePosition-t hívná.
+const SCENE_SCALES = { witness: 1, jurors: [] };
+const layoutMode = (g) => (g.mobile ? 'mobile' : g.width < 1180 ? 'narrow' : 'desktop'); // a szerep-képek elrendezés-táblája (avatar-roles.js)
 let lastSceneRoles = null;
 let sceneLayoutRaf = 0;
 function sceneGeometry() {
@@ -749,9 +777,18 @@ function scenePosition(role,index,g) {
     // Hátsó sor: az esküdtek a tanú feje fölött állnak (balra sorakozva), így sosem esnek a védő/tanú mögé.
     // (Széles képernyőn a háttér vágása miatt a régi, a szélességhez viszonyított hely ütközött velük.)
     const w=scenePosition('witness',0,g);
-    const jh=g.height*p.h/100, jw=jh*2/3;
-    x=Math.max(margin,Math.min(g.usable-margin,w.x/100*g.width-index*(jw+10)));
-    y=g.height*(1-(w.b+w.h)/100)-6;
+    const ws=SCENE_SCALES.witness, js=SCENE_SCALES.jurors[index]||1;
+    if(ws>1||js>1) {
+      // Mellszobor-méretű képek: a tanú bal oldalán, a tanú magasságának felénél állnak (a bútor / a tanú mögött, kissé egymásba érve), nem a fején.
+      const wh=g.height*w.h*ws/100, ww=wh*(ws>1?3/4:2/3);
+      const jh=g.height*p.h*js/100, jw=jh*(js>1?3/4:2/3);
+      x=Math.max(margin,Math.min(g.usable-margin,w.x/100*g.width-ww/2-jw*.42-index*jw*.72));
+      y=g.height*(1-w.b/100)-wh*.5;
+    } else {
+      const jh=g.height*p.h/100, jw=jh*2/3;
+      x=Math.max(margin,Math.min(g.usable-margin,w.x/100*g.width-index*(jw+10)));
+      y=g.height*(1-(w.b+w.h)/100)-6;
+    }
     plate=y+5;
   } else if(role==='juror') {
     plate=y+5;
@@ -2104,6 +2141,8 @@ function renderStage() {
     entries.push({ role: 'juror', pid: p.id, ji: i });
   });
   const juryMore = Math.max(0, jurors.length - juryPositions.length);
+  SCENE_SCALES.witness = scene.witnessId && figureKind(scene.witnessId, 'witness') === 'sprite' ? window.kbAvatarRoles.layoutFor(playerById(scene.witnessId).avatar, 'witness', layoutMode(g)).scale : 1;
+  SCENE_SCALES.jurors = jurors.slice(0, juryPositions.length).map((p) => (figureKind(p.id, 'juror') === 'sprite' ? window.kbAvatarRoles.layoutFor(p.avatar, 'juror', layoutMode(g)).scale : 1));
 
   const key = entries.map((e) => e.role + ':' + e.pid + ':' + playerById(e.pid)?.name + ':' + playerById(e.pid)?.avatar + ':' + (playerById(e.pid)?.profile?.cosm?.frame || '') + (playerById(e.pid)?.profile?.cosm?.nameFx || '')).join('|') +
     '#' + mobile + '+' + juryMore + '~' + (window.kbAvatarRoles ? window.kbAvatarRoles.count() : 0);
@@ -2111,8 +2150,11 @@ function renderStage() {
     stage.dataset.key = key;
     let html = entries.map((e) => {
       const pos=scenePosition(e.role,e.ji||0,g);
-      const avSlot=figureKind(e.pid,e.role)==='portrait'; // a teljes alakos szerep-kép a fix figurák méretét kapja
-      return '<div class="stage-slot'+(avSlot?' av-slot':'')+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'" style="--x:'+pos.x+'%;--b:'+pos.b+'%;--h:'+avH(pos.h,avSlot,e.role)+'%;--z:'+pos.z+';--glow:'+ROLE_COLOR[e.role]+'">'+characterFigure(e.role,e.pid,e.ji||0)+'</div>';
+      const kind=figureKind(e.pid,e.role), avSlot=kind==='portrait', sprite=kind==='sprite';
+      // szerep-kép (átlátszó, derékig látszó karakter): a slot magassága a jelenet-profil × a szerep elrendezése (public/avatar-roles.js ROLE_LAYOUT / AVATAR_ROLE_ADJUSTMENTS)
+      const avId=playerById(e.pid)?.avatar||'', lay=sprite?window.kbAvatarRoles.layoutFor(avId,e.role,layoutMode(g)):null;
+      const h=sprite?pos.h*lay.scale:avH(pos.h,avSlot,e.role);
+      return '<div class="stage-slot'+(avSlot?' av-slot':'')+(sprite?' sprite-slot':'')+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'" data-av="'+escapeHtml(avId)+'"'+(sprite&&e.role==='juror'?' title="ESKÜDT – '+escapeHtml(playerById(e.pid)?.name||'')+'"':'')+' style="--x:'+pos.x+'%;--b:'+pos.b+'%;--h:'+h+'%;--z:'+(pos.z+(lay?lay.z:0))+';--glow:'+ROLE_COLOR[e.role]+(lay?';--rx:'+lay.x+';--ry:'+lay.y+';--depth:'+lay.depth:'')+'">'+characterFigure(e.role,e.pid,e.ji||0)+'</div>';
     }).join('');
     if (juryMore > 0) {
       html += '<div class="stage-jury-more" style="--x:95%;--b:38%">+' + juryMore + '</div>';
@@ -2124,15 +2166,20 @@ function renderStage() {
   $$('#stageSlots .stage-slot').forEach((el,i)=>{
     const entry=entries[i]; if(!entry) return;
     const p=scenePosition(entry.role,entry.ji||0,g);
-    el.style.setProperty('--x',p.x+'%');el.style.setProperty('--b',p.b+'%');el.style.setProperty('--h',avH(p.h,el.classList.contains('av-slot'),entry.role)+'%');
+    el.style.setProperty('--x',p.x+'%');el.style.setProperty('--b',p.b+'%');el.style.setProperty('--h',(el.classList.contains('sprite-slot')?p.h*window.kbAvatarRoles.layoutFor(el.dataset.av,entry.role,layoutMode(g)).scale:avH(p.h,el.classList.contains('av-slot'),entry.role))+'%');
   });
   const jp=scenePosition('judge',0,g),judgeSlot=$('#judge');
   // Avatáros bírónál a kép nagyobb (a teteje marad, lefelé nő), a pulpitus elé kerül, a névtábla az aljára.
-  const jAv=figureKind(scene.currentJudgeId,'judge')==='portrait';
+  const jKind0=figureKind(scene.currentJudgeId,'judge'), jAv=jKind0==='portrait', jSprite=jKind0==='sprite';
   const jf=jAv?.95:1; // az avatáros bíró képe kicsit kisebb, a teteje marad
-  const jh=jp.h*jf, jb=jp.b-jp.h*(jf-1), jPlate=jAv?100-jb-5:jp.plate;
+  const jLay=jSprite?window.kbAvatarRoles.layoutFor(playerById(scene.currentJudgeId).avatar,'judge',layoutMode(g)):null;
+  const jh=jSprite?jp.h*jLay.scale:jp.h*jf, jb=jp.b-jp.h*(jf-1), jPlate=jAv?100-jb-5:jp.plate;
   judgeSlot.classList.toggle('av-judge',jAv);
+  judgeSlot.classList.toggle('sprite-slot',jSprite);
+  judgeSlot.dataset.av=jSprite?playerById(scene.currentJudgeId).avatar:'';
   judgeSlot.style.setProperty('--x',jp.x+'%');judgeSlot.style.setProperty('--b',jb+'%');judgeSlot.style.setProperty('--h',jh+'%');
+  if(jLay) {judgeSlot.style.setProperty('--rx',jLay.x);judgeSlot.style.setProperty('--ry',jLay.y);judgeSlot.style.setProperty('--depth',jLay.depth);judgeSlot.style.setProperty('--z',2+jLay.z);}
+  else {judgeSlot.style.removeProperty('--rx');judgeSlot.style.removeProperty('--ry');judgeSlot.style.removeProperty('--depth');judgeSlot.style.removeProperty('--z');}
   $('#accusationTicker').style.left=g.mobile?'50%':jp.x+'%';
   const bubble=$('#judgeBubble');
   // Telefonon a buborék a (néha több soros) vád-sáv ALATT marad, hogy ne takarják egymást.
@@ -2148,7 +2195,7 @@ function renderStage() {
     plates.dataset.key=plateKey;
     // A színpadi névtábla a keretet és a névhatást is megkapja (a kártya/plakát mellett itt is látszik, mit vettek).
     const plateFrame=pid=>{const c=playerById(pid)?.profile?.cosm,f=cosId(c?.frame),n=cosId(c?.nameFx);return (f?' cos-frame-'+f:'')+(n?' cos-name-'+n:'');};
-    plates.innerHTML='<div id="judgePlate" class="stage-plate judge-plate'+plateFrame(scene.currentJudgeId)+'" data-role="judge">'+plateHtml('judge',scene.currentJudgeId)+'</div>'+entries.map(e=>'<div class="stage-plate'+plateFrame(e.pid)+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'">'+plateHtml(e.role,e.pid)+'</div>').join('');
+    plates.innerHTML='<div id="judgePlate" class="stage-plate judge-plate'+plateFrame(scene.currentJudgeId)+'" data-role="judge">'+plateHtml('judge',scene.currentJudgeId)+'</div>'+entries.map(e=>'<div class="stage-plate'+plateFrame(e.pid)+'" data-role="'+e.role+(figureKind(e.pid,e.role)==='sprite'?'" data-spr="1':'')+'" data-pid="'+escapeHtml(e.pid)+'">'+plateHtml(e.role,e.pid)+'</div>').join('');
   }
   [...plates.children].forEach((el,i)=>{
     const e=i===0?{role:'judge',ji:0}:entries[i-1],p=scenePosition(e.role,e.ji||0,g);
@@ -2173,7 +2220,7 @@ function renderStage() {
     const jKind = figureKind(scene.currentJudgeId, 'judge');
     const jBase = judgeEl.querySelector('.st-base'), jArt = judgeEl.querySelector('.st-art');
     const jWant = jKind === 'sprite' ? window.kbAvatarRoles.spriteFor(p.avatar, 'judge') : jKind === 'portrait' ? avatarSrc(p.avatar) : '/assets/biro.png';
-    if (jBase && jBase.getAttribute('src') !== jWant) jBase.setAttribute('src', jWant);
+    if (jBase) setFigureSrc(judgeEl, jBase, jArt, jWant, jKind === 'sprite' ? p.avatar + ':judge' : '');
     if (jArt) {
       jArt.classList.toggle('av-figure', jKind === 'portrait');
       jArt.classList.toggle('role-sprite', jKind === 'sprite');
@@ -2275,7 +2322,7 @@ function renderJudgeWatchBar() {
   }
   // új útmutató-kulcs (szerep + fázis): a nem-bírónak a felkészülésnél nyitva, egyébként összecsukva indul
   const key = role + ':' + S.phase + ':' + (S.caseNo || '');
-  if (key !== jwKey) { jwKey = key; jwCollapsed = !(brief && !brief.always && S.phase === 'prep' && matchMedia('(min-width:701px)').matches); }
+  if (key !== jwKey) { jwKey = key; jwCollapsed = !(brief && !brief.always && S.phase === 'prep' && matchMedia('(min-width:1200px)').matches); } /* keskenyebb képernyőn a füzet nyitva eltakarná az ügyész arcát */
   // Új "most figyeld" kihívásnál a jelzés látszik (a füzet összecsukva marad).
   if (S.watchNow && S.watchNow.text !== jwLastNowText) { jwLastNowText = S.watchNow.text; jwCollapsed = true; }
   const notes = S.judgeNotes || {};

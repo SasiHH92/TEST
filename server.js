@@ -223,17 +223,29 @@ app.get('/healthz', (req, res) => res.json({ ok: true }));
 const ROLE_SPRITE_DIR = path.resolve(__dirname, process.env.KB_ROLE_SPRITES_DIR || 'assets/roles');
 const ROLE_SPRITE_RE = /^avatar_(0[1-9]|[1-4]\d|50)_(judge|prosecutor|defendant|defender|witness|juror)\.webp$/;
 let roleSpriteCache = { at: 0, data: null };
+// A ROLE_ASSET_MANIFEST.json "real" listája: csak ezek az igazi szerep-képek (a többi avatar_NN_<szerep>.webp még átmeneti placeholder, az eredeti avatár képe:
+// az nem szerep-kép, a kliens a portré + szerep-jelvény tartalékot használja). Manifest / "real" lista nélkül (pl. teszt-mappa) minden érvényes nevű fájl számít.
+function readRoleManifest() {
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(ROLE_SPRITE_DIR, 'ROLE_ASSET_MANIFEST.json'), 'utf8'));
+    return m && typeof m === 'object' ? m : null;
+  } catch (e) { return null; }
+}
 function scanRoleSprites() {
   const available = {};
+  const manifest = readRoleManifest();
+  const real = manifest && manifest.real && typeof manifest.real === 'object' ? manifest.real : null;
   try {
     for (const name of fs.readdirSync(ROLE_SPRITE_DIR)) {
       const m = ROLE_SPRITE_RE.exec(name);
       if (!m) continue;
       const id = 'av' + m[1];
+      if (real && !(Array.isArray(real[id]) && real[id].includes(m[2]))) continue;
       (available[id] = available[id] || []).push(m[2]);
     }
   } catch (e) { /* nincs mappa: nincs szerep-kép, a tartalék működik */ }
-  return { version: 1, available };
+  // v: a képek verziója (a kliens ?v= paraméterként fűzi az URL-hez, így a 7 napos, immutable gyorsítótár a kicserélt képeknél sem ragad be)
+  return { version: 1, v: manifest && typeof manifest.version === 'string' ? manifest.version.replace(/[^A-Za-z0-9._-]/g, '').slice(0, 24) : '', available };
 }
 app.get('/api/role-sprites', (req, res) => {
   const now = Date.now();

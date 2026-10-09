@@ -1,0 +1,773 @@
+{
+ "version": 1,
+ "source": "openart-download.zip (73 db 1792x2400 PNG, #00FF00 háttér)",
+ "identification": "kézi, vizuális (ruha / kellék alapján a szerep, haj / arc / kiegészítő alapján az avatár); a ZIP nem tartalmaz metaadatot",
+ "chinNote": "a chin a kép magasságának arányában az áll alsó széle (kézi mérés, ±0,02): csak a függőleges igazításhoz kell; a méretet az arc-szélesség (bőr-folt) adja. Felülírható: faceW (forrás-pixel), headScale (szorzó), dx / dy (px a kimeneti vásznon)",
+ "characters": {
+  "A": {
+   "avatar": "av01",
+   "confidence": "közepes",
+   "note": "barna, hátrafésült hajú fiatal férfi (kézzel azonosítva: haj, arcforma, mutató póz)"
+  },
+  "B": {
+   "avatar": "av02",
+   "confidence": "alacsony",
+   "note": "hosszú, hullámos szőke hajú, kék szemű nő; az av02 / av14 / av28 / av42 / av48 ugyanaz a személyiség, a pontos sorszám ellenőrzendő"
+  },
+  "C": {
+   "avatar": "av03",
+   "confidence": "magas",
+   "note": "sötét hajú férfi, az esküdt-képen a Jordan-logós fekete sapka"
+  },
+  "D": {
+   "avatar": "av04",
+   "confidence": "magas",
+   "note": "barna kontyos nő, zöld hajgumi"
+  },
+  "E": {
+   "avatar": "av05",
+   "confidence": "magas",
+   "note": "szakállas, napszemüveges férfi aranylánccal (sapka nélkül)"
+  },
+  "F": {
+   "avatar": "av06",
+   "confidence": "magas",
+   "note": "sötétbarna hajú férfi, az esküdt-kép pózja egyezik az av06-tal (állhoz tett kéz)"
+  },
+  "G": {
+   "avatar": "av07",
+   "confidence": "magas",
+   "note": "szőke nő napszemüveggel a fején, nyelvet öltő kacsintás"
+  },
+  "H": {
+   "avatar": "av25",
+   "confidence": "magas",
+   "note": "szakállas férfi sárga sapkával"
+  },
+  "I": {
+   "avatar": "av22",
+   "confidence": "magas",
+   "note": "szőke kontyos nő"
+  },
+  "J": {
+   "avatar": "av21",
+   "confidence": "magas",
+   "note": "szakállas, napszemüveges férfi fekete DR-feliratos sapkával"
+  },
+  "K": {
+   "avatar": "av20",
+   "confidence": "magas",
+   "note": "ősz, bajszos, szemüveges idős férfi"
+  },
+  "L": {
+   "avatar": "av11",
+   "confidence": "magas",
+   "note": "szakállas férfi fekete, arany logós sapkával"
+  },
+  "M": {
+   "avatar": "av10",
+   "confidence": "közepes",
+   "note": "szemüveges, barna hajú férfi (az av31-gyel keverhető; öltönyös sorozat -> av10)"
+  },
+  "N": {
+   "avatar": "av09",
+   "confidence": "alacsony",
+   "note": "hosszú, hullámos barna hajú nő arany karikával; az av09 / av19 / av44 / av50 ugyanaz a személyiség, a pontos sorszám ellenőrzendő"
+  },
+  "O": {
+   "avatar": "av29",
+   "confidence": "alacsony",
+   "note": "szakállas, barna hajú, kerek arcú férfi (a tanú-képen kerek szemüveg: gyanús)"
+  }
+ },
+ "images": [
+  {
+   "idx": 0,
+   "file": "openart-image_1791482997090_7bac3a7d_1791482997597_ae7239a5.png",
+   "character": "A",
+   "avatar": "av01",
+   "role": "judge",
+   "chin": 0.32
+  },
+  {
+   "idx": 1,
+   "file": "openart-image_1791483071213_53498e38_1791483071345_fe39cdee.png",
+   "character": "A",
+   "avatar": "av01",
+   "role": "prosecutor",
+   "chin": 0.23,
+   "flags": [
+    "fullbody"
+   ],
+   "headScale": 1.15
+  },
+  {
+   "idx": 2,
+   "file": "openart-image_1791483076343_ec246494_1791483077054_ab394eb8.png",
+   "character": "A",
+   "avatar": "av01",
+   "role": "defendant",
+   "chin": 0.29,
+   "flags": [
+    "darker-key"
+   ],
+   "headScale": 0.92
+  },
+  {
+   "idx": 3,
+   "file": "openart-image_1791483084460_22a82a56_1791483085167_52c4857a.png",
+   "character": "A",
+   "avatar": "av01",
+   "role": "witness",
+   "chin": 0.3
+  },
+  {
+   "idx": 4,
+   "file": "openart-image_1791483088198_dc050d74_1791483088916_0701acac.png",
+   "character": "A",
+   "avatar": "av01",
+   "role": "juror",
+   "chin": 0.33
+  },
+  {
+   "idx": 5,
+   "file": "openart-image_1791483173520_ed1ca69f_1791483174544_5504e4a2.png",
+   "character": "B",
+   "avatar": "av02",
+   "role": "judge",
+   "chin": 0.44,
+   "headScale": 1.12
+  },
+  {
+   "idx": 6,
+   "file": "openart-image_1791483175923_cc7130bc_1791483176122_30b0d67b.png",
+   "character": "B",
+   "avatar": "av02",
+   "role": "prosecutor",
+   "chin": 0.35
+  },
+  {
+   "idx": 7,
+   "file": "openart-image_1791483179869_348e8854_1791483180559_414bea44.png",
+   "character": "B",
+   "avatar": "av02",
+   "role": "defendant",
+   "chin": 0.35,
+   "headScale": 1.15
+  },
+  {
+   "idx": 8,
+   "file": "openart-image_1791483183502_23b79d9a_1791483184253_e18530f4.png",
+   "character": "B",
+   "avatar": "av02",
+   "role": "witness",
+   "chin": 0.27,
+   "headScale": 1.3
+  },
+  {
+   "idx": 9,
+   "file": "openart-image_1791483189268_d0e7d3b4_1791483190076_47efd62a.png",
+   "character": "B",
+   "avatar": "av02",
+   "role": "juror",
+   "chin": 0.34
+  },
+  {
+   "idx": 10,
+   "file": "openart-image_1791483473495_531372c6_1791483474366_e563c0a2.png",
+   "character": "C",
+   "avatar": "av03",
+   "role": "judge",
+   "chin": 0.3,
+   "flags": [
+    "props"
+   ],
+   "headScale": 1.1
+  },
+  {
+   "idx": 11,
+   "file": "openart-image_1791483477307_c231e786_1791483477985_9e888e08.png",
+   "character": "C",
+   "avatar": "av03",
+   "role": "prosecutor",
+   "chin": 0.35
+  },
+  {
+   "idx": 12,
+   "file": "openart-image_1791483480302_1babc1c2_1791483480579_6b70c429.png",
+   "character": "C",
+   "avatar": "av03",
+   "role": "defendant",
+   "chin": 0.43
+  },
+  {
+   "idx": 13,
+   "file": "openart-image_1791483485438_d9124f93_1791483486184_14a5f196.png",
+   "character": "C",
+   "avatar": "av03",
+   "role": "witness",
+   "chin": 0.34,
+   "headScale": 0.95
+  },
+  {
+   "idx": 14,
+   "file": "openart-image_1791483487862_a4cfd95c_1791483489781_375f9792.png",
+   "character": "C",
+   "avatar": "av03",
+   "role": "juror",
+   "chin": 0.35,
+   "headScale": 0.9
+  },
+  {
+   "idx": 15,
+   "file": "openart-image_1791483589313_c9046c2c_1791483590303_15df67f2.png",
+   "character": "D",
+   "avatar": "av04",
+   "role": "judge",
+   "chin": 0.41
+  },
+  {
+   "idx": 16,
+   "file": "openart-image_1791483592463_bfad7059_1791483592929_638c3c85.png",
+   "character": "D",
+   "avatar": "av04",
+   "role": "prosecutor",
+   "chin": 0.385
+  },
+  {
+   "idx": 17,
+   "file": "openart-image_1791483596378_61a88c4f_1791483597165_2cf7ae40.png",
+   "character": "D",
+   "avatar": "av04",
+   "role": "defendant",
+   "chin": 0.45
+  },
+  {
+   "idx": 18,
+   "file": "openart-image_1791483602723_885a2f41_1791483603555_dd1149df.png",
+   "character": "D",
+   "avatar": "av04",
+   "role": "witness",
+   "chin": 0.46
+  },
+  {
+   "idx": 19,
+   "file": "openart-image_1791483608160_d7f904b6_1791483608757_3d9a50c4.png",
+   "character": "E",
+   "avatar": "av05",
+   "role": "judge",
+   "chin": 0.42,
+   "headScale": 0.84
+  },
+  {
+   "idx": 20,
+   "file": "openart-image_1791483608528_57ff34eb_1791483609375_2220a77f.png",
+   "character": "D",
+   "avatar": "av04",
+   "role": "juror",
+   "chin": 0.45,
+   "flags": [
+    "props"
+   ]
+  },
+  {
+   "idx": 21,
+   "file": "openart-image_1791483613203_c09e8a0a_1791483613860_06e4a380.png",
+   "character": "E",
+   "avatar": "av05",
+   "role": "prosecutor",
+   "chin": 0.41,
+   "flags": [
+    "props"
+   ],
+   "headScale": 0.8
+  },
+  {
+   "idx": 22,
+   "file": "openart-image_1791483615548_92137ee6_1791483616186_78d56d50.png",
+   "character": "E",
+   "avatar": "av05",
+   "role": "defendant",
+   "chin": 0.4,
+   "headScale": 0.72
+  },
+  {
+   "idx": 23,
+   "file": "openart-image_1791483621301_30b028d7_1791483622057_41c5fcd3.png",
+   "character": "E",
+   "avatar": "av05",
+   "role": "witness",
+   "chin": 0.46,
+   "headScale": 0.72
+  },
+  {
+   "idx": 24,
+   "file": "openart-image_1791483624272_1e21631a_1791483624747_56096c99.png",
+   "character": "E",
+   "avatar": "av05",
+   "role": "juror",
+   "chin": 0.43,
+   "flags": [
+    "props"
+   ],
+   "headScale": 0.7
+  },
+  {
+   "idx": 25,
+   "file": "openart-image_1791483629262_8173e8aa_1791483629737_5d036b37.png",
+   "character": "F",
+   "avatar": "av06",
+   "role": "judge",
+   "chin": 0.34,
+   "flags": [
+    "props"
+   ],
+   "headScale": 1.12
+  },
+  {
+   "idx": 26,
+   "file": "openart-image_1791483632477_d2943bdd_1791483633516_938592e4.png",
+   "character": "F",
+   "avatar": "av06",
+   "role": "prosecutor",
+   "chin": 0.39,
+   "headScale": 0.78
+  },
+  {
+   "idx": 27,
+   "file": "openart-image_1791483648322_21f831f1_1791483649345_042f5918.png",
+   "character": "F",
+   "avatar": "av06",
+   "role": "witness",
+   "chin": 0.355
+  },
+  {
+   "idx": 28,
+   "file": "openart-image_1791483649397_75dbb8d3_1791483650388_d2b023a9.png",
+   "character": "F",
+   "avatar": "av06",
+   "role": "juror",
+   "chin": 0.44,
+   "flags": [
+    "props"
+   ],
+   "headScale": 0.92
+  },
+  {
+   "idx": 29,
+   "file": "openart-image_1791483651556_0060e200_1791483652288_7cb082d1.png",
+   "character": "G",
+   "avatar": "av07",
+   "role": "judge",
+   "chin": 0.39
+  },
+  {
+   "idx": 30,
+   "file": "openart-image_1791483652281_85ee469d_1791483652764_bd4c428b.png",
+   "character": "F",
+   "avatar": "av06",
+   "role": "defendant",
+   "chin": 0.42
+  },
+  {
+   "idx": 31,
+   "file": "openart-image_1791483656792_2ef52a84_1791483657595_b8b1a464.png",
+   "character": "G",
+   "avatar": "av07",
+   "role": "prosecutor",
+   "chin": 0.46
+  },
+  {
+   "idx": 32,
+   "file": "openart-image_1791483660913_ac5a0402_1791483661164_a5edd405.png",
+   "character": "G",
+   "avatar": "av07",
+   "role": "defendant",
+   "chin": 0.375,
+   "headScale": 1.12
+  },
+  {
+   "idx": 33,
+   "file": "openart-image_1791483661896_b28f3fd0_1791483662645_15839afc.png",
+   "character": "G",
+   "avatar": "av07",
+   "role": "witness",
+   "chin": 0.45
+  },
+  {
+   "idx": 34,
+   "file": "openart-image_1791483664093_19d133db_1791483664891_4c0d5344.png",
+   "character": "G",
+   "avatar": "av07",
+   "role": "juror",
+   "chin": 0.385,
+   "headScale": 1.25
+  },
+  {
+   "idx": 35,
+   "file": "openart-image_1791484520510_7341c1c5_1791484521118_8f49e809.png",
+   "character": "H",
+   "avatar": "av25",
+   "role": "judge",
+   "chin": 0.45,
+   "headScale": 1.05
+  },
+  {
+   "idx": 36,
+   "file": "openart-image_1791484525674_093c1b18_1791484526221_1a839bde.png",
+   "character": "H",
+   "avatar": "av25",
+   "role": "prosecutor",
+   "chin": 0.41
+  },
+  {
+   "idx": 37,
+   "file": "openart-image_1791484528930_35f07f6c_1791484529611_ddb01c6e.png",
+   "character": "H",
+   "avatar": "av25",
+   "role": "defendant",
+   "chin": 0.52
+  },
+  {
+   "idx": 38,
+   "file": "openart-image_1791484529801_12561756_1791484531276_6c061bf0.png",
+   "character": "H",
+   "avatar": "av25",
+   "role": "witness",
+   "chin": 0.42
+  },
+  {
+   "idx": 39,
+   "file": "openart-image_1791484537919_3107e9be_1791484538494_d4173e88.png",
+   "character": "H",
+   "avatar": "av25",
+   "role": "juror",
+   "chin": 0.4,
+   "flags": [
+    "crowd-background"
+   ],
+   "skip": true,
+   "skipReason": "a háttérben emberek (esküdtszék) állnak, a zöld-kulcs nem távolíthatja el őket"
+  },
+  {
+   "idx": 40,
+   "file": "openart-image_1791484542067_92cc0356_1791484543498_5dce0d21.png",
+   "character": "I",
+   "avatar": "av22",
+   "role": "judge",
+   "chin": 0.47,
+   "flags": [
+    "props"
+   ],
+   "headScale": 1.25
+  },
+  {
+   "idx": 41,
+   "file": "openart-image_1791484543143_6266d017_1791484543762_274a9ac4.png",
+   "character": "I",
+   "avatar": "av22",
+   "role": "prosecutor",
+   "chin": 0.43,
+   "headScale": 0.93
+  },
+  {
+   "idx": 42,
+   "file": "openart-image_1791484546050_ff28adb7_1791484546389_9996f325.png",
+   "character": "I",
+   "avatar": "av22",
+   "role": "defendant",
+   "chin": 0.45,
+   "headScale": 1.2
+  },
+  {
+   "idx": 43,
+   "file": "openart-image_1791484551161_8b61d256_1791484552184_821b4c64.png",
+   "character": "I",
+   "avatar": "av22",
+   "role": "witness",
+   "chin": 0.45,
+   "headScale": 1.18
+  },
+  {
+   "idx": 44,
+   "file": "openart-image_1791484552660_a872543f_1791484553194_a814fd59.png",
+   "character": "I",
+   "avatar": "av22",
+   "role": "juror",
+   "chin": 0.5
+  },
+  {
+   "idx": 45,
+   "file": "openart-image_1791484559251_cc7e1ef1_1791484559895_b4f13989.png",
+   "character": "J",
+   "avatar": "av21",
+   "role": "judge",
+   "chin": 0.49,
+   "flags": [
+    "props"
+   ],
+   "headScale": 0.82
+  },
+  {
+   "idx": 46,
+   "file": "openart-image_1791484561556_25b7a469_1791484562046_78fd32b5.png",
+   "character": "J",
+   "avatar": "av21",
+   "role": "prosecutor",
+   "chin": 0.49,
+   "headScale": 0.95
+  },
+  {
+   "idx": 47,
+   "file": "openart-image_1791484561793_6535ef6f_1791484562746_f17e71f7.png",
+   "character": "J",
+   "avatar": "av21",
+   "role": "defendant",
+   "chin": 0.46,
+   "headScale": 0.75
+  },
+  {
+   "idx": 48,
+   "file": "openart-image_1791484565087_2da5757d_1791484565704_d9e8ce9b.png",
+   "character": "J",
+   "avatar": "av21",
+   "role": "witness",
+   "chin": 0.35,
+   "flags": [
+    "fullbody"
+   ],
+   "headScale": 0.5
+  },
+  {
+   "idx": 49,
+   "file": "openart-image_1791484570071_87fc872e_1791484571097_5faadfd4.png",
+   "character": "J",
+   "avatar": "av21",
+   "role": "juror",
+   "chin": 0.4,
+   "headScale": 0.88
+  },
+  {
+   "idx": 50,
+   "file": "openart-image_1791484587090_7501e332_1791484587955_95ab6550.png",
+   "character": "K",
+   "avatar": "av20",
+   "role": "judge",
+   "chin": 0.44,
+   "headScale": 1.05
+  },
+  {
+   "idx": 51,
+   "file": "openart-image_1791484589716_c57a2692_1791484590156_1db0fc19.png",
+   "character": "K",
+   "avatar": "av20",
+   "role": "prosecutor",
+   "chin": 0.41,
+   "headScale": 0.9
+  },
+  {
+   "idx": 52,
+   "file": "openart-image_1791484591430_fcb0fc2e_1791484592142_7572160a.png",
+   "character": "K",
+   "avatar": "av20",
+   "role": "defendant",
+   "chin": 0.49,
+   "flags": [
+    "darker-key"
+   ],
+   "headScale": 0.9
+  },
+  {
+   "idx": 53,
+   "file": "openart-image_1791484595023_7e0b75d3_1791484595689_c26f0d63.png",
+   "character": "K",
+   "avatar": "av20",
+   "role": "witness",
+   "chin": 0.4
+  },
+  {
+   "idx": 54,
+   "file": "openart-image_1791484605942_ab780c80_1791484606635_815df8cf.png",
+   "character": "L",
+   "avatar": "av11",
+   "role": "judge",
+   "chin": 0.44
+  },
+  {
+   "idx": 55,
+   "file": "openart-image_1791484608299_afc1426a_1791484608467_f68dea9b.png",
+   "character": "L",
+   "avatar": "av11",
+   "role": "prosecutor",
+   "chin": 0.365,
+   "headScale": 0.68
+  },
+  {
+   "idx": 56,
+   "file": "openart-image_1791484610055_6101849e_1791484610913_3813f840.png",
+   "character": "L",
+   "avatar": "av11",
+   "role": "defendant",
+   "chin": 0.44,
+   "headScale": 0.76
+  },
+  {
+   "idx": 57,
+   "file": "openart-image_1791484616472_d195fb91_1791484617294_7ca8935b.png",
+   "character": "L",
+   "avatar": "av11",
+   "role": "witness",
+   "chin": 0.45,
+   "flags": [
+    "props"
+   ],
+   "headScale": 0.92
+  },
+  {
+   "idx": 58,
+   "file": "openart-image_1791484620232_4036648c_1791484621510_7a510691.png",
+   "character": "L",
+   "avatar": "av11",
+   "role": "juror",
+   "chin": 0.4,
+   "flags": [
+    "props"
+   ],
+   "headScale": 0.9
+  },
+  {
+   "idx": 59,
+   "file": "openart-image_1791484624778_e1d22904_1791484625488_a1057c80.png",
+   "character": "M",
+   "avatar": "av10",
+   "role": "judge",
+   "chin": 0.375,
+   "flags": [
+    "props"
+   ],
+   "headScale": 1.12
+  },
+  {
+   "idx": 60,
+   "file": "openart-image_1791484627259_743594e2_1791484628474_e84caedd.png",
+   "character": "M",
+   "avatar": "av10",
+   "role": "prosecutor",
+   "chin": 0.41,
+   "headScale": 0.85
+  },
+  {
+   "idx": 61,
+   "file": "openart-image_1791484632209_f4cddc2f_1791484632408_b0af2722.png",
+   "character": "M",
+   "avatar": "av10",
+   "role": "defendant",
+   "chin": 0.44,
+   "headScale": 0.88
+  },
+  {
+   "idx": 62,
+   "file": "openart-image_1791484636951_4710f0d0_1791484638403_1a5dd9b6.png",
+   "character": "M",
+   "avatar": "av10",
+   "role": "witness",
+   "chin": 0.51,
+   "flags": [
+    "props"
+   ],
+   "headScale": 0.88
+  },
+  {
+   "idx": 63,
+   "file": "openart-image_1791484640008_c9e09b8d_1791484640544_6ee30548.png",
+   "character": "M",
+   "avatar": "av10",
+   "role": "juror",
+   "chin": 0.405,
+   "flags": [
+    "props"
+   ],
+   "headScale": 0.84
+  },
+  {
+   "idx": 64,
+   "file": "openart-image_1791484643944_48fe384e_1791484644327_c50512da.png",
+   "character": "N",
+   "avatar": "av09",
+   "role": "judge",
+   "chin": 0.4,
+   "headScale": 0.82
+  },
+  {
+   "idx": 65,
+   "file": "openart-image_1791484644615_690a6769_1791484644781_24cdde74.png",
+   "character": "N",
+   "avatar": "av09",
+   "role": "prosecutor",
+   "chin": 0.39,
+   "headScale": 0.92
+  },
+  {
+   "idx": 66,
+   "file": "openart-image_1791484648226_520b5d01_1791484649052_4e627cae.png",
+   "character": "N",
+   "avatar": "av09",
+   "role": "defendant",
+   "chin": 0.45
+  },
+  {
+   "idx": 67,
+   "file": "openart-image_1791484652003_884135a4_1791484653266_6034b940.png",
+   "character": "N",
+   "avatar": "av09",
+   "role": "witness",
+   "chin": 0.41
+  },
+  {
+   "idx": 68,
+   "file": "openart-image_1791484656763_6d746a84_1791484657871_e0c0fc93.png",
+   "character": "N",
+   "avatar": "av09",
+   "role": "juror",
+   "chin": 0.42,
+   "headScale": 0.95
+  },
+  {
+   "idx": 69,
+   "file": "openart-image_1791484661799_a14ff981_1791484662867_747d97b6.png",
+   "character": "O",
+   "avatar": "av29",
+   "role": "judge",
+   "chin": 0.48,
+   "headScale": 1.25
+  },
+  {
+   "idx": 70,
+   "file": "openart-image_1791484663127_d4d7423b_1791484663998_e17c837a.png",
+   "character": "O",
+   "avatar": "av29",
+   "role": "prosecutor",
+   "chin": 0.48,
+   "headScale": 1.08
+  },
+  {
+   "idx": 71,
+   "file": "openart-image_1791484666366_b57d88c4_1791484666989_84ebc495.png",
+   "character": "O",
+   "avatar": "av29",
+   "role": "defendant",
+   "chin": 0.56,
+   "headScale": 1.1
+  },
+  {
+   "idx": 72,
+   "file": "openart-image_1791484669509_08109557_1791484670427_9466c210.png",
+   "character": "O",
+   "avatar": "av29",
+   "role": "witness",
+   "chin": 0.45,
+   "headScale": 0.7
+  }
+ ],
+ "headScaleNote": "headScale: kézi finomhangolás (szorzó) a mért arc-szélességhez – a sor-felvonulás (arc-szélesség vezetők) alapján; a szakállas / sapkás / napszemüveges arcoknál a bőr-folt keskenyebb, mint a valódi fej, ezért ott 0,7–0,9 körüli szorzó van"
+}

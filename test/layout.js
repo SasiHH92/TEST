@@ -296,12 +296,16 @@ async function walk(browser, vp) {
     }
 
     if (game) {
-      // Avatár × szerep: a szerver a feltöltött szerep-képeket listázza (jelenleg 250 átmeneti placeholder, assets/roles/); ha egy kép hiányzik,
-      // az eredeti avatár marad, SVG-karakter nélkül, csak egy kis HTML szerepjelvény kerül rá.
+      // Avatár × szerep: a szerver a manifest "real" (igazi) szerep-képeit listázza (assets/roles/ROLE_ASSET_MANIFEST.json; a többi fájl placeholder, az nem szerep-kép);
+      // ahol nincs szerep-kép, az eredeti avatár marad, SVG-karakter nélkül, csak egy kis HTML szerepjelvény kerül rá.
       await check(tag + ' – avatár × szerep: szerep-kép a szerver listájából, hiányzó képnél az eredeti avatár + HTML jelvény', async () => {
         const out = await page.evaluate(async () => {
           const me = (S.players || []).find((p) => p.id === MY.playerId) || {};
           const probe = { avatar: me.avatar || '', isAv: /^av\d\d$/.test(me.avatar || '') };
+          const realList = (await (await fetch('/api/role-sprites')).json()).available; // a szerver hirdetése (független forrás)
+          probe.realCount = Object.values(realList).reduce((n, l) => n + l.length, 0);
+          probe.expectedSprites = [...document.querySelectorAll('#stage .stage-slot')].map((el) => ({ role: el.dataset.role, av: ((S.players || []).find((p) => p.id === (el.dataset.pid || S.currentJudgeId)) || {}).avatar || '' }))
+            .filter((x) => (realList[x.av] || []).includes(x.role)).length;
           const count = (sel) => document.querySelectorAll(sel).length;
           await new Promise((r) => setTimeout(r, 400)); // a /api/role-sprites válasza
           probe.listed = window.kbAvatarRoles.count();
@@ -319,8 +323,9 @@ async function walk(browser, vp) {
           return probe;
         });
         if (out.isAv) {
-          assert.equal(out.listed, 250, 'a szerver mind az 50 × 5 szerep-képet listázza: ' + out.listed);
-          assert.ok(out.spritesFromServer >= 1, 'a szerep-kép áll a színpadon: ' + JSON.stringify(out));
+          assert.equal(out.listed, out.realCount, 'a kliens a szerver listáját használja: ' + out.listed + ' / ' + out.realCount);
+          assert.ok(out.realCount >= 72, 'legalább 72 igazi szerep-kép: ' + out.realCount);
+          assert.equal(out.spritesFromServer, out.expectedSprites, 'pontosan azok a figurák kapnak szerep-képet, amik avatár × szerepe a szerver listáján van: ' + JSON.stringify(out));
           assert.equal(out.spritesWhenMissing, 0, 'hiányzó képnél nincs szerep-kép');
           assert.ok(out.portraits >= 1, 'hiányzó képnél az eredeti avatár-portré marad');
           assert.ok(out.badges >= 1, 'és egy HTML szerepjelvény kerül rá');

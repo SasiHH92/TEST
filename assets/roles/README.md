@@ -12,8 +12,10 @@ A kép nevét az avatár sorszáma és a szerep adja:
 | esküdt | `avatar_17_juror.webp` | lila ruházat, ESKÜDT jelvény, az esküdtszékben |
 | védőügyvéd (opcionális) | `avatar_17_defender.webp` | kék öltöny |
 
-Az alapkészlet 50 × 5 kép. Formátum: WebP, átlátszó háttér, teljes alak, a talp a kép alján, kb. 600 × 900 px ajánlott
-(a megjelenítés `object-fit: contain`, a fix szerepfigurákhoz hasonlóan).
+Az alapkészlet 50 × 5 fájl. **Igazi szerep-kép** (az OpenArt grafikákból, `scripts/build-role-assets.js`): a `ROLE_ASSET_MANIFEST.json` `real` listájában szereplők (jelenleg 72 kép, 15 avatár) –
+a többi fájl még placeholder (az eredeti avatár képe), azt a szerver NEM hirdeti szerep-képnek (tartalék: portré + jelvény). Formátum: átlátszó WebP, **720 × 960 (3:4)** vászon, derékig látszó (mellszobor) karakter,
+az arc mindenhol ugyanakkora és ugyanott (az áll a magasság 42%-án), az alsó szél puhán elhalványul. Részletek, a forrás-azonosítás és a kézi finomhangolás: [docs/ROLE-ASSETS.md](../../docs/ROLE-ASSETS.md).
+Új / cserélt kép: `SOURCE_MAP.json` bejegyzés + `node scripts/build-role-assets.js <mappa>` (a manifest verziója frissül, a böngésző-gyorsítótár ürül).
 
 ## Hogyan kerül be a játékba?
 

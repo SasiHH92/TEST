@@ -432,7 +432,7 @@
     fetch('/api/role-sprites', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).then(safe((d) => {
       if (!d || !d.available) return;
       const before = window.kbAvatarRoles.count();
-      if (window.kbAvatarRoles.setAvailable(d.available) !== before && typeof S !== 'undefined' && S && document.body.dataset.screen === 'game' && typeof renderStage === 'function') renderStage();
+      if (window.kbAvatarRoles.setAvailable(d.available, d.v) !== before && typeof S !== 'undefined' && S && document.body.dataset.screen === 'game' && typeof renderStage === 'function') renderStage();
     })).catch(() => {});
   });
   loadRoleSprites();

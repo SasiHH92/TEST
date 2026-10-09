@@ -513,3 +513,63 @@ body[data-court-major="challenge"] #screen-game[data-phase="challenge_vote"] #sc
   #screen-game .content-zone[data-layout="challenge_vote"] { width: calc(100% - 16px); }
 }
 #screen-game .vd-strip .sentence-card { font-size: 14px; }
+
+/* ---------------- Szerep-képek (átlátszó, derékig látszó karakterek) ---------------- */
+/* A képek 3:4 vásznon készültek (scripts/build-role-assets.js): az arc mindig ugyanott és ugyanakkora; a slot magasságát a JS adja (jelenet × ROLE_LAYOUT).
+   Nincs kártya- / téglalap-háttér: a karakter közvetlenül a terem világában áll; a derék a bútor mögött marad, a nyitott térben az alja puhán elhalványul (a képbe sütve).
+   Az eltolás / nagyítás a független "translate" / "scale" tulajdonságokkal megy (a belépő animáció a "transform"-ot használja, így nem akadnak össze). */
+.stage-slot.sprite-slot { aspect-ratio: 3 / 4; }
+.stage-slot.sprite-slot::after { display: none; }                         /* a beszélő téglalap-kerete helyett a körvonal-ragyogás (glow-pulse) jelez */
+.st-art.role-sprite .st-base {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: contain; object-position: 50% 100%; border: 0; background: none; border-radius: 0;
+  translate: calc(var(--rx, 0) * 1%) calc(var(--ry, 0) * 1%);
+  transform-origin: 50% 100%;
+  opacity: 0;                                                             /* betöltésig rejtve: nincs fehér / zöld villanás, nincs törött kép */
+}
+.st-art.role-sprite.sprite-ready .st-base { opacity: 1; }
+/* A belépő a burkolón (.st-art) fut, "backwards" kitöltéssel: a végén a normál állapot marad, így a beszélő-kiemelés (glow-pulse a képen, nagyítás a burkolón) és a
+   bíró saját szabályai (#screen-game .judge-slot.round-judge .st-fig img { animation: none }) nem ütköznek vele, és a beszéd végén sem játszódik le újra. */
+.st-art.role-sprite.sprite-ready { animation: spr-juror 320ms ease-out backwards; }
+.stage-slot[data-role="judge"] .st-art.role-sprite.sprite-ready { animation: spr-judge 420ms cubic-bezier(.2, .8, .2, 1) backwards; }
+.stage-slot[data-role="prosecutor"] .st-art.role-sprite.sprite-ready, .stage-slot[data-role="defender"] .st-art.role-sprite.sprite-ready { animation: spr-prosecutor 340ms cubic-bezier(.2, .8, .2, 1) backwards; }
+.stage-slot[data-role="defendant"] .st-art.role-sprite.sprite-ready { animation: spr-defendant 440ms cubic-bezier(.3, 1.3, .5, 1) backwards; }
+.stage-slot[data-role="witness"] .st-art.role-sprite.sprite-ready { animation: spr-witness 340ms cubic-bezier(.2, .8, .2, 1) backwards; }
+@keyframes spr-judge { from { opacity: 0; transform: translateY(3%) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes spr-prosecutor { from { opacity: 0; transform: translateX(-10%); } to { opacity: 1; transform: none; } }
+@keyframes spr-defendant { 0% { opacity: 0; transform: translateY(8%); } 55% { opacity: 1; transform: translateY(-2%); } 100% { opacity: 1; transform: none; } }
+@keyframes spr-witness { from { opacity: 0; transform: translateX(10%); } to { opacity: 1; transform: none; } }
+@keyframes spr-juror { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+.reduced-motion .st-art.role-sprite.sprite-ready, .reduced-motion .stage-slot .st-art.role-sprite.sprite-ready { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .st-art.role-sprite.sprite-ready, .stage-slot .st-art.role-sprite.sprite-ready { animation: none !important; } }
+/* mélység: finom kontakt-árnyék a talpnál (a bútor mögötti alakoknál a bútor eltakarja), a hátsó sor kicsit sötétebb */
+.stage-slot.sprite-slot::before {
+  content: ''; position: absolute; left: 6%; right: 6%; bottom: -1%; height: 6%; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(8, 4, 2, .5), rgba(8, 4, 2, .2) 50%, transparent 74%);
+}
+#screen-game .stage-slot.sprite-slot:not(.speaking):not(.dim) .st-fig img { filter: drop-shadow(0 6px 10px #0006) brightness(var(--depth, 1)); }
+#screen-game .stage-slot.sprite-slot.dim .st-fig img { filter: drop-shadow(0 6px 10px #0006) brightness(calc(var(--depth, 1) * .82)); }
+/* a beszélő: enyhe kiemelés (a mellszobor-méretű képnél a régi 20%-os nagyítás túl sok volna) */
+.stage-slot.sprite-slot.speaking .st-art, #screen-game .stage-slot.sprite-slot.speaking .st-art { transform: scale(1.05); }
+.stage-slot.sprite-slot.speaking, #screen-game .stage-slot.sprite-slot.speaking { transform: translateX(-50%); animation: none; }
+.judge-slot.sprite-slot .st-art { clip-path: none; }
+.judge-slot.sprite-slot.asset-missing .st-art { clip-path: none; }
+
+/* Kisebb asztali képernyő (≤ 1480 px: 1366 × 768, 1024 × 768): a vád-sáv 2 sorra vágva (a 3. sor az esküdtek arcába lógna), a teljes vád koppintásra kinyílik */
+@media (max-width: 1479px) and (min-width: 701px) { #screen-game .accusation-ticker .charge-text { -webkit-line-clamp: 2; } }
+/* Fekvő telefon / alacsony képernyő: a vád-sáv egy sorra szűkül, a díszítő buborék elrejtőzik, hogy a karakterek arca látszódjon (a teljes vád koppintásra kinyílik) */
+@media (max-height: 520px) and (min-width: 701px) {
+  #screen-game .accusation-ticker { padding: 4px 10px 3px; font-size: 13px; line-height: 1.2; }
+  #screen-game .accusation-ticker .charge-file-head, #screen-game .accusation-ticker .charge-expand-hint { display: none; }
+  #screen-game .accusation-ticker .charge-text { -webkit-line-clamp: 1; }
+  #screen-game .judge-bubble { display: none; }
+}
+/* Alacsony telefon (pl. 360 × 640): a vád-sáv egy sorra vágva (a teljes vád koppintásra kinyílik), így a bíró és az esküdtek arca nincs alatta */
+@media (max-width: 700px) and (max-height: 700px) {
+  #screen-game .accusation-ticker { padding: 5px 10px 4px; }
+  #screen-game .accusation-ticker .charge-text { -webkit-line-clamp: 1; font-size: 17px; line-height: 1.2; }
+  #screen-game .accusation-ticker .charge-file-head { display: none; }
+}
+/* A hátsó sor (esküdtek) névtáblái szerep-képeknél elrejtve: a bíró / a tanú arcára kerülnének (a pulpitus körül a buborék, a bíró táblája és a vád-sáv is ott van);
+   a nevek a ponttáblán és az esküdt-figura title-jében (hover / képernyőolvasó) megvannak. */
+#screen-game .stage-plate[data-role="juror"][data-spr] { display: none; }
