@@ -332,6 +332,24 @@ async function partLoginVideo(browser, servers) {
     });
   } else skip('B6 valódi login-loop.mp4', 'a fájl nincs a projektben (assets/video/login-loop.mp4)');
 
+  await check('B7 a belépőoldalon nincs előtér-figura (bíró / ügyész): se elem, se kép a login képernyőn – csak a háttér (videó vagy statikus kép) látszik; videóval, tartalékkal és telefonon is', async () => {
+    const run = async (viewport, setup, base, what) => {
+      const c = await newPage(browser, viewport);
+      try {
+        if (setup) await setup(c.page);
+        await goAuth(c.page, base);
+        const st = await c.page.evaluate(() => ({ chars: document.querySelectorAll('.auth-character, .auth-judge, .auth-prosecutor, #screen-auth img[src$="biro.png"], #screen-auth img[src$="ugyesz.png"]').length,
+          imgs: [...document.querySelectorAll('#screen-auth img')].map((i) => i.getAttribute('src')), form: !!document.querySelector('#authLoginForm') && !!document.querySelector('#authGuest') }));
+        assert.equal(st.chars, 0, what + ': van előtér-figura');
+        assert.deepEqual(st.imgs.filter((u) => /biro\.png|ugyesz\.png/.test(u)), [], what + ': figura-kép');
+        assert.ok(st.form, what + ': az űrlap és a vendég-belépés megvan');
+      } finally { await c.context.close(); }
+    };
+    await run({ width: 1920, height: 1080 }, null, BASE, 'videóval (asztali)');
+    await run({ width: 1366, height: 768 }, (p) => p.route('**/assets/video/login-loop.mp4*', (r) => r.abort()), BASE, 'tartalék háttérrel (videó nélkül)');
+    await run({ width: 390, height: 844 }, null, BASE, 'telefonon');
+  });
+
   const b64 = await recordWebm(browser).catch(() => '');
   if (!b64) { skip('B5 elérhető videó lejátszása', 'a böngésző nem tud WebM-et rögzíteni (MediaRecorder) – valódi videó-asset nincs, a teszt-videót is így állítjuk elő'); return; }
   await check('B5 elérhető videó: autoplay + muted + loop + playsinline, "playing" után auth-video-on; a belépőoldal elhagyásakor eltávolítódik', async () => {

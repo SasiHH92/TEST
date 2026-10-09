@@ -2308,9 +2308,6 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
 .auth-slogan { display: grid; text-align: center; gap: 2px; padding: 9px 42px; border: 1px solid #bc8e54; color: #4d2f1b; background: linear-gradient(105deg, #eacb91, #fff0cf 45%, #eac793); box-shadow: 0 5px 13px #20110680, inset 0 0 20px #a1743533; border-radius: 4px 10px 7px 4px; transform: rotate(1deg); position: relative; z-index: 2; }
 .auth-slogan strong { font-family: Georgia, serif; font-size: 23px; font-weight: 900; letter-spacing: 1px; }
 .auth-slogan span { font-size: 10px; font-weight: 800; letter-spacing: 1.8px; }
-.auth-character { position: absolute; z-index: 1; pointer-events: none; object-fit: contain; width: min(27vw, 405px); height: 67%; bottom: 65px; filter: drop-shadow(0 15px 16px #12080480); }
-.auth-judge { left: -4%; object-position: right bottom; transform: rotate(-3deg); }
-.auth-prosecutor { right: -4%; object-position: left bottom; transform: rotate(3deg); }
 .auth-forms { width: min(820px, 65%); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 20px; position: relative; z-index: 2; margin: auto 0; }
 .auth-card { min-width: 0; position: relative; padding: 24px 26px 18px; background: radial-gradient(ellipse at 50% 10%, #fff2d8, #f4e2bd 75%, #ddbd87); border: 1px solid #c19761; border-radius: 13px 7px 14px 8px; box-shadow: 0 12px 32px #170b0780, inset 0 0 0 4px #fff4d54d, inset 0 0 40px #b77f2620; color: #3d271b; }
 .auth-stamp { position: absolute; top: 15px; right: 14px; margin: 0; font-size: 8px; font-weight: 800; letter-spacing: 1px; color: #88362b; border: 1px solid #aa574a70; padding: 3px 5px; transform: rotate(7deg); opacity: .65; }
@@ -2390,11 +2387,9 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
   .auth-stamp { top: 10px; right: 10px; font-size: 7px; }
   .auth-features { padding-top: 8px; padding-bottom: 8px; font-size: 9px; }
   .auth-features b { font-size: 18px; }
-  .auth-character { bottom: 45px; }
 }
 @media (max-width: 1050px) and (min-width: 701px) {
   .auth-forms { width: 78%; gap: 14px; }
-  .auth-character { width: 24vw; opacity: .9; }
   .auth-card { padding-left: 20px; padding-right: 20px; }
   .auth-stamp { display: none; }
 }
@@ -2408,7 +2403,6 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
   .auth-slogan { padding: 7px 15px; }
   .auth-slogan strong { font-size: 19px; }
   .auth-slogan span { font-size: 8px; letter-spacing: .8px; }
-  .auth-character { display: none; }
   .auth-forms { width: min(430px, 100%); grid-template-columns: minmax(0, 1fr); gap: 0; margin: 4px 0 auto; }
   .auth-tabs { display: flex; gap: 5px; padding: 0 4px; }
   .auth-tabs button { flex: 1; border: 1px solid #ae8854; border-bottom: 0; border-radius: 8px 8px 0 0; min-height: 48px; padding: 8px 4px; background: #402921eb; color: #ecd0a0; font: 700 12px var(--font-disp); letter-spacing: .6px; cursor: pointer; }
