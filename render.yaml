@@ -25,6 +25,9 @@ services:
       #   sync: false
       # - key: LEGEND_SECRET       # a legendás kártyák igénylő-linkjeihez (legalább 16 karakter) – TITKOS
       #   sync: false
+      # Discord bot összekötés (DISCORD_OSSZEKOTES.md): ugyanezt a titkot a bot .env-jébe is be kell írni
+      # - key: BOT_SERVICE_TOKEN   # legalább 32 véletlen karakter – TITKOS; nélküle a Discord-integráció ki van kapcsolva
+      #   sync: false
       # Jelszó-visszaállító levél (Resend): lásd AUTH_BEALLITAS.md
       # - key: AUTH_MAIL_API_KEY
       #   sync: false

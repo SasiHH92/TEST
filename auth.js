@@ -511,7 +511,9 @@ function createAuth(options={}) {
   // Csak olvasásra: a barátlista (social.js) ebből keresi a fiókokat azonosító és név alapján.
   const directory={
     byId:id=>(store&&typeof id==='string'?store.state.users.find(u=>u.id===id):null)||null,
-    byName:name=>(store&&typeof name==='string'?store.state.users.find(u=>normalize(u.username)===normalize(name)):null)||null
+    byName:name=>(store&&typeof name==='string'?store.state.users.find(u=>normalize(u.username)===normalize(name)):null)||null,
+    // a külső (pl. Discord) belépéshez kötött fiók – a tárgyalás-összekötés ebből ismeri fel a Discord-azonosítót
+    byProvider:(provider,providerId)=>(store&&typeof providerId==='string'&&providerId?store.state.users.find(u=>u.providers?.[provider]===providerId):null)||null
   };
   // Üzemeltetői műveletek (az admin.js hívja, ADMIN_TOKEN mögött): levélküldés próbája és kézi visszaállító link.
   const admin={

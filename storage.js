@@ -23,7 +23,8 @@ function defaultFiles(env) {
     accounts: path.resolve(ROOT, env.AUTH_STORE_PATH || 'data/accounts.json'),
     dms: path.resolve(ROOT, env.KB_DMS_FILE || 'data/dms.json'), // privát üzenetek a barátok között
     errors: path.resolve(ROOT, env.KB_ERRORS_FILE || 'data/errors.json'), // hibanapló (errorlog.js)
-    moderation: path.resolve(ROOT, env.KB_MODERATION_FILE || 'data/moderation.json') // jelentések és némítások (moderation.js)
+    moderation: path.resolve(ROOT, env.KB_MODERATION_FILE || 'data/moderation.json'), // jelentések és némítások (moderation.js)
+    courts: path.resolve(ROOT, env.KB_COURTS_FILE || 'data/courts.json') // tárgyalások, Discord-kapcsolatok (courts.js)
   };
 }
 

@@ -114,6 +114,28 @@ class Game {
     Game._stateHook = fn;
   }
 
+  // Tárgyalás-összekötés (courts.js): a szerver iratkozik fel; a játék indulásáról / végéről kap értesítést.
+  static setLifecycleHook(fn) {
+    Game._lifecycleHook = fn;
+  }
+
+  emitLifecycle(event) {
+    try { if (Game._lifecycleHook) Game._lifecycleHook(this, event); } catch (e) { console.error('lifecycle hook:', e.message); }
+  }
+
+  // Előre sorsolt első-köri szerepek (Discordról/webről): { judge, prosecutor, defendant, defender, witness } játékos-azonosítók.
+  // Csak az 1. körre érvényes, és csak ha mind érvényes, különböző, aktív játékos; különben a szokásos sorsolás fut.
+  takePresetRoles(actives) {
+    const preset = this.presetRoles;
+    this.presetRoles = null;
+    if (!preset || this.round !== 1) return null;
+    const ids = new Set(actives.map((p) => p.id));
+    const need = actives.length >= 5 ? ['judge', 'prosecutor', 'defendant', 'defender'] : ['judge', 'prosecutor', 'defendant'];
+    const used = need.map((k) => preset[k]);
+    if (used.some((id) => !id || !ids.has(id)) || new Set(used).size !== used.length) return null;
+    return preset;
+  }
+
   static recordStat(name, key, by) {
     if (Game._statRecorder && name) Game._statRecorder(name, key, by);
   }
@@ -609,6 +631,7 @@ class Game {
       p.ready = false; // a játék elindult: a következő lobbiban újra jelezni kell
     }
     this.nextRound();
+    if (this.phase !== PHASES.LOBBY) this.emitLifecycle('started');
   }
 
   // Szerepek körbeforgatása: mindenki legalább egyszer legyen vádlott és egyszer ügyész.
@@ -669,6 +692,7 @@ class Game {
       this.phase = PHASES.GAME_OVER;
       this.phaseEndsAt = 0;
       this.roundData = null;
+      this.emitLifecycle('finished');
       if (this.settings.autoNewGame && !this.autoStopped) this.scheduleAutomatic('new_game', () => this.restartGame(this.hostId(), true));
       this.broadcast();
       return;
@@ -702,8 +726,19 @@ class Game {
       }
     }
     const common = this.decks.altalanos;
-    const judgeId = this.pickJudge(new Set(), actives.map((p) => p.id));
-    const { defendantId, prosecutorId, defenderId } = this.pickRoles(judgeId);
+    const preset = this.takePresetRoles(actives);
+    let judgeId, defendantId, prosecutorId, defenderId;
+    if (preset) {
+      judgeId = preset.judge; defendantId = preset.defendant; prosecutorId = preset.prosecutor; defenderId = preset.defender || null;
+      // a motor saját forgatása is tudjon róla (a következő körökben ne ugyanők legyenek újra)
+      this.judgeCounts.set(judgeId, (this.judgeCounts.get(judgeId) || 0) + 1);
+      this.lastJudgeId = judgeId;
+      const bump = (id, key) => this.roleHistory.set(id, { defendant: 0, prosecutor: 0, defender: 0, ...(this.roleHistory.get(id) || {}), [key]: ((this.roleHistory.get(id) || {})[key] || 0) + 1 });
+      bump(defendantId, 'defendant'); bump(prosecutorId, 'prosecutor'); if (defenderId) bump(defenderId, 'defender');
+    } else {
+      judgeId = this.pickJudge(new Set(), actives.map((p) => p.id));
+      ({ defendantId, prosecutorId, defenderId } = this.pickRoles(judgeId));
+    }
     const others = actives.filter((p) => p.id !== defendantId && p.id !== prosecutorId && p.id !== defenderId);
     const nameOf = (id) => (this.players.get(id) ? this.players.get(id).name : 'Ismeretlen');
 
@@ -765,7 +800,8 @@ class Game {
     // A tanú előre megkapja a szerepét és a kártyáját a felkészüléshez.
     const witnessPool = others.filter((p) => p.id !== judgeId);
     if (this.settings.witnessEnabled && witnessPool.length) {
-      const witness = pick(witnessPool);
+      const wanted = preset && preset.witness ? witnessPool.find((p) => p.id === preset.witness) : null;
+      const witness = wanted || pick(witnessPool);
       this.roundData.witnessId = witness.id;
       this.roundData.witnessCard = modeDecks.tanuk.draw();
       this.roundData.voters = this.roundData.voters.filter((id) => id !== witness.id);
@@ -1599,6 +1635,7 @@ class Game {
     this.lobbyNotice = message;
     try { this.broadcastAll('host_warning', { message }); } catch (e) { /* */ }
     this.broadcast();
+    this.emitLifecycle('aborted');
   }
 
   // Szerep(ek) átadása a kiesett játékostól.
@@ -1840,6 +1877,7 @@ class Game {
   }
 
   dispose() {
+    this.emitLifecycle('disposed');
     this.clearTimers();
     for (const id of Array.from(this.departureTimers.keys())) this.clearDepartureTimers(id);
     this.players.clear();

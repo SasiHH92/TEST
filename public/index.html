@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/court.css">
   <link rel="stylesheet" href="/cards.css">
   <link rel="stylesheet" href="/cinema.css">
+  <link rel="stylesheet" href="/courts.css">
   <link rel="preload" href="/assets/terem-hatter.webp" as="image">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
 </head>
@@ -366,6 +367,7 @@
       <button id="btnJoin" class="btn big full">BELEPÉS A TEREMBE</button>
       <p id="menuError" class="error"></p>
       <p class="hint">Tipp: a szoba linkjét be lehet másolni a Discordra, aki rákattint, azonnal csatlakozik.</p>
+      <div class="discord-link-box hidden" aria-live="polite"></div>
       <button id="btnChangeSuspect" class="btn small ghost">↩ Másik gyanúsított vagyok</button>
     </div>
   </div>
@@ -391,6 +393,9 @@
         <button id="btnRemoveBot" class="btn small hidden">Bot eltávolítása</button>
         <button id="btnLeaveLobby" class="btn small ghost">KILÉPÉS</button>
       </div>
+
+      <!-- Discord-tárgyalás: jelentkezők és szerepek (a szerver az igazság; a Discord bot ugyanezt látja) -->
+      <section id="courtPanel" class="court-panel hidden" aria-live="polite"></section>
 
       <!-- Plakátfal -->
       <div class="board">
@@ -583,6 +588,7 @@
   <script src="/ranking.js"></script>
   <script src="/avatar-roles.js"></script>
   <script src="/court.js"></script>
+  <script src="/courts.js"></script>
   <script src="/cards.js"></script>
 </body>
 </html>

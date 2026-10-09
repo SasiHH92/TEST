@@ -1,0 +1,20 @@
+{
+  "name": "kamu-birosag-discord-bot",
+  "version": "1.0.0",
+  "description": "Kamu Bíróság – Discord szerver-építő (/setup) és későbbi integrációs bot",
+  "main": "src/index.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "invite": "node src/invite.js",
+    "lint": "node scripts/lint.js",
+    "test": "node --test test/setup.test.js"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  }
+}

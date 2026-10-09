@@ -24,6 +24,8 @@ const {createDms} = require('./dms');
 const {createErrorLog} = require('./errorlog');
 const {securityHeaders} = require('./security-headers');
 const {createAdmin} = require('./admin');
+const {createCourts} = require('./courts');
+const {createCourtsApi} = require('./courts-api');
 const {createModeration} = require('./moderation');
 const {cleanText} = require('./textclean');
 const {budapestDate, weekStart, msUntilWeekReset} = require('./quests');
@@ -86,6 +88,7 @@ const authApi = createAuth({
   // (A legendás kártyák nyilvántartási statisztikája megmarad: azt a kártyán játszott játékok adják, nem a fiók személyes adata.)
   onDelete:(gone)=>{
     dms.purgeUser(gone.id);
+    courts.purgeUser(gone.id); // Discord-kapcsolat és tárgyalás-jelentkezések
     if(!gone.legend) {
       const key=Object.keys(STATS).find((k)=>k.normalize('NFKC').toLocaleLowerCase('hu-HU')===gone.username.normalize('NFKC').toLocaleLowerCase('hu-HU'));
       if(key) { delete STATS[key]; saveStats(); }
@@ -478,6 +481,56 @@ const GUEST_PRIORS = PLAYER_DB.vendeg_priuszok || ['Előélete tiszta. Túl tisz
 
 const rooms = new Map(); // code -> Game
 const sockets = new Map(); // socketId -> { code, playerId }
+
+// ---------- Discord-összekötés: tárgyalás-munkamenetek (courts.js) ----------
+// A munkamenetek tárolása a többi adathoz hasonló (fájl + külső adatbázis). A szoba a motor igazsága a játék indulásáról/végéről,
+// a munkamenet a jelentkezőké és a sorsolt szerepeké; a kettőt ez a híd köti össze.
+const courts = createCourts({
+  file: path.resolve(__dirname, process.env.KB_COURTS_FILE || 'data/courts.json'),
+  persist: () => storage.push('courts'),
+  resolveDiscordId: (userId) => { const u = authApi.directory.byId(userId); return (u && u.providers && u.providers.discord) || null; }
+});
+const courtRooms = {
+  info(code) {
+    const g = rooms.get(String(code || '').toUpperCase());
+    if (!g) return null;
+    const host = g.getPlayer(g.hostId());
+    return {
+      exists: true, phase: g.phase, hostUserId: (host && host.userId) || null, witnessEnabled: g.settings.witnessEnabled !== false,
+      players: [...g.players.values()].filter((p) => !p.isBot).map((p) => ({ playerId: p.id, userId: p.userId || null, name: p.name, connected: p.connected }))
+    };
+  },
+  // Indítás a tárgyalás-API-ból (Discord/web): a szoba a szokásos módon indul, az 1. kör szerepei az előre sorsoltak.
+  start(code, preset) {
+    const g = rooms.get(String(code || '').toUpperCase());
+    if (!g) return { error: 'A szoba már nem létezik.' };
+    if (g.phase !== PHASES.LOBBY) return { error: 'A szobában már folyik a játék.' };
+    if (g.eligiblePlayers().length < 3) return { error: 'Legalább 3 játékos kell a szobában.' };
+    g.presetRoles = preset || null;
+    const patch = g.settings.modes && g.settings.modes.length ? null : { modes: ALL_MODES.slice() }; // nincs kiválasztott mód: GYORS JÁTÉK (minden ügytípus)
+    const ok = g.startGame(patch, g.hostId());
+    g.presetRoles = null;
+    if (ok === false || g.phase === PHASES.LOBBY) return { error: 'A játék nem indulhatott el (válassz ügyiratmappát a lobbiban).' };
+    return { ok: true };
+  },
+  // A weboldalról indított játék előtt: ha van sorsolt tárgyalás a szobához, az előre sorsolt szerepeket használjuk.
+  presetFor(g) {
+    const s = courts.forRoom(g.code);
+    if (!s || s.status !== 'READY') return null;
+    return courtsApi.startPrereq(s);
+  }
+};
+const courtsApi = createCourtsApi({ courts, auth: authApi, io, rooms: courtRooms, botToken: process.env.BOT_SERVICE_TOKEN || '', onError: reportError });
+app.use('/api/bot', courtsApi.bot);
+app.use('/api', courtsApi.web);
+Game.setLifecycleHook((game, event) => {
+  try {
+    if (event === 'started') courts.roomStarted(game.code);
+    else if (event === 'finished') courts.roomFinished(game.code);
+    else if (event === 'aborted' || event === 'disposed') courts.roomGone(game.code);
+  } catch (e) { reportError('court-lifecycle', e); }
+});
+setInterval(() => { try { courts.expireStale(); } catch (e) { reportError('court-expire', e); } }, 30 * 60 * 1000).unref();
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // félreérthető karakterek nélkül
 
@@ -1059,6 +1112,7 @@ io.on('connection', (socket) => {
     rooms.set(code, game);
     game.addPlayer(pid, name, cleanAvatar(avatar), true);
     game.getPlayer(pid).profile = profileFor(socket, name, profile);
+    game.getPlayer(pid).userId = socialApi.userOf(socket.id) || null; // csak a szerver tölti (a tárgyalás-összekötéshez)
     game.getPlayer(pid).sessionToken = crypto.randomBytes(24).toString('hex');
     socket.join(code);
     socket.join(pidRoom(pid, code));
@@ -1117,6 +1171,7 @@ io.on('connection', (socket) => {
       game.kickedIds.delete(pid);
     }
     meP.profile = profileFor(socket, name, profile);
+    meP.userId = socialApi.userOf(socket.id) || null;
     if (!meP.sessionToken) meP.sessionToken = crypto.randomBytes(24).toString('hex');
     socket.join(norm);
     socket.join(pidRoom(pid, norm));
@@ -1189,7 +1244,12 @@ io.on('connection', (socket) => {
     // A start-gombbal érkező beállítások is fertőtlenítve mennek a motorhoz
     // (számok határai, csak érvényes mód-kulcsok, max. 30 db × 200 karakteres saját vád).
     const patch = raw ? sanitizeSettings(raw, game.settings) : null;
+    // Discordról/webről sorsolt tárgyalás: az 1. kör szerepei az előre sorsoltak; ha valaki még nincs a szobában, nem indulunk.
+    const cp = courtRooms.presetFor(game);
+    if (cp && cp.missing.length) return ack && ack({ error: 'A sorsolt játékosok közül még nem léptek be: ' + cp.missing.join(', ') + '.' });
+    game.presetRoles = cp ? cp.preset : null;
     const ok = game.startGame(patch, sess.playerId);
+    game.presetRoles = null;
     if (ok === false) {
       // Nincs érvényes ügyiratmappa (játékmód) kiválasztva.
       return ack && ack({ error: 'Válassz legalább egy ügyiratmappát (játékmódot) a TÁRGYALÁS MEGKEZDÉSE előtt!' });

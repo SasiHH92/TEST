@@ -40,7 +40,8 @@
     "test:roles-sprites": "node test/role-sprites.js",
     "test:roles-ui": "node test/role-sprites-ui.js",
     "test:cinema": "node test/cinema.js",
-    "build-role-assets": "node scripts/build-role-assets.js"
+    "build-role-assets": "node scripts/build-role-assets.js",
+    "test:court": "node test/courts.js && node test/court-preset.js && node test/court-discord-e2e.js"
   },
   "engines": {
     "node": ">=18"
