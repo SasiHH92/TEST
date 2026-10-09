@@ -149,22 +149,49 @@ SFX.tick = () => tone(1000, 0.05, 'square', 0, 0.14);
 SFX.cardSlide = () => { noiseBurst(0.12, 0, 0.14, 2200); tone(520, 0.07, 'triangle', 0.05, 0.14); };
 SFX.join = () => { tone(600, 0.08, 'sine', 0, 0.22); tone(900, 0.1, 'sine', 0.07, 0.2); };
 SFX.ready = () => tone(1046, 0.1, 'triangle', 0, 0.26);
+// Bemutató-réteg hangjai (stinger, szerep-felfedés, kártya-kéz, kihívás-eredmény, győzelem): szintetizáltak, a fájl-alapú hang (assets/audio/) felülírhatja őket.
+SFX.uiClick = () => tone(760, 0.04, 'square', 0, 0.1);
+SFX.cardHover = () => noiseBurst(0.05, 0, 0.05, 3800);
+SFX.cardPlay = () => { noiseBurst(0.18, 0, 0.2, 2400); tone(210, 0.12, 'sine', 0.1, 0.3, 130); };
+SFX.reactionPop = () => tone(620, 0.09, 'sine', 0, 0.22, 980);
+SFX.stinger = () => { noiseBurst(0.35, 0, 0.1, 2600); tone(330, 0.16, 'triangle', 0, 0.3); tone(495, 0.26, 'triangle', 0.1, 0.3); };
+SFX.reveal = () => { noiseBurst(0.7, 0, 0.12, 1800); tone(110, 0.55, 'sine', 0, 0.5, 70); [392, 523, 659].forEach((n, i) => tone(n, 0.38, 'triangle', 0.35 + i * 0.1, 0.28)); };
+SFX.challengeOk = () => { [659, 784, 988, 1319].forEach((n, i) => tone(n, 0.26, 'triangle', i * 0.07, 0.3)); tone(2093, 0.4, 'sine', 0.3, 0.12); };
+SFX.challengeNo = () => { tone(150, 0.3, 'sawtooth', 0, 0.4, 70); noiseBurst(0.12, 0, 0.5, 500); tone(140, 0.28, 'square', 0.12, 0.18, 90); };
+SFX.victory = () => { SFX.fanfare(); [784, 988, 1175, 1568].forEach((n, i) => tone(n, 0.4, 'triangle', 0.7 + i * 0.12, 0.3)); setTimeout(() => SFX.applause(), 700); };
 let chatSound = LS.getItem('kb_chat_sound') !== '0';
 // Hang-hívások néven (a court.js és a többi modul ezen át szólaltat meg): ismeretlen név vagy hiba esetén csend.
+// Kategóriák (public/media.js CATEGORIES, assets/audio/README.md): ui · card · paper · challenge · reaction · stinger · gavel · verdict · score · victory.
 const SOUND_HOOKS = {
   gavel: 'gavel', intro: 'intro', 'intro-open': 'openCourt', evidence: 'paper', challenge: 'stampHit', points: 'points', countdown: 'tick',
   'verdict-guilty': 'guilty', 'verdict-acquitted': 'acquit', join: 'join', ready: 'ready', vote: 'vote', objection: 'objection', ding: 'ding',
-  'card-open': 'paper', 'card-new': 'cardSlide', 'card-select': 'tick'
+  'card-open': 'paper', 'card-new': 'cardSlide', 'card-select': 'tick',
+  paper: 'paper', score: 'points', 'ui-click': 'uiClick', 'card-hover': 'cardHover', 'card-play': 'cardPlay', reaction: 'reactionPop', stinger: 'stinger', reveal: 'reveal',
+  'challenge-success': 'challengeOk', 'challenge-fail': 'challengeNo', victory: 'victory'
 };
 window.kbSound = {
   ping() { if (chatSound) { ensureAudio(); SFX.dm(); } },
   chat() { if (chatSound) { ensureAudio(); SFX.chat(); } },
-  play(name) { const fn = SFX[SOUND_HOOKS[name]]; if (typeof fn === 'function') { try { ensureAudio(); fn(); } catch (_) { /* nincs hang */ } } },
+  // Egy hang lejátszása néven: előbb a feltöltött hangfájl (assets/audio/<név>.mp3|ogg|m4a|wav), különben a szintetizált tartalék. A mester-hangerő / némítás mindkettőre érvényes.
+  play(name) {
+    try {
+      if (vol() === 0) return;
+      if (window.kbMedia && window.kbMedia.hasSound(name)) { ensureAudio(); if (window.kbMedia.playSound(name, vol())) return; }
+      const fn = SFX[SOUND_HOOKS[name]];
+      if (typeof fn === 'function') { ensureAudio(); fn(); }
+    } catch (_) { /* nincs hang */ }
+  },
   hooks: () => Object.keys(SOUND_HOOKS),
+  volume: () => vol(),
   enabled: () => chatSound,
   setEnabled(on) { chatSound = !!on; LS.setItem('kb_chat_sound', chatSound ? '1' : '0'); }
 };
 document.addEventListener('pointerdown', ensureAudio, { once: true, passive: true }); // az első érintés élesíti a hangot
+// UI-kattintás: halk "tick" a gombokra (egyszer kötve; a reakció-gombok és a letiltott gombok kimaradnak). Fájl-alapú hangnál: assets/audio/ui-click.*
+document.addEventListener('pointerdown', (e) => {
+  const b = e.target && e.target.closest ? e.target.closest('button.btn, .lobby-mode-btn') : null;
+  if (b && !b.disabled && !b.classList.contains('react-btn')) window.kbSound.play('ui-click');
+}, { passive: true });
 
 function startDrumroll() {
   stopDrumroll();
@@ -322,6 +349,11 @@ function avatarSrc(a) {
   return '/assets/avatars/avatar_' + a.slice(2) + '.webp';
 }
 
+// Kerek / négyzetes portré-tartalom (kép, vagy az emoji-tartalék) a kör-összegzőhöz és a győztes-pódiumhoz.
+function portraitHtml(a) {
+  return AVATAR_ID_RE.test(a || '') ? '<img src="' + avatarSrc(a) + '" alt="" loading="lazy" decoding="async">' : '<span class="pt-emoji">' + avatarEmoji(a) + '</span>';
+}
+
 function avatarEmoji(a) {
   if (AVATAR_ID_RE.test(a || '')) return '<img class="av-img" src="' + avatarSrc(a) + '" alt="" loading="lazy">';
   return AVATAR_EMOJI[a] || '🎭';
@@ -477,11 +509,11 @@ const charAnim = {
   },
 
   // Reakció (esküdt emoji): 0,8 mp-es buborék a feje fölött.
-  react(key, emoji) {
+  react(key, emoji, opt) {
     const anim = this.active.get(key === S?.currentJudgeId ? JUDGE_KEY : key);
     if (!anim) return;
     anim.reactUntil = performance.now() + 800;
-    this._popBubble(anim, emoji);
+    if (!(opt && opt.bubble === false)) this._popBubble(anim, emoji); // ha a reakció-pop (popReaction) már megjelent a feje fölött, nincs második buborék
   },
 
   // Bírói üzenet: bólogatás a buborék megjelenésekor.
@@ -1583,6 +1615,7 @@ function enterLobby(res) {
   LS.setItem('kb_code', res.code);
   $('#lobbyCode').textContent = res.code;
   $('#gameCode').textContent = res.code;
+  makeCodeCopyable($('#lobbyCode')); makeCodeCopyable($('#gameCode'));
   if (S && S.phase !== 'lobby') { show('game'); renderGame(); }
   else { show('lobby'); renderLobby(); updateQrBox(); }
   // A böngésző-vissza gomb őrzése megakadályozza a véletlen kilépést.
@@ -1606,6 +1639,24 @@ function updateQrBox() {
 $('#qrBox').addEventListener('click', () => {
   $('#qrBox').classList.toggle('big');
 });
+
+// A szobakód kattintásra / Enterre kimásolódik (a meghívó-link mellett a puszta kód is könnyen megosztható). Egyszer köti az eseményeket (nincs duplikált listener).
+function makeCodeCopyable(el) {
+  if (!el || el.dataset.copyBound) return;
+  el.dataset.copyBound = '1';
+  el.classList.add('copyable');
+  el.setAttribute('role', 'button'); el.tabIndex = 0;
+  el.setAttribute('aria-label', 'Szobakód másolása');
+  el.title = 'Kattints a szobakód másolásához';
+  const copy = () => {
+    const code = MY.code || el.textContent;
+    const done = () => { document.querySelectorAll('.code-badge.copyable').forEach((b) => b.classList.add('copied')); showToast('✓ Szobakód kimásolva: ' + code); window.kbSound.play('ui-click'); setTimeout(() => document.querySelectorAll('.code-badge.copied').forEach((b) => b.classList.remove('copied')), 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, () => showToast('A másolás nem sikerült: ' + code));
+    else showToast('Szobakód: ' + code);
+  };
+  el.addEventListener('click', copy);
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(); } });
+}
 
 $('#btnCopyLink').addEventListener('click', () => {
   const url = location.origin + '/?room=' + MY.code;
@@ -1833,14 +1884,14 @@ function renderLobby() {
       el.dataset.poster = p.id;
       el.innerHTML = html;
       wall.appendChild(el);
-      // finom beúszás: 8px lecsúszás (transform-only, hogy bármilyen
-      // renderelési környezetben a plakát látható maradjon)
+      // belépő animáció (court / cinema.css): a plakát lepattan a falra, az avatár felvillan; a fonal-rajzot a végén újra illesztjük.
+      // (A plakát újrarajzolásakor – pl. készenlét-váltás – az új elem már nem kapja meg: nincs ismétlés; csökkentett mozgásnál a CSS kikapcsolja.)
       const card = el.querySelector('.poster');
-      if (card && card.animate) {
-        card.animate(
-          [{ transform: 'translateY(-8px)' }, { transform: 'none' }],
-          { duration: 280, easing: 'ease-out' }
-        );
+      if (card) {
+        card.style.setProperty('--pi', String(Math.min(idx, 8)));
+        card.classList.add('p-enter');
+        card.addEventListener('animationend', (ev) => { if (ev.target === card) { card.classList.remove('p-enter'); card.style.removeProperty('--pi'); } });
+        setTimeout(() => requestAnimationFrame(drawPinThreads), 700 + Math.min(idx, 8) * 70);
       }
     } else if (el.innerHTML !== html) {
       el.innerHTML = html;
@@ -2025,12 +2076,12 @@ function courtSnapshot() {
   const od = S.objectionData;
   return {
     phase: S.phase, round: S.round || 1, totalRounds: S.totalRounds || 1, caseNo: S.caseNo || '',
-    accusationText: S.accusationText || '', meId: MY.playerId, myRole: myRole(),
+    accusationText: S.accusationText || '', meId: MY.playerId, myRole: myRole(), myAvatar: (me() || {}).avatar || MY.avatar || '',
     names: { prosecutor: who(S.prosecutorId), defendant: who(S.defendantId), defender: who(S.defenderId), witness: who(S.witnessId), judge: who(S.currentJudgeId) },
     ids: { judge: S.currentJudgeId || '' },
     evidence: Array.isArray(S.evidence) ? S.evidence : null, myChallenge: S.myChallenge || null,
     revealedCards: S.revealedCards || null, challengeReview: S.challengeReview || null, challengeVote: S.challengeVote || null,
-    verdict: S.verdict || null, scoreEvents: Array.isArray(S.scoreEvents) ? S.scoreEvents : [],
+    verdict: S.verdict || null, gameOver: S.gameOver ? { ranking: (S.gameOver.ranking || []).map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, score: p.score })) } : null, scoreEvents: Array.isArray(S.scoreEvents) ? S.scoreEvents : [],
     objection: od && od.phase ? { phase: od.phase, speakerRole: roleOfPid(od.speakerId) } : null
   };
 }
@@ -2111,6 +2162,11 @@ function renderAccusationTicker() {
 // SZÍNPAD: a karakterek rajzai, a beszélő világít (glow)
 // ============================================================
 
+// Idle-mozgás: karakterenként más fázis (seed, mp) és időtartam (5,2–8,2 mp) – determinisztikus a játékos-azonosítóból, így újrarajzoláskor nem ugrik, és nem szinkronban mozognak.
+function idleVars(pid) {
+  const h = parseInt(hashStr(String(pid || '')).slice(-4), 36) % 1000;
+  return { seed: (h / 1000 * 8).toFixed(2), dur: (5.2 + (h % 37) / 37 * 3).toFixed(2) };
+}
 function renderStage() {
   const stage = $('#stage');
   const slots = $('#stageSlots');
@@ -2120,6 +2176,7 @@ function renderStage() {
   if(S.defendantId) lastSceneRoles={prosecutorId:S.prosecutorId,defendantId:S.defendantId,defenderId:S.defenderId,witnessId:S.witnessId,currentJudgeId:S.currentJudgeId};
   const scene=S.phase==='game_over'&&lastSceneRoles?{...S,...lastSceneRoles}:S;
   const g=sceneGeometry();
+  stage.style.setProperty('--rail',Math.max(0,g.width-g.usable)+'px'); // a jobb oldali pontsáv szélessége: a nagy rétegek (cinema.css) a szabad színpadra igazodnak
   renderFurniture(g);
   const speakerRole = SPEAKER_OF[S.phase] || null;
   const entries = [];
@@ -2154,7 +2211,8 @@ function renderStage() {
       // szerep-kép (átlátszó, derékig látszó karakter): a slot magassága a jelenet-profil × a szerep elrendezése (public/avatar-roles.js ROLE_LAYOUT / AVATAR_ROLE_ADJUSTMENTS)
       const avId=playerById(e.pid)?.avatar||'', lay=sprite?window.kbAvatarRoles.layoutFor(avId,e.role,layoutMode(g)):null;
       const h=sprite?pos.h*lay.scale:avH(pos.h,avSlot,e.role);
-      return '<div class="stage-slot'+(avSlot?' av-slot':'')+(sprite?' sprite-slot':'')+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'" data-av="'+escapeHtml(avId)+'"'+(sprite&&e.role==='juror'?' title="ESKÜDT – '+escapeHtml(playerById(e.pid)?.name||'')+'"':'')+' style="--x:'+pos.x+'%;--b:'+pos.b+'%;--h:'+h+'%;--z:'+(pos.z+(lay?lay.z:0))+';--glow:'+ROLE_COLOR[e.role]+(lay?';--rx:'+lay.x+';--ry:'+lay.y+';--depth:'+lay.depth:'')+'">'+characterFigure(e.role,e.pid,e.ji||0)+'</div>';
+      const idle=idleVars(e.pid);
+      return '<div class="stage-slot'+(avSlot?' av-slot':'')+(sprite?' sprite-slot':'')+'" data-role="'+e.role+'" data-pid="'+escapeHtml(e.pid)+'" data-av="'+escapeHtml(avId)+'"'+(sprite&&e.role==='juror'?' title="ESKÜDT – '+escapeHtml(playerById(e.pid)?.name||'')+'"':'')+' style="--x:'+pos.x+'%;--b:'+pos.b+'%;--h:'+h+'%;--z:'+(pos.z+(lay?lay.z:0))+';--glow:'+ROLE_COLOR[e.role]+';--idle-seed:'+idle.seed+';--idle-dur:'+idle.dur+'s'+(lay?';--rx:'+lay.x+';--ry:'+lay.y+';--depth:'+lay.depth:'')+'">'+characterFigure(e.role,e.pid,e.ji||0)+'</div>';
     }).join('');
     if (juryMore > 0) {
       html += '<div class="stage-jury-more" style="--x:95%;--b:38%">+' + juryMore + '</div>';
@@ -2177,6 +2235,7 @@ function renderStage() {
   judgeSlot.classList.toggle('av-judge',jAv);
   judgeSlot.classList.toggle('sprite-slot',jSprite);
   judgeSlot.dataset.av=jSprite?playerById(scene.currentJudgeId).avatar:'';
+  {const idle=idleVars(scene.currentJudgeId||'judge');judgeSlot.style.setProperty('--idle-seed',idle.seed);judgeSlot.style.setProperty('--idle-dur',idle.dur+'s');}
   judgeSlot.style.setProperty('--x',jp.x+'%');judgeSlot.style.setProperty('--b',jb+'%');judgeSlot.style.setProperty('--h',jh+'%');
   if(jLay) {judgeSlot.style.setProperty('--rx',jLay.x);judgeSlot.style.setProperty('--ry',jLay.y);judgeSlot.style.setProperty('--depth',jLay.depth);judgeSlot.style.setProperty('--z',2+jLay.z);}
   else {judgeSlot.style.removeProperty('--rx');judgeSlot.style.removeProperty('--ry');judgeSlot.style.removeProperty('--depth');judgeSlot.style.removeProperty('--z');}
@@ -2797,16 +2856,35 @@ function renderPhaseContent() {
       break;
     }
     case 'round_results': {
+      // KÖR VÉGE: ki nyert pontot, mennyit és miért (a szerver pont-eseményeiből: S.scoreEvents), az aktuális állás, a vezető kiemelve; az összpont felpörög.
+      // A "+N" és az okok CSAK a szerver eseményeiből jönnek (nincs kitalált szabály). A belépő / felpörgetés körönként egyszer játszódik le (nem minden state-nél).
       const r = S.roundResults || {};
-      html = '<div class="results-scroll">';
+      const gains = {}, why = {};
+      for (const e of (S.scoreEvents || [])) {
+        gains[e.pid] = (gains[e.pid] || 0) + e.points;
+        (why[e.pid] = why[e.pid] || []).push(e.kind);
+      }
+      const scores = r.scores || [];
+      const topScore = scores.reduce((m, p) => Math.max(m, p.score), 0);
+      const rrKey = (S.caseNo || '') + '|' + (S.round || '');
+      const animate = rrAnimatedKey !== rrKey;
+      const reasonOf = (kind) => ((window.kbCourt && window.kbCourt.SCORE_REASON) || {})[kind] || '';
+      html = '<div class="results-scroll rr' + (animate ? ' rr-anim' : '') + '">';
+      html += '<div class="rr-head"><span class="rr-kicker">KÖR VÉGE</span><span class="rr-sub">' + (S.round || 1) + '. tárgyalás eredménye</span></div>';
       if (r.favorite) {
         html += '<div class="favorite-note">Közönségkedvenc: ' + escapeHtml(r.favorite.name) + ' (' + r.favorite.laughs + ' nevetés) – bónusz pont!</div>';
       }
       html += revealedCardsHtml();
-      html += '<div class="score-table compact">' + (r.scores || []).map((p, i) =>
-        '<div class="score-row' + (p.id === MY.playerId ? ' me' : '') + '"><span>' + (i + 1) + '. ' +
-        avatarEmoji(p.avatar) + ' ' + escapeHtml(p.name) + '</span><span class="pts">' + p.score + ' pont</span></div>'
-      ).join('') + '</div></div>';
+      html += '<div class="rr-board score-table compact">' + scores.map((p, i) => {
+        const gain = gains[p.id] || 0, leader = topScore > 0 && p.score === topScore;
+        const reasons = [...new Set((why[p.id] || []).map(reasonOf).filter(Boolean))].slice(0, 2).join(' · ');
+        return '<div class="rr-row score-row' + (p.id === MY.playerId ? ' me' : '') + (leader ? ' leader' : '') + (gain ? ' gained' : '') + '" style="--i:' + i + '" data-pid="' + escapeHtml(p.id) + '">' +
+          '<span class="rr-rank">' + (i + 1) + '.</span><span class="rr-av">' + portraitHtml(p.avatar) + '</span>' +
+          '<span class="rr-who"><b>' + escapeHtml(p.name) + '</b>' + (reasons ? '<small>' + escapeHtml(reasons) + '</small>' : '') + '</span>' +
+          (gain ? '<span class="rr-gain">+' + gain + '</span>' : '') +
+          '<span class="rr-sum"><span class="rr-total" data-from="' + (p.score - gain) + '" data-to="' + p.score + '">' + (animate ? p.score - gain : p.score) + '</span> <small>pont</small></span>' +
+          (leader ? '<span class="rr-crown" title="Az élen" aria-label="Az élen">👑</span>' : '') + '</div>';
+      }).join('') + '</div></div>';
       if (r.hasNextRound) {
         html += S.hostId === MY.playerId
           ? '<div class="fixed-actions"><button class="btn big" id="btnNextRound">KÖVETKEZŐ TÁRGYALÁS</button></div>'
@@ -2815,19 +2893,26 @@ function renderPhaseContent() {
         html += '<p class="next-step">Ez volt az utolsó tárgyalás – jön a végeredmény!</p>';
         if (S.hostId === MY.playerId) html += '<div class="fixed-actions"><button class="btn big" id="btnNextRound">VÉGEREDMÉNY</button></div>';
       }
+      roundSummaryAnimate = animate ? rrKey : '';
       break;
     }
     case 'game_over': {
       const go = S.gameOver || { ranking: [], awards: {} };
-      // Ranglista + díjak görgethetően, a gombok fixen látszanak alul.
-      // A 3 legjobb: arany (pulzáló) / ezüst / bronz glow a kártya körül.
+      const rank = go.ranking || [];
+      // GYŐZTES-PÓDIUM: az első három (2. – 1. – 3. elrendezésben) nagy avatárral, éremmel, ponttal és helyezéssel; a többiek kompakt sorokban. A díjak lent.
+      // A 3 legjobb: arany (pulzáló) / ezüst / bronz glow a kártya körül (a .score-row.podium-* osztályok a teszteknek és a stílusnak is megvannak).
       const podium = ['gold', 'silver', 'bronze'];
-      html = '<div class="results-scroll"><div class="score-table compact">' + (go.ranking || []).map((p, i) => {
-        const medal = ['🥇', '🥈', '🥉'][i] || (i + 1) + '.';
-        const glow = podium[i] ? ' podium-' + podium[i] : '';
-        return '<div class="score-row' + (p.id === MY.playerId ? ' me' : '') + glow + '"><span>' + medal + ' ' +
-          avatarEmoji(p.avatar) + ' ' + escapeHtml(p.name) + '</span><span class="pts">' + p.score + ' pont</span></div>';
-      }).join('') + '</div>';
+      const place = (i) => (i + 1) + '. HELY';
+      const card = (p, i) => '<div class="score-row gp gp' + (i + 1) + ' podium-' + podium[i] + (p.id === MY.playerId ? ' me' : '') + '" style="--i:' + i + '">' +
+        '<span class="gp-medal" aria-hidden="true">' + ['🥇', '🥈', '🥉'][i] + '</span>' + (i === 0 ? '<span class="gp-crown" aria-hidden="true">👑</span>' : '') +
+        '<span class="gp-av">' + portraitHtml(p.avatar) + '</span><b class="gp-name">' + escapeHtml(p.name) + '</b>' +
+        '<span class="gp-score"><span class="pts">' + p.score + ' pont</span></span><span class="gp-place">' + place(i) + '</span></div>';
+      html = '<div class="results-scroll go"><div class="go-podium">' + rank.slice(0, 3).map(card).join('') + '</div>';
+      if (rank.length > 3) {
+        html += '<div class="score-table compact go-rest">' + rank.slice(3).map((p, i) =>
+          '<div class="score-row' + (p.id === MY.playerId ? ' me' : '') + '"><span>' + (i + 4) + '. ' + avatarEmoji(p.avatar) + ' ' + escapeHtml(p.name) + '</span><span class="pts">' + p.score + ' pont</span></div>'
+        ).join('') + '</div>';
+      }
       const a = go.awards || {};
       // Díjak CSAK a szerver által ténylegesen mért statisztikából (a szerver csak pozitív értéket ad; nincs kitalált díj). A mért érték is látszik.
       const AWARD_UNIT = { bestLawyer: 'pont', biggestCriminal: 'elítélés', audienceFavorite: 'nevetés', challengeChampion: 'kihívás',
@@ -2843,7 +2928,7 @@ function renderPhaseContent() {
       html += '</div>'; // results-scroll vége
       html += '<div class="fixed-actions">';
       if (S.hostId === MY.playerId) {
-        html += '<button class="btn big" id="btnNewGame">ÚJ JÁTÉK MOST</button>';
+        html += '<button class="btn big" id="btnNewGame">ÚJ TÁRGYALÁS</button>';
         if (S.autoAdvance) html += '<button class="btn small ghost" id="btnStopAuto">MEGÁLLÍT</button>';
       }
       html += '<button class="btn small ghost" id="btnLeaveAfter">KILÉPÉS</button></div>';
@@ -2859,6 +2944,7 @@ function renderPhaseContent() {
   el.dataset.phase = S.phase;
   el.innerHTML = html;
   el.classList.toggle('enter', S.phase !== lastRenderedPhase);
+  if (roundSummaryAnimate) { rrAnimatedKey = roundSummaryAnimate; roundSummaryAnimate = ''; runCountUp(el); }
   lastRenderedPhase = S.phase;
   updateJudgeBubble(JUDGE_LINES[S.phase] || '');
 
@@ -2933,6 +3019,22 @@ function renderPhaseContent() {
 // (A régi alsó akció-sáv és játékos-sáv megszűnt: az akciók a tartalomba
 // épülnek (inlineActions), a játékosok/pontok a jobb oldali ponttáblán élnek.)
 
+// Kör-összegző: az összpontok felpörögnek a kör előtti értékről a mostanira (900 ms, ease-out). Csökkentett mozgásnál azonnal a végérték; ha a panel közben újrarajzolódik, a ciklus leáll.
+let rrAnimatedKey = '', roundSummaryAnimate = '';
+function runCountUp(root) {
+  const els = [...root.querySelectorAll('.rr-total[data-to]')];
+  if (!els.length) return;
+  if (motionReduced()) { els.forEach((e) => { e.textContent = e.dataset.to; }); return; }
+  const t0 = performance.now(), delay = 500, dur = 900;
+  const tick = (t) => {
+    const k = Math.max(0, Math.min(1, (t - t0 - delay) / dur)), ease = 1 - Math.pow(1 - k, 3);
+    let live = false;
+    for (const e of els) { if (!e.isConnected) continue; live = true; const from = +e.dataset.from, to = +e.dataset.to; e.textContent = String(Math.round(from + (to - from) * ease)); }
+    if (live && k < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 // Saját 😂/👎 szórakoztató szavazataim a kihívás-ellenőrzéshez.
 const myFunVotes = {};
 
@@ -2953,9 +3055,50 @@ $('#btnOrder').addEventListener('click', () => {
 });
 
 const MAX_FLYING_EMOJI = 14; // egyszerre ennyi reakció repülhet: sok játékos mellett sem tölti meg a képernyőt, és nem terheli a böngészőt
-function flyEmoji(emoji) {
+// A reakció a KÜLDŐ karaktere fölött jelenik meg: felpattan (kis túllövéssel), felszáll és elhalványul, néhány apró szikrával. A színpadon látható küldőnek ez jár;
+// ha a küldő nem látszik (pl. 4-nél több esküdt: "+N"), a régi, véletlen helyről repülő emoji a tartalék. Csak transform / opacity animálódik; egy játékostól egyszerre
+// legfeljebb 2 pop él (sok reakció se tegye olvashatatlanná a színpadot), globálisan a MAX_FLYING_EMOJI korlát érvényes. A szerver sebességkorlátja változatlan.
+const REACT_POPS_PER_PLAYER = 2;
+function reactionAnchor(pid) {
+  if (!pid || !S) return null;
+  const sel = (q) => { const e = document.querySelector(q); if (!e) return null; const r = e.getBoundingClientRect(); return r.width && r.height ? { e, r } : null; };
+  const id = (window.CSS && CSS.escape) ? CSS.escape(String(pid)) : String(pid).replace(/["\\]/g, '');
+  const slot = pid === S.currentJudgeId ? sel('#judge') : sel('#stageSlots .stage-slot[data-pid="' + id + '"]');
+  if (slot) {
+    const img = slot.e.querySelector('.st-base'), ir = img ? img.getBoundingClientRect() : null, r = ir && ir.width ? ir : slot.r;
+    return { x: r.left + r.width / 2, y: slot.e.classList.contains('sprite-slot') ? r.top + r.height * 0.07 : r.top - 8 }; // a fej fölött (nem az arcon)
+  }
+  const plate = sel('#stagePlates .stage-plate[data-pid="' + id + '"]');
+  return plate ? { x: plate.r.left + plate.r.width / 2, y: plate.r.top } : null;
+}
+function popReaction(emoji, pid) {
+  const layer = $('#reactionLayer'), at = reactionAnchor(pid);
+  if (!layer || !at) return false;
+  const mine = layer.querySelectorAll('.react-pop[data-pid="' + String(pid).replace(/["\\]/g, '') + '"]');
+  if (mine.length >= REACT_POPS_PER_PLAYER) mine[0].remove();
+  const el = document.createElement('div');
+  el.className = 'react-pop';
+  el.dataset.pid = String(pid);
+  el.setAttribute('aria-hidden', 'true');
+  const wob = (Math.random() * 16 - 8).toFixed(1);
+  el.style.left = Math.max(24, Math.min(window.innerWidth - 24, at.x + (Math.random() * 26 - 13))) + 'px';
+  el.style.top = Math.max(60, at.y) + 'px';
+  el.style.setProperty('--wob', wob + 'deg');
+  el.style.setProperty('--rise', (70 + Math.random() * 30).toFixed(0) + 'px');
+  let sparks = '';
+  if (!motionReduced()) for (let i = 0; i < 5; i++) sparks += '<i style="--a:' + (i * 72 + Math.round(Math.random() * 30)) + 'deg;--r:' + (22 + Math.round(Math.random() * 14)) + 'px"></i>';
+  el.innerHTML = '<span class="rp-emoji">' + escapeHtml(emoji) + '</span>' + (sparks ? '<span class="rp-sparks">' + sparks + '</span>' : '');
+  layer.appendChild(el);
+  window.kbSound.play('reaction');
+  const gone = () => el.remove();
+  el.addEventListener('animationend', (ev) => { if (ev.target === el) gone(); });
+  setTimeout(gone, motionReduced() ? 1000 : 1600); // tartalék: nem maradhat árva elem (animationend nélkül sem)
+  return true;
+}
+function flyEmoji(emoji, byPid) {
   const layer = $('#reactionLayer');
-  if (layer.children.length >= MAX_FLYING_EMOJI) return;
+  if (layer.children.length >= MAX_FLYING_EMOJI) return false;
+  if (byPid && popReaction(emoji, byPid)) return true;
   SFX.reaction(['😂', '💀', '🤡', '🔥', '👏'].indexOf(emoji));
   const el = document.createElement('div');
   el.className = 'flying-emoji';
@@ -3405,14 +3548,14 @@ socket.on('state', (state) => {
 
   // fázisváltás hangok / animációk
   if (state.phase !== lastPhase) {
-    if (state.phase === 'verdict' && S.verdict) {
+    // Az ítélet-sorrendet (várakozás → kalapács → rázkódás → hang / konfetti → felfedés) a court.js rendezi (kbCourt.ownsVerdict); nélküle a régi, azonnali jelzés marad.
+    if (state.phase === 'verdict' && S.verdict && !(window.kbCourt && window.kbCourt.ownsVerdict)) {
       judgeSmash();
       verdictCue(S.verdict);
     }
     if (state.phase === 'game_over') {
       confettiBurst(200);
-      SFX.fanfare();
-      setTimeout(() => SFX.applause(), 600);
+      window.kbSound.play('victory');
     }
     if (state.phase === 'prep' && myRole() !== 'juror') SFX.whisper();
     if (state.phase === 'round_results') SFX.applause();
@@ -3433,9 +3576,9 @@ socket.on('objection_ruling', (data) => {
 });
 
 socket.on('reaction', (data) => {
-  flyEmoji(data.emoji);
-  // Karakter animáció: csak az adott esküdt reagál (0,8 mp beszélő kép + buborék).
-  if (data.by) charAnim.react(data.by, data.emoji);
+  const popped = flyEmoji(data.emoji, data.by);
+  // Karakter animáció: csak az adott esküdt reagál (0,8 mp beszélő kép; buborék csak ha nincs reakció-pop a feje fölött).
+  if (data.by) charAnim.react(data.by, data.emoji, popped ? { bubble: false } : undefined);
 });
 
 socket.on('order_in_court', () => {

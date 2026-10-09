@@ -247,6 +247,33 @@ function scanRoleSprites() {
   // v: a képek verziója (a kliens ?v= paraméterként fűzi az URL-hez, így a 7 napos, immutable gyorsítótár a kicserélt képeknél sem ragad be)
   return { version: 1, v: manifest && typeof manifest.version === 'string' ? manifest.version.replace(/[^A-Za-z0-9._-]/g, '').slice(0, 24) : '', available };
 }
+// Opcionális média: a bejelentkező-oldal videója (assets/video/) és a hangfájlok (assets/audio/). A kliens ezt egyszer lekéri, és CSAK azt tölti be, ami ténylegesen megvan
+// (nincs 404-zaj, nincs törött elem); ha egy fájl nincs, a beépített tartalék él (statikus háttér / szintetizált hang). A fájlnevek: assets/video/README.md, assets/audio/README.md.
+const MEDIA_DIRS = { video: path.resolve(__dirname, process.env.KB_VIDEO_DIR || 'assets/video'), audio: path.resolve(__dirname, process.env.KB_AUDIO_DIR || 'assets/audio') };
+const MEDIA_RE = /^[a-z0-9][a-z0-9._-]{0,60}\.(mp4|webm|m4v|webp|jpg|png|mp3|ogg|m4a|wav)$/;
+let mediaCache = { at: 0, data: null };
+function scanMedia() {
+  const out = { version: 1, v: '', video: {}, audio: {} };
+  let stamp = 0;
+  for (const kind of ['video', 'audio']) {
+    try {
+      for (const name of fs.readdirSync(MEDIA_DIRS[kind])) {
+        if (!MEDIA_RE.test(name)) continue;
+        const st = fs.statSync(path.join(MEDIA_DIRS[kind], name));
+        if (!st.isFile() || st.size < 1) continue;
+        out[kind][name] = st.size; stamp = (stamp * 31 + Math.floor(st.mtimeMs) + st.size) % 2147483647;
+      }
+    } catch (e) { /* nincs mappa: nincs opcionális média */ }
+  }
+  out.v = stamp ? stamp.toString(36) : '';
+  return out;
+}
+app.get('/api/media', (req, res) => {
+  const now = Date.now();
+  if (!mediaCache.data || now - mediaCache.at > 60 * 1000) mediaCache = { at: now, data: scanMedia() };
+  res.set('Cache-Control', 'no-cache');
+  res.json(mediaCache.data);
+});
 app.get('/api/role-sprites', (req, res) => {
   const now = Date.now();
   if (!roleSpriteCache.data || now - roleSpriteCache.at > 60 * 1000) roleSpriteCache = { at: now, data: scanRoleSprites() };

@@ -190,7 +190,7 @@ async function main() {
     page.setDefaultTimeout(10000);
     page.on('pageerror',error=>report.pageErrors.push(error.message));
     page.on('response',response=>{
-      if (new URL(response.url()).pathname.startsWith('/assets/') && !response.ok()) {
+      if (new globalThis.URL(response.url()).pathname.startsWith('/assets/') && !response.ok()) {
         report.assetErrors.push(response.status()+' '+response.url());
       }
     });

@@ -1,0 +1,310 @@
+/* ============================================================
+   KAMU BÍRÓSÁG – "CINEMATIC GAME FEEL": bemutató-réteg (animáció, átmenetek, ítélet, győztes)
+   court.css / cards.css UTÁN töltődik; csak kiegészít. Csak megjelenítés: a játékállapot a szerveré.
+   Szabályok: csak transform / opacity animálódik (olcsó, nincs layout-thrashing), egyszerre egy nagy felület, minden animáció rövid,
+   csökkentett mozgásnál (body.reduced-motion vagy prefers-reduced-motion) nincs nagy átmenet, nincs rázkódás, nincs idle-mozgás – a funkció marad.
+   Arculat: sötét mahagóni, bordó bársony, meleg arany, pergamen. (Nincs neon, nincs lapos "SaaS" felület.)
+   Tartalom: 1) szerep-felfedés  2) fázis-stinger  3) ítélet  4) kihívás  5) győztes  6) kör-összegző  7) győztes-pódium  8) idle-mozgás + beszélő
+             9) reakció-pop  10) kártya-kéz  11) lobbi  12) login-videó  13) csökkentett mozgás
+   ============================================================ */
+
+/* A jobb oldali pontsáv (280 px, 900 px fölött) a színpad FÖLÖTT áll: a nagy rétegek a szabadon maradó jelenet közepére igazodnak (--rail: client.js renderStage),
+   így a címek és kártyák nem csúsznak a sáv alá. Keskeny képernyőn a sáv nincs (--rail: 0). */
+body .court-intro, body .court-evidence, body .court-challenge, body .court-verdict, body .court-reveal, body .court-winner { inset: 0 var(--rail, 0px) 0 0; } /* body: a később deklarált alapszabályok ne írják felül */
+body .court-stinger { right: var(--rail, 0px); }
+
+/* ---------------- 1) SZEREP-FELFEDÉS ---------------- */
+.court-reveal {
+  container-type: inline-size;
+  position: absolute; inset: 0; z-index: 132; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; overflow: hidden; pointer-events: none;
+  opacity: 0; transition: opacity 0.28s ease;
+  background: radial-gradient(ellipse at 50% 60%, rgba(66, 20, 28, 0.55), rgba(6, 3, 4, 0.9) 72%);
+}
+.court-reveal.show { opacity: 1; }
+.rv-stage { position: relative; width: min(640px, 94%); height: 100%; max-height: 760px; display: flex; flex-direction: column; align-items: center; padding-top: clamp(96px, 14vh, 150px); text-align: center; } /* a felső HUD-sávok alatt kezdődik */
+.rv-stage::before { /* színes rim-fény a figura mögött */
+  content: ''; position: absolute; left: 50%; bottom: 0; width: min(560px, 100%); height: 66%; transform: translateX(-50%); pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at 50% 70%, color-mix(in srgb, var(--rv, #f2c14e) 46%, transparent), transparent 62%);
+}
+.rv-round { font: 800 12px var(--font-disp); letter-spacing: 5px; color: #d8c08a; opacity: 0; }
+.rv-kicker { margin-top: 6px; font: 800 clamp(15px, 2.4vw, 24px) var(--font-disp); letter-spacing: 7px; color: #f6efdc; text-shadow: 0 2px 8px #000; opacity: 0; }
+.rv-title {
+  /* a méret a szó hosszához és a szabad szélességhez igazodik (--len: court.js): a leghosszabb szó (VÉDŐÜGYVÉD) sem lóg ki */
+  margin-top: 2px; font-family: var(--font-disp); font-weight: 900; font-size: clamp(30px, min(10vw, calc(88cqw / (var(--len, 6) * 0.64))), 104px); line-height: 1.04; letter-spacing: 4px; color: #fff; opacity: 0; white-space: nowrap;
+  text-shadow: 0 0 34px color-mix(in srgb, var(--rv, #f2c14e) 80%, transparent), 0 5px 0 #2a1208;
+}
+.rv-icon { display: inline-block; filter: drop-shadow(0 0 14px var(--rv, #f2c14e)); }
+.rv-sprite {
+  position: absolute; bottom: 0; left: 50%; height: min(60%, 560px); width: auto; max-width: 92%; object-fit: contain; object-position: 50% 100%; opacity: 0;
+  filter: drop-shadow(0 0 22px var(--rv, #f2c14e)) drop-shadow(0 14px 24px rgba(0, 0, 0, 0.75));
+}
+.rv-portrait {
+  position: absolute; bottom: 7%; left: 50%; width: clamp(150px, 30vh, 260px); aspect-ratio: 3 / 4; overflow: hidden; opacity: 0; border-radius: 16px;
+  border: 4px solid var(--rv, #f2c14e); box-shadow: 0 0 38px color-mix(in srgb, var(--rv, #f2c14e) 60%, transparent), 0 16px 30px rgba(0, 0, 0, 0.7);
+}
+.rv-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; display: block; }
+.rv-emoji { position: absolute; bottom: 12%; left: 50%; font-size: clamp(100px, 22vh, 200px); transform: translateX(-50%); opacity: 0; filter: drop-shadow(0 0 24px var(--rv, #f2c14e)); }
+.rv-skip { position: absolute; bottom: 8px; left: 0; right: 0; font: 600 11px var(--font-body); letter-spacing: 1px; color: #a79b82; opacity: 0; }
+.rv-dusts { position: absolute; inset: 0; pointer-events: none; }
+.rv-dust { position: absolute; left: var(--x); bottom: -8px; width: var(--s); height: var(--s); border-radius: 50%; background: #f6d889; opacity: 0; animation: rv-dust var(--d) var(--w) linear infinite; }
+@keyframes rv-dust { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 0.75; } 100% { transform: translateY(-78vh); opacity: 0; } }
+.court-reveal.show .rv-stage::before { animation: rv-glow 2.5s ease-in-out both; }
+.court-reveal.show .rv-round { animation: rv-fade 0.4s 0.2s ease-out both; }
+.court-reveal.show .rv-kicker { animation: rv-fade 0.4s 0.35s ease-out both; }
+.court-reveal.show .rv-title { animation: rv-title 0.55s 0.5s var(--court-ease-bounce) both; }
+.court-reveal.show .rv-sprite, .court-reveal.show .rv-portrait { animation: rv-rise 0.7s 0.1s var(--court-ease) both; }
+.court-reveal.show .rv-emoji { animation: rv-rise-emoji 0.7s 0.1s var(--court-ease) both; }
+.court-reveal.show .rv-skip { animation: rv-fade 0.5s 1s ease-out both; }
+@keyframes rv-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes rv-title { from { opacity: 0; transform: scale(1.55); } to { opacity: 1; transform: scale(1); } }
+@keyframes rv-rise { from { opacity: 0; transform: translateX(-50%) translateY(14%) scale(0.92); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+@keyframes rv-rise-emoji { from { opacity: 0; transform: translateX(-50%) translateY(14%) scale(0.8); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+@keyframes rv-glow { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0.7; } }
+
+/* ---------------- 2) FÁZIS-STINGER ---------------- */
+.court-stinger {
+  position: absolute; left: 0; right: 0; top: clamp(150px, 27vh, 270px); z-index: 127; display: flex; justify-content: center; pointer-events: none;
+  opacity: 0; transition: opacity 0.22s ease;
+}
+.court-stinger.show { opacity: 1; }
+.cs-card {
+  --tone: #f2c14e; position: relative; display: flex; align-items: center; justify-content: center; gap: 14px; min-width: min(540px, 92vw); padding: 10px 44px 10px 30px;
+  background: linear-gradient(90deg, rgba(30, 10, 12, 0), rgba(30, 10, 12, 0.92) 14%, rgba(30, 10, 12, 0.92) 86%, rgba(30, 10, 12, 0));
+  border-top: 1px solid color-mix(in srgb, var(--tone) 75%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--tone) 75%, transparent);
+  clip-path: inset(-90px 0); /* a fényfutás oldalt a sávnál megáll, a szikrák fel-le kilóghatnak */
+}
+.cs-card.tone-red { --tone: #e5484d; } .cs-card.tone-amber { --tone: #f5a524; } .cs-card.tone-blue { --tone: #3b82f6; } .cs-card.tone-green { --tone: #22c55e; }
+.cs-card.tone-purple { --tone: #a78bfa; } .cs-card.tone-gold, .cs-card.tone-ok { --tone: #f2c14e; } .cs-card.tone-fail { --tone: #e5484d; }
+.cs-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 38%, rgba(255, 240, 200, 0.34) 50%, transparent 62%); transform: translateX(-110%); pointer-events: none; }
+.cs-icon { font-size: clamp(26px, 4.2vw, 42px); filter: drop-shadow(0 0 12px var(--tone)); line-height: 1; }
+.cs-body { display: flex; flex-direction: column; align-items: flex-start; }
+.cs-text { font: 900 clamp(18px, 3.4vw, 34px) var(--font-disp); letter-spacing: 3px; color: #fff3d6; text-shadow: 0 0 22px color-mix(in srgb, var(--tone) 70%, transparent), 0 3px 0 rgba(0, 0, 0, 0.55); }
+.cs-sub { margin-top: 1px; font: 800 12px var(--font-disp); letter-spacing: 3px; color: #e8d5a2; }
+.cs-sparks { position: absolute; left: 50%; top: 50%; pointer-events: none; }
+.cs-spark { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--tone); opacity: 0; }
+.court-stinger.show .cs-card { animation: cs-in 0.3s var(--court-ease-bounce) both; }
+.court-stinger.show .cs-card::after { animation: cs-sweep 0.8s 0.12s ease-out both; }
+.court-stinger.show .cs-card.tone-fail { animation: cs-in 0.3s var(--court-ease-bounce) both, cs-knock 0.34s 0.1s ease-in-out; }
+.court-stinger.show .cs-spark { animation: cs-spark 0.7s 0.1s ease-out both; }
+@keyframes cs-in { from { opacity: 0; transform: translateX(-26px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes cs-sweep { from { transform: translateX(-110%); } to { transform: translateX(110%); } }
+@keyframes cs-knock { 0%, 100% { translate: 0 0; } 25% { translate: -5px 0; } 50% { translate: 5px 0; } 75% { translate: -3px 0; } }
+@keyframes cs-spark { 0% { transform: rotate(var(--a)) translateX(6px) scale(1); opacity: 1; } 100% { transform: rotate(var(--a)) translateX(var(--r)) scale(0.2); opacity: 0; } }
+
+/* ---------------- 3) ÍTÉLETHIRDETÉS ---------------- */
+.court-verdict.anticipate { background: rgba(4, 2, 2, 0.64); }
+.vd-ante { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; animation: vd-ante-in 0.5s var(--court-ease) both; }
+.vd-ante-icon { display: inline-block; font-size: clamp(44px, 9vw, 80px); transform-origin: 80% 90%; filter: drop-shadow(0 0 18px rgba(242, 193, 78, 0.6)); animation: vd-lift 0.95s ease-in-out both; }
+.vd-ante-text { font: 800 clamp(16px, 3.2vw, 30px) var(--font-disp); letter-spacing: 9px; color: #f2d99a; text-shadow: 0 2px 10px #000; }
+@keyframes vd-ante-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes vd-lift { 0% { transform: rotate(0); } 70% { transform: rotate(-32deg) translateY(-8px); } 100% { transform: rotate(-34deg) translateY(-10px); } }
+.court-verdict.impact::before { /* ütés-hullám */
+  content: ''; position: absolute; left: 50%; top: 50%; width: 46vmin; height: 46vmin; margin: -23vmin 0 0 -23vmin; border-radius: 50%; pointer-events: none;
+  border: 6px solid #fff3d0; opacity: 0; animation: vd-ring 0.75s ease-out both;
+}
+.court-verdict.impact.flash-guilty::before { border-color: #ff7b7b; } .court-verdict.impact.flash-acquitted::before { border-color: #7dfba0; }
+@keyframes vd-ring { 0% { transform: scale(0.15); opacity: 0.95; } 100% { transform: scale(2.1); opacity: 0; } }
+.vd-headline {
+  margin: 2px 0 4px; font: 900 clamp(46px, 12vw, 118px) var(--font-disp); line-height: 1; letter-spacing: 6px; color: var(--verdict, #c81e2b);
+  text-shadow: 0 0 34px color-mix(in srgb, var(--verdict, #c81e2b) 55%, transparent), 0 5px 0 rgba(0, 0, 0, 0.3); animation: vd-slam 0.5s var(--court-ease-bounce) both;
+}
+@keyframes vd-slam { 0% { transform: scale(2.5) rotate(-9deg); opacity: 0; } 55% { opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+.court-verdict.impact .verdict-card .court-stamp { animation-delay: 0.25s; }
+.court-verdict.impact .verdict-sub, .court-verdict.impact .verdict-unanimous { animation-delay: 0.5s; }
+
+/* ---------------- 4) KIHÍVÁS ---------------- */
+.cc-kicker.cc-slam { display: inline-block; font: 900 clamp(28px, 5.4vw, 48px) var(--font-disp); letter-spacing: 4px; color: var(--court-red); text-shadow: 0 3px 0 rgba(0, 0, 0, 0.18); animation: cc-slam 0.46s var(--court-ease-bounce) both; }
+@keyframes cc-slam { 0% { transform: scale(2.4) rotate(-10deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+/* a bizonyíték / kihívás-kártya a KÁRTYÁIM kézből "emelkedik fel" (a kezdőpontot a court.js adja: --from-x / --from-y), kis elfordulással */
+.court-evidence .evidence-folder { transform: translate(var(--from-x, 0px), var(--from-y, 45px)) rotate(8deg) scale(0.42); }
+.court-challenge .challenge-card { transform: translate(var(--from-x, 0px), var(--from-y, 42px)) rotate(-7deg) scale(0.42); }
+.court-evidence.show .evidence-folder { transform: translateY(0) rotate(-2deg) scale(1); }
+.court-challenge.show .challenge-card { transform: translateY(0) rotate(-2deg) scale(1); }
+
+/* ---------------- 5) GYŐZTES (a game_over alatt a spotlightban) ---------------- */
+.court-winner {
+  position: absolute; inset: 0; z-index: 129; display: grid; grid-template-columns: minmax(0, 1fr); place-items: start center; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity 0.4s ease;
+  background: radial-gradient(ellipse at 50% 24%, rgba(96, 62, 12, 0.5), rgba(6, 3, 2, 0.84) 72%);
+}
+.court-winner.show { opacity: 1; }
+/* a réteg a lenti eredmény-panel TETEJÉIG tart (--wn-limit: court.js fitWinner), így a győztes neve és pontja nem csúszik alá; a figura a maradék helyen skálázódik */
+.wn-stage { position: relative; box-sizing: border-box; width: min(660px, 94%); height: var(--wn-limit, 54%); padding: clamp(88px, 10vh, 124px) 0 6px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.wn-spot { position: absolute; left: 50%; top: 0; width: 120%; height: 78%; transform: translateX(-50%); pointer-events: none; opacity: 0.0;
+  background: radial-gradient(ellipse 34% 62% at 50% 34%, rgba(255, 228, 150, 0.36), transparent 72%); }
+.wn-kicker { font: 800 12px var(--font-disp); letter-spacing: 6px; color: #d8c08a; }
+.wn-title { margin-top: 2px; flex: none; font: 900 clamp(32px, min(7.4vw, 8vh), 76px) var(--font-disp); letter-spacing: 8px; line-height: 1.05; color: var(--court-gold); text-shadow: 0 0 34px rgba(242, 193, 78, 0.65), 0 5px 0 #4a3208; }
+.wn-hero { position: relative; margin-top: 8px; flex: 1 1 0; min-height: 80px; max-height: 300px; display: flex; justify-content: center; }
+.wn-sprite { height: 100%; width: auto; max-width: 100%; object-fit: contain; filter: drop-shadow(0 0 22px rgba(242, 193, 78, 0.7)) drop-shadow(0 12px 20px rgba(0, 0, 0, 0.7)); }
+.wn-portrait { height: 100%; aspect-ratio: 3 / 4; overflow: hidden; border-radius: 16px; border: 4px solid var(--court-gold); box-shadow: 0 0 40px rgba(242, 193, 78, 0.6), 0 14px 28px rgba(0, 0, 0, 0.7); }
+.wn-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; display: block; }
+.wn-emoji { font-size: clamp(90px, 20vh, 170px); filter: drop-shadow(0 0 20px rgba(242, 193, 78, 0.7)); }
+.wn-crown { position: absolute; top: -30px; left: 50%; z-index: 2; font-size: clamp(34px, 6vh, 56px); transform: translateX(-50%); filter: drop-shadow(0 0 12px rgba(242, 193, 78, 0.9)); }
+.wn-name { margin-top: 8px; flex: none; max-width: 100%; font: 900 clamp(22px, min(5vw, 5.4vh), 46px) var(--font-disp); line-height: 1.1; letter-spacing: 3px; color: #fff3d6; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5); overflow-wrap: anywhere; }
+.wn-score { margin-top: 2px; flex: none; font: 800 14px var(--font-disp); letter-spacing: 3px; color: #e8d5a2; }
+.wn-score b { font-size: 1.5em; color: var(--court-gold); }
+.court-winner.show .wn-spot { animation: wn-spot 1.2s ease-out 0.1s both; }
+.court-winner.show .wn-title { animation: rv-title 0.6s 0.2s var(--court-ease-bounce) both; }
+.court-winner.show .wn-hero { animation: wn-hero 0.8s 0.1s var(--court-ease) both; }
+.court-winner.show .wn-crown { animation: wn-crown 0.7s 0.7s var(--court-ease-bounce) both; }
+.court-winner.show .wn-name, .court-winner.show .wn-score { animation: rv-fade 0.5s 0.6s ease-out both; }
+@keyframes wn-spot { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wn-hero { from { opacity: 0; transform: translateY(18px) scale(0.9); } to { opacity: 1; transform: none; } }
+@keyframes wn-crown { from { opacity: 0; transform: translateX(-50%) translateY(-34px) scale(1.5); } to { opacity: 1; transform: translateX(-50%); } }
+
+/* ---------------- 6) KÖR-ÖSSZEGZŐ ---------------- */
+#screen-game .phase-content[data-phase="round_results"] .rr-board { display: flex !important; width: 100%; }
+/* a kör-összegző saját, függőleges (nem középre igazított, tördelődő) elrendezést kap: a court.css flex-wrap + center szabálya a hosszú listát felül kilógatná */
+#screen-game .phase-content[data-phase="round_results"] .results-scroll.rr { display: block; text-align: left; }
+.rr { width: 100%; }
+.rr-head { display: flex; flex-direction: column; align-items: center; width: 100%; margin: 0 0 4px; }
+.rr-kicker { font: 900 clamp(18px, 3vw, 26px) var(--font-disp); letter-spacing: 6px; color: var(--court-gold); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
+.rr-sub { font: 700 11px var(--font-disp); letter-spacing: 2px; color: var(--court-text-dim); }
+.rr-board { display: flex; flex-direction: column; gap: 5px; padding: 4px 2px 0; }
+.rr-row.score-row {
+  position: relative; display: grid; grid-template-columns: 28px 38px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; margin: 0; padding: 5px 12px 5px 8px;
+  background: rgba(20, 13, 10, 0.62); border: 1px solid var(--court-panel-line); border-radius: 10px;
+}
+.rr-row.score-row + .score-row { margin-top: 0; }
+.rr-row.me { background: rgba(242, 193, 78, 0.12); border-color: var(--court-gold-dark); }
+.rr-row.leader { border-color: var(--court-gold); box-shadow: 0 0 0 1px var(--court-gold-dark), 0 0 16px rgba(242, 193, 78, 0.35); }
+.rr-rank { font: 900 15px var(--font-disp); color: var(--court-text-dim); text-align: center; }
+.rr-av { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; border: 2px solid var(--court-gold-dark); background: #1a1410; display: grid; place-items: center; }
+.rr-av img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; display: block; }
+.rr-who { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.rr-who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 15px var(--font-body); color: var(--court-text); }
+.rr-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 10px var(--font-disp); letter-spacing: 1.5px; color: var(--court-gold); }
+.rr-gain { padding: 1px 10px; border-radius: 999px; background: var(--court-gold); color: #241a06; font: 900 15px var(--font-disp); box-shadow: 0 0 12px rgba(242, 193, 78, 0.5); }
+.rr-sum { display: inline-flex; align-items: baseline; gap: 4px; font-variant-numeric: tabular-nums; min-width: 66px; justify-content: flex-end; }
+.rr-total { font: 900 22px var(--font-disp); color: #fff3d6; }
+.rr-sum small { font: 700 10px var(--font-disp); letter-spacing: 1px; color: var(--court-text-dim); }
+.rr-crown { position: absolute; top: -10px; right: 10px; font-size: 17px; filter: drop-shadow(0 0 6px rgba(242, 193, 78, 0.9)); }
+.rr-anim .rr-row { animation: rr-in 0.42s calc(var(--i, 0) * 70ms) var(--court-ease) both; }
+.rr-anim .rr-gain { animation: rr-gain 0.5s calc(0.35s + var(--i, 0) * 70ms) var(--court-ease-bounce) both; }
+.rr-anim .rr-crown { animation: wn-crown 0.6s 1.2s var(--court-ease-bounce) both; }
+@keyframes rr-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes rr-gain { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: none; } }
+@media (max-width: 700px) {
+  .rr-row.score-row { grid-template-columns: 22px 30px minmax(0, 1fr) auto auto; gap: 6px; padding: 3px 8px 3px 4px; }
+  .rr-av { width: 30px; height: 30px; } .rr-who b { font-size: 13px; } .rr-total { font-size: 18px; } .rr-sum { min-width: 46px; } .rr-sum small { display: none; }
+  .rr-gain { font-size: 13px; padding: 0 7px; }
+}
+
+/* ---------------- 7) GYŐZTES-PÓDIUM (alsó panel) ---------------- */
+.go { width: 100%; }
+.go-podium { display: flex; justify-content: center; align-items: flex-end; gap: 10px; width: 100%; padding: 40px 4px 2px; } /* fent hely a koronának / érmeknek (a görgethető panel különben levágná) */
+.go-podium .score-row.gp {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; margin: 0; flex: 1 1 0; min-width: 0; max-width: 190px;
+  padding: 18px 8px 8px; border-radius: 12px 12px 6px 6px; text-align: center; background: linear-gradient(180deg, rgba(40, 24, 16, 0.78), rgba(18, 12, 9, 0.9));
+}
+.go-podium .gp1 { order: 2; min-height: 178px; } .go-podium .gp2 { order: 1; min-height: 146px; } .go-podium .gp3 { order: 3; min-height: 128px; }
+.gp-medal { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-size: 24px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)); }
+.gp-crown { position: absolute; top: -34px; left: 50%; transform: translateX(-50%); font-size: 26px; filter: drop-shadow(0 0 10px rgba(242, 193, 78, 0.9)); }
+.gp-av { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; border: 3px solid currentColor; background: #1a1410; display: grid; place-items: center; }
+.gp1 .gp-av { width: 76px; height: 76px; }
+.gp-av img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; display: block; }
+.gp1 { color: var(--court-gold); } .gp2 { color: #c9d1dd; } .gp3 { color: #d29a6b; }
+.gp-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 14px var(--font-body); color: var(--court-text); }
+.go-podium .gp-score .pts { font: 900 18px var(--font-disp); color: #fff3d6; }
+.gp-place { font: 800 10px var(--font-disp); letter-spacing: 2px; color: currentColor; }
+.go-rest { width: 100%; }
+.go-podium .score-row.me { background: linear-gradient(180deg, rgba(70, 46, 16, 0.85), rgba(26, 16, 9, 0.92)); }
+.go .gp { animation: gp-in 0.5s calc(var(--i, 0) * 120ms) var(--court-ease-bounce) both; }
+@keyframes gp-in { from { opacity: 0; transform: translateY(26px) scale(0.92); } to { opacity: 1; transform: none; } }
+@media (max-width: 700px) {
+  .go-podium { gap: 6px; padding-top: 36px; } .go-podium .score-row.gp { padding: 16px 4px 6px; }
+  .go-podium .gp1 { min-height: 150px; } .go-podium .gp2 { min-height: 124px; } .go-podium .gp3 { min-height: 110px; }
+  .gp-av { width: 42px; height: 42px; } .gp1 .gp-av { width: 56px; height: 56px; } .gp-name { font-size: 12px; } .go-podium .gp-score .pts { font-size: 14px; }
+}
+
+/* ---------------- 8) IDLE-MOZGÁS + BESZÉLŐ-KIEMELÉS ---------------- */
+/* A szerep-képek alig észrevehetően lélegeznek (1–3 px lebegés, tized fok dőlés); a fázis és az időtartam karakterenként más (a JS adja: --idle-seed / --idle-dur),
+   így nem mozognak szinkronban. Csak transform: a beszélő-kiemelés (filter) és a belépő (a burkolón) nem ütközik vele. */
+.st-art.role-sprite.sprite-ready .st-base { animation: spr-idle var(--idle-dur, 6.5s) ease-in-out calc(var(--idle-seed, 0) * -1s) infinite; }
+#screen-game .judge-slot.sprite-slot.round-judge .st-art.role-sprite.sprite-ready .st-base { animation: spr-idle var(--idle-dur, 6.5s) ease-in-out calc(var(--idle-seed, 0) * -1s) infinite; }
+@keyframes spr-idle { 0%, 100% { transform: translateY(0) rotate(-0.25deg); } 50% { transform: translateY(-2.6px) rotate(0.3deg); } }
+.stage-slot.sprite-slot::before { transform-origin: 50% 50%; animation: spr-shadow var(--idle-dur, 6.5s) ease-in-out calc(var(--idle-seed, 0) * -1s) infinite; }
+@keyframes spr-shadow { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(0.93); opacity: 0.85; } }
+.stage-slot.sprite-slot.speaking::before { animation-play-state: paused; }
+/* a beszélő: arany / szerep-színű körvonal-ragyogás (a glow-pulse adja a képen), a névtábla kiemelve */
+.stage-plate { transition: transform 0.25s var(--court-ease), box-shadow 0.25s ease, border-color 0.25s ease; }
+.stage-plate.speaking { transform: translateX(-50%) scale(1.07); border-color: var(--court-gold); background: rgba(40, 18, 16, 0.92); box-shadow: 0 0 18px rgba(242, 193, 78, 0.45), 0 3px 12px rgba(0, 0, 0, 0.45); }
+@media (hover: hover) { .stage-slot.sprite-slot:hover .st-art { transform: scale(1.025); } }
+
+/* ---------------- 9) REAKCIÓ-POP (a küldő karaktere fölött) ---------------- */
+.react-pop { position: absolute; z-index: 2; transform: translate(-50%, -50%); animation: rp-life 1.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; will-change: transform, opacity; }
+.rp-emoji { display: block; font-size: clamp(28px, 4.6vh, 42px); line-height: 1; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.65)); }
+.rp-sparks { position: absolute; left: 50%; top: 50%; pointer-events: none; }
+.rp-sparks i { position: absolute; width: 4px; height: 4px; margin: -2px; border-radius: 50%; background: #ffe08a; opacity: 0; animation: rp-spark 0.55s 0.08s ease-out both; }
+@keyframes rp-life {
+  0% { transform: translate(-50%, -30%) scale(0) rotate(0deg); opacity: 0; }
+  16% { transform: translate(-50%, -50%) scale(1.4) rotate(var(--wob, 6deg)); opacity: 1; }
+  30% { transform: translate(-50%, -56%) scale(1) rotate(calc(var(--wob, 6deg) * -0.5)); opacity: 1; }
+  100% { transform: translate(-50%, calc(-56% - var(--rise, 80px))) scale(0.9) rotate(0deg); opacity: 0; }
+}
+@keyframes rp-spark { 0% { transform: rotate(var(--a)) translateX(4px) scale(1); opacity: 1; } 100% { transform: rotate(var(--a)) translateX(var(--r)) scale(0.2); opacity: 0; } }
+
+/* ---------------- 10) KÁRTYA-KÉZ: finomabb emelés, kijelölés, húzás ---------------- */
+.court-card { transition: transform 0.32s var(--court-ease, ease), scale 0.25s ease, box-shadow 0.2s ease, filter 0.2s ease; }
+.card-hand.has-sel .ch-stage .court-card:not(.sel):not(.more) { scale: 0.965; }
+.court-card.is-new { animation: ch-draw 0.62s var(--court-ease-bounce, ease) backwards; } /* backwards: a végén a lap saját (kijelölés / legyező) állapota érvényes */
+@keyframes ch-draw { from { translate: -40px 62px; rotate: -10deg; scale: 0.84; opacity: 0; } to { translate: 0 0; rotate: 0deg; scale: 1; opacity: 1; } }
+.court-card.t-challenge.is-new::before { box-shadow: 0 0 14px rgba(229, 72, 77, 0.7); }
+@media (hover: hover) {
+  .card-hand[data-state="open"] .ch-stage .court-card:hover:not(.sel):not(.more) { box-shadow: 0 0 0 1px rgba(86, 58, 20, 0.5), 0 0 16px rgba(242, 193, 78, 0.28), 0 18px 32px rgba(0, 0, 0, 0.66); }
+}
+
+/* ---------------- 11) LOBBI ---------------- */
+.poster.p-enter { animation: p-enter 0.5s calc(var(--pi, 0) * 70ms) var(--court-ease-bounce) backwards; } /* backwards: a végén a plakát saját dőlése (--tilt) marad */
+.poster.p-enter .p-avatar { animation: p-flash 0.9s calc(var(--pi, 0) * 70ms + 0.2s) ease-out backwards; }
+@keyframes p-enter { from { opacity: 0; transform: translateY(-16px) scale(0.86) rotate(calc(var(--tilt, 0deg) - 3deg)); } to { opacity: 1; transform: rotate(var(--tilt, 0deg)); } }
+@keyframes p-flash { 0% { filter: brightness(2.2) saturate(0.6); } 100% { filter: none; } }
+.p-state-row .p-ready { animation: p-ready-pop 0.4s var(--court-ease-bounce) both; }
+@keyframes p-ready-pop { from { transform: scale(0.5); opacity: 0; } to { transform: none; opacity: 1; } }
+.p-offline span::after { content: ' …'; animation: p-dots 1.4s ease-in-out infinite; }
+@keyframes p-dots { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+.code-badge.copyable { cursor: pointer; position: relative; transition: transform 0.2s var(--court-ease), box-shadow 0.2s ease; }
+.code-badge.copyable:hover, .code-badge.copyable:focus-visible { transform: scale(1.04); box-shadow: 0 0 0 2px var(--court-gold), 0 0 20px rgba(242, 193, 78, 0.45); outline: none; }
+.casefile-box .code-badge.copyable::after { content: 'KATTINTS A MÁSOLÁSHOZ'; position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%); white-space: nowrap; font: 700 9px var(--font-disp); letter-spacing: 2px; color: var(--court-text-dim); opacity: 0.8; pointer-events: none; }
+.code-badge.copied { box-shadow: 0 0 0 2px var(--court-green), 0 0 22px rgba(34, 197, 94, 0.5); }
+.casefile-box .code-badge.copied::after { content: '✓ KIMÁSOLVA'; color: var(--court-green); opacity: 1; }
+
+/* ---------------- 12) LOGIN-VIDEÓ ---------------- */
+.auth-video { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -2; object-fit: cover; object-position: 50% 56%; opacity: 0; transition: opacity 0.9s ease; pointer-events: none; }
+.auth-video.ready { opacity: 1; }
+.auth-shade::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 46%, transparent 38%, rgba(8, 3, 2, 0.58) 100%); } /* filmes vignetta: az űrlap mindig olvasható */
+html.auth-video-on .auth-shade { background: linear-gradient(180deg, rgba(23, 12, 7, 0.52), rgba(27, 14, 8, 0.26) 42%, rgba(23, 8, 6, 0.8)); }
+
+/* ---------------- 13) CSÖKKENTETT MOZGÁS ---------------- */
+.reduced-motion .rv-stage::before, .reduced-motion .rv-round, .reduced-motion .rv-kicker, .reduced-motion .rv-title, .reduced-motion .rv-sprite, .reduced-motion .rv-portrait, .reduced-motion .rv-emoji, .reduced-motion .rv-skip,
+.reduced-motion .court-reveal.show .rv-stage::before, .reduced-motion .court-reveal.show .rv-round, .reduced-motion .court-reveal.show .rv-kicker, .reduced-motion .court-reveal.show .rv-title,
+.reduced-motion .court-reveal.show .rv-sprite, .reduced-motion .court-reveal.show .rv-portrait, .reduced-motion .court-reveal.show .rv-emoji, .reduced-motion .court-reveal.show .rv-skip { animation: none !important; opacity: 1; }
+.reduced-motion .rv-sprite, .reduced-motion .rv-portrait, .reduced-motion .rv-emoji { transform: translateX(-50%); }
+.reduced-motion .rv-dusts, .reduced-motion .cs-sparks, .reduced-motion .rp-sparks { display: none; }
+.reduced-motion .court-stinger.show .cs-card, .reduced-motion .court-stinger.show .cs-card::after, .reduced-motion .court-stinger.show .cs-card.tone-fail,
+.reduced-motion .vd-ante, .reduced-motion .vd-ante-icon, .reduced-motion .court-verdict.impact::before, .reduced-motion .vd-headline, .reduced-motion .cc-kicker.cc-slam,
+.reduced-motion .court-winner.show .wn-spot, .reduced-motion .court-winner.show .wn-title, .reduced-motion .court-winner.show .wn-hero, .reduced-motion .court-winner.show .wn-crown,
+.reduced-motion .court-winner.show .wn-name, .reduced-motion .court-winner.show .wn-score, .reduced-motion .rr-anim .rr-row, .reduced-motion .rr-anim .rr-gain, .reduced-motion .rr-anim .rr-crown,
+.reduced-motion .go .gp, .reduced-motion .st-art.role-sprite.sprite-ready .st-base, .reduced-motion .stage-slot.sprite-slot::before, .reduced-motion .court-card.is-new,
+.reduced-motion .poster.p-enter, .reduced-motion .poster.p-enter .p-avatar, .reduced-motion .p-state-row .p-ready, .reduced-motion .p-offline span::after { animation: none !important; }
+.reduced-motion .court-winner.show .wn-spot { opacity: 1; }
+.reduced-motion .court-evidence .evidence-folder, .reduced-motion .court-challenge .challenge-card { transform: none; }
+.reduced-motion .react-pop { animation: rp-static 1s both; transform: translate(-50%, -50%); }
+.reduced-motion .stage-plate.speaking { transform: translateX(-50%); }
+@keyframes rp-static { 0% { opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .rv-stage::before, .rv-round, .rv-kicker, .rv-title, .rv-sprite, .rv-portrait, .rv-emoji, .rv-skip,
+  .court-reveal.show .rv-stage::before, .court-reveal.show .rv-round, .court-reveal.show .rv-kicker, .court-reveal.show .rv-title,
+  .court-reveal.show .rv-sprite, .court-reveal.show .rv-portrait, .court-reveal.show .rv-emoji, .court-reveal.show .rv-skip { animation: none !important; opacity: 1; }
+  .rv-sprite, .rv-portrait, .rv-emoji { transform: translateX(-50%); }
+  .rv-dusts, .cs-sparks, .rp-sparks { display: none; }
+  .court-stinger.show .cs-card, .court-stinger.show .cs-card::after, .court-stinger.show .cs-card.tone-fail,
+  .vd-ante, .vd-ante-icon, .court-verdict.impact::before, .vd-headline, .cc-kicker.cc-slam,
+  .court-winner.show .wn-spot, .court-winner.show .wn-title, .court-winner.show .wn-hero, .court-winner.show .wn-crown, .court-winner.show .wn-name, .court-winner.show .wn-score,
+  .rr-anim .rr-row, .rr-anim .rr-gain, .rr-anim .rr-crown, .go .gp, .st-art.role-sprite.sprite-ready .st-base, .stage-slot.sprite-slot::before, .court-card.is-new,
+  .poster.p-enter, .poster.p-enter .p-avatar, .p-state-row .p-ready, .p-offline span::after { animation: none !important; }
+  .court-winner.show .wn-spot { opacity: 1; }
+  .court-evidence .evidence-folder, .court-challenge .challenge-card { transform: none; }
+  .react-pop { animation: rp-static 1s both; transform: translate(-50%, -50%); }
+  .stage-plate.speaking { transform: translateX(-50%); }
+  .stage-plate, .court-card { transition: none !important; }
+}

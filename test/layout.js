@@ -264,7 +264,7 @@ async function walk(browser, vp) {
           const stage = document.getElementById('stage');
           S = { ...(old || {}), phase: 'verdict', round: 91, caseNo: 'T-91', verdict: { guilty: true, guiltyVotes: 3, notGuiltyVotes: 1 } };
           kbCourt.update(courtSnapshot());
-          await new Promise((r) => setTimeout(r, 750));
+          await new Promise((r) => setTimeout(r, 1150)); // ítélethirdetés (kb. 1 s várakozás) → kalapács-ütés → a színpad megrázkódik
           probe.shake = stage.classList.contains('court-shake');
           probe.stamp = (document.querySelector('#courtVerdict .court-stamp') || {}).textContent;
           await new Promise((r) => setTimeout(r, 1000));
@@ -277,7 +277,7 @@ async function walk(browser, vp) {
           probe.reducedNewDoves = document.querySelectorAll('.dove').length - before;
           S = { ...(old || {}), phase: 'verdict', round: 92, caseNo: 'T-92', verdict: { guilty: true, guiltyVotes: 3, notGuiltyVotes: 1 } };
           kbCourt.update(courtSnapshot());
-          await new Promise((r) => setTimeout(r, 800));
+          await new Promise((r) => setTimeout(r, 1200));
           probe.reducedShake = stage.classList.contains('court-shake');
           charAnim.setReducedMotion(false);
           kbCourt.reset();

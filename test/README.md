@@ -43,3 +43,7 @@ A korábban készített, opcionális képfeldolgozó teszt szintetikus bemenetet
 python -m pip install -r scripts/graphics-requirements.txt
 python test/assets-pipeline.py
 ```
+
+## Filmes réteg (`npm run test:cinema`)
+
+Valódi böngészőben (Playwright + Edge/Chrome) és valódi szerverrel, 40 ellenőrzés: `/api/media` lista (üres / szűrt), belépő videó-háttér (nincs fájl, nem elérhető fájl, csökkentett mozgás, keskeny képernyő, elérhető – a teszt maga rögzít egy kis WebM-et –, eltávolítás a belépőoldal elhagyásakor), lobbi-belépés és szobakód, szerep-felfedés (mind a 6 szerep, kép, időtartam, Esc, újratöltés), stinger, kihívás-eredmény, ítélet-idővonal (kalapács-sorrend, BŰNÖS! / ÁRTATLAN!, egyszeri), kör-összegző (count-up), játék vége (pódium, győztes, gombok), reakciók (anchor, korlátok, takarítás), idle-mozgás (amplitúdó, fázisok), kártya-animációk, hang-architektúra (fájl > szintetizált, némítás, hook-dokumentáció), csökkentett mozgás, szivárgás (eseményfigyelők CDP-vel, időzítők, DOM) és reszponzív rétegek 1920×1080 / 1366×768 / 1024×768 / 390×844 felbontáson. Böngésző nélkül a böngészős rész SKIP (`CINEMA_REQUIRE=1` esetén hiba); `CINEMA_SHOTS=./QA_SCREENSHOTS` képernyőképeket ment.

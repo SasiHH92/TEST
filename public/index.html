@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/court.css">
   <link rel="stylesheet" href="/cards.css">
+  <link rel="stylesheet" href="/cinema.css">
   <link rel="preload" href="/assets/terem-hatter.webp" as="image">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
 </head>
@@ -492,7 +493,10 @@
           <div id="courtIntro" class="court-intro hidden" aria-live="polite"></div>
           <div id="courtEvidence" class="court-evidence hidden" aria-live="polite"></div>
           <div id="courtChallenge" class="court-challenge hidden" aria-live="polite"></div>
+          <div id="courtWinner" class="court-winner hidden" aria-live="polite"></div>
+          <div id="courtReveal" class="court-reveal hidden" aria-live="polite"></div>
           <div id="courtVerdict" class="court-verdict hidden" aria-live="assertive"></div>
+          <div id="courtStinger" class="court-stinger" aria-live="polite" aria-atomic="true"></div>
           <div id="courtCountdown" class="court-countdown hidden" aria-hidden="true"></div>
         </div>
       </section>
@@ -571,6 +575,7 @@
   <div id="confettiLayer" class="confetti-layer"></div>
 
   <script src="/report.js"></script>
+  <script src="/media.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/client.js"></script>
   <script src="/auth.js"></script>

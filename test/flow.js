@@ -89,14 +89,14 @@ function observer() {
     if (ev && ev.classList.contains('show')) rec.evidence.push({ phase: S.phase, round: S.round, n: ev.querySelectorAll('li').length, text: ev.innerText, mine: S.evidence || [], revealed: S.revealedCards ? S.revealedCards.evidence : null });
     const ch = document.getElementById('courtChallenge');
     if (ch && ch.classList.contains('show')) rec.challenge.push({ phase: S.phase, round: S.round, text: ch.innerText, mine: S.myChallenge || null });
-    const fl = document.querySelectorAll('#reactionLayer .flying-emoji').length;
+    const fl = document.querySelectorAll('#reactionLayer .flying-emoji, #reactionLayer .react-pop').length;
     if (fl > rec.flyMax) rec.flyMax = fl;
     // időzítő-tisztítás: nincs nagy gyűrűs időzítő, a felkészülésnél nincs panel, egyszerre legfeljebb egy nagy overlay
     const rings = document.querySelectorAll('.timer-ring, #timerBox').length;
     if (rings > rec.ringsMax) rec.ringsMax = rings;
     const sp = document.getElementById('scenePanel');
     if (S.phase === 'prep' && sp && getComputedStyle(sp).display !== 'none') rec.prepPanel++;
-    const majors = ['courtIntro', 'courtEvidence', 'courtChallenge', 'courtVerdict'].filter((id) => { const e = document.getElementById(id); return e && e.classList.contains('show'); }).length;
+    const majors = ['courtReveal', 'courtIntro', 'courtEvidence', 'courtChallenge', 'courtVerdict', 'courtWinner'].filter((id) => { const e = document.getElementById(id); return e && e.classList.contains('show'); }).length;
     if (majors > rec.majorMax) rec.majorMax = majors;
     // KÁRTYÁIM: a kéz tartalma a szerver által nekem küldött privát adat mellett; és a képernyő szövege (privát kártyák kiszivárgásának ellenőrzéséhez)
     const stage = document.getElementById('chStage');
@@ -234,9 +234,9 @@ function autoplay(players) {
     // ---------------- játék közbeni beavatkozások (mindegyik néhány másodperces) ----------------
     await check('reakciók: a vendég reakciója megjelenik a házigazdánál; a kattintás-áradat korlátozott (≤ 14 egyszerre)', async () => {
       await waitPhase(A.page, ['prosecution', 'defense'], 90000);
-      const before = await A.page.evaluate(() => document.querySelectorAll('#reactionLayer .flying-emoji').length);
+      const before = await A.page.evaluate(() => document.querySelectorAll('#reactionLayer .flying-emoji, #reactionLayer .react-pop').length);
       await B.page.evaluate(() => document.querySelector('.react-btn[data-emoji="😂"]').click());
-      await A.page.waitForFunction((n) => document.querySelectorAll('#reactionLayer .flying-emoji').length > n, before, { timeout: 4000 });
+      await A.page.waitForFunction((n) => document.querySelectorAll('#reactionLayer .flying-emoji, #reactionLayer .react-pop').length > n, before, { timeout: 4000 });
       for (let i = 0; i < 24; i++) { await B.page.evaluate(() => document.querySelector('.react-btn[data-emoji="🔥"]').click()); await C.page.evaluate(() => document.querySelector('.react-btn[data-emoji="👏"]').click()); await pause(40); }
       await shot(A, 'speech');
     });

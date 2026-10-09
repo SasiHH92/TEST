@@ -328,7 +328,7 @@ const inside = (r, vw, vh) => r && r.l >= -1 && r.t >= -1 && r.r <= vw + 1 && r.
       // szerep-útmutató: a bíró / esküdt felkészülési szövege nem lehet a panelben
       if (panelShown && /Kávészünet|Te vagy ebben a körben a BÍRÓ|Figyeljetek a (vád|véd)/.test(pc.innerText)) out.problems.push('szerep-útmutató a panelben (duplikáció): ' + pc.innerText.slice(0, 50));
       // nagy overlayek: egyszerre legfeljebb egy
-      const majors = ['courtIntro', 'courtEvidence', 'courtChallenge', 'courtVerdict'].filter((id) => { const e = document.getElementById(id); return e && e.classList.contains('show'); });
+      const majors = ['courtReveal', 'courtIntro', 'courtEvidence', 'courtChallenge', 'courtVerdict', 'courtWinner'].filter((id) => { const e = document.getElementById(id); return e && e.classList.contains('show'); });
       if (majors.length > 1) out.problems.push('egyszerre több nagy overlay: ' + majors.join(','));
       out.info.majors = majors;
       // kihívás-ellenőrzés: a nagy kártya és a kompakt sáv nem látszik egyszerre

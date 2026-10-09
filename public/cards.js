@@ -207,6 +207,17 @@
 
   // ---------------- események (egyszer kötjük; delegálva) ----------------
   function bind(r) {
+    // halk lapozó-hang az egér alatti lapra (csak egérrel, csak nyitott kéznél, lapváltáskor, legfeljebb ~8/mp): érintésnél nincs hover
+    let hoverI = -1, hoverT = 0;
+    r.addEventListener('pointerover', (e) => {
+      if (e.pointerType !== 'mouse' || !st.open) return;
+      const c = e.target.closest ? e.target.closest('.court-card[data-i]') : null, i = c ? +c.dataset.i : -1;
+      if (i === hoverI) return;
+      hoverI = i;
+      const now = performance.now();
+      if (i >= 0 && now - hoverT > 120) { hoverT = now; play('card-hover'); }
+    });
+    r.addEventListener('pointerleave', () => { hoverI = -1; });
     r.addEventListener('click', (e) => {
       const act = e.target.closest('[data-act]');
       if (act) {
