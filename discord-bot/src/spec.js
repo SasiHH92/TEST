@@ -38,6 +38,12 @@ const PRESETS = {
     ...BETA.map((s) => ({ subject: s, allow: [P.ViewChannel, P.SendMessages, P.SendMessagesInThreads, P.ReadMessageHistory, P.EmbedLinks, P.AttachFiles, P.AddReactions] })),
     { subject: 'bot', allow: BOT_POST },
   ],
+  // Csak a stáb (Tulajdonos, Fejlesztő, Moderátor): pl. a moderációs napló. A tesztelők sem látják.
+  staff: [
+    { subject: 'everyone', deny: [P.ViewChannel] },
+    ...STAFF.map((s) => ({ subject: s, allow: [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.EmbedLinks, P.AddReactions] })),
+    { subject: 'bot', allow: BOT_POST },
+  ],
   voice: [{ subject: 'everyone', allow: [P.ViewChannel, P.Connect, P.Speak] }],
 };
 
@@ -101,6 +107,7 @@ const STRUCTURE = [
       { name: '🐛・hibajelentés', kind: 'forum', perm: 'beta', embed: 'bugs', tags: 'bug', fallbackKind: 'text', topic: 'Hibát találtál? Nyiss új posztot a sablon szerint!' },
       { name: '💭・teszt-visszajelzés', kind: 'text', perm: 'beta', topic: 'Mit gondolsz a legújabb tesztverzióról?' },
       { name: '📋・ismert-hibák', kind: 'text', perm: 'beta', topic: 'Már ismert hibák – mielőtt újat jelentesz, nézd meg itt.' },
+      { name: '🛡️・mod-napló', kind: 'text', perm: 'staff', topic: 'Automatikus moderáció naplója (csak a stáb látja). A némítás a gombbal visszavonható.' },
     ],
   },
 ];

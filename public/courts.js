@@ -22,6 +22,11 @@
   let note = '';
   let linkCode = null;    // { code, expiresAt }
   let linkTimer = null;
+  // A Discord-panel linkje: /?court=KAMU-1003 – megnyitása jelentkezés + belépés a tárgyalás szobájába
+  let pendingCourt = new URLSearchParams(location.search).get('court');
+  if (pendingCourt) { try { history.replaceState(null, '', location.pathname); } catch (_) { /* */ } }
+  const entered = new Set(); // már megkísérelt automatikus belépések (tárgyalás:szoba)
+  const toast = (t) => { if (typeof showToast === 'function') showToast(t); };
 
   async function api(method, route, body) {
     let response;
@@ -42,9 +47,23 @@
   const inRoomLobby = () => typeof MY !== 'undefined' && MY.code && typeof S !== 'undefined' && S && S.phase === 'lobby';
 
   // ---------------- betöltés ----------------
+  // Belépés a tárgyalás szobájába: a szerver szükség esetén létrehozza a szobát, és jelentkezésként is számít.
+  async function enter(id, auto) {
+    try {
+      const r = await api('POST', '/court-sessions/' + encodeURIComponent(id) + '/enter', {});
+      session = r.session;
+      const ok = typeof window.kbJoinFriendRoom === 'function' ? window.kbJoinFriendRoom(r.roomCode) : false;
+      if (ok && auto) toast('⚖️ A Discordon jelentkeztél, belépsz a tárgyalás szobájába…');
+    } catch (e) { if (!auto) toast(e.message); }
+  }
   async function loadLink() {
     try { link = await api('GET', '/discord/link'); } catch (e) { link = null; }
     renderLinkBoxes();
+    if (pendingCourt) {
+      const id = pendingCourt;
+      if (link) { pendingCourt = null; enter(id, false); }
+      else if (!loadLink.warned) { loadLink.warned = true; toast('A tárgyaláshoz jelentkezz be a fiókodddal, utána automatikusan belépsz.'); }
+    }
   }
   async function loadSession() {
     if (!(typeof MY !== 'undefined' && MY.code) || !link) { session = null; code = null; mySessions = []; renderPanel(); return; }
@@ -168,6 +187,12 @@
   if (typeof socket !== 'undefined') {
     socket.on('court_update', (v) => {
       if (!v) return;
+      // Discordon jelentkeztél, és épp a menüben vagy: a szerver szobájába automatikusan belépsz
+      if (link && v.roomCode && ['WAITING', 'LOCKED', 'READY'].includes(v.status) && v.participants.some((p) => p.uid === link.uid) &&
+        typeof MY !== 'undefined' && !MY.code && document.querySelector('#screen-menu.active')) {
+        const key = v.id + ':' + v.roomCode;
+        if (!entered.has(key)) { entered.add(key); enter(v.id, true); }
+      }
       if (typeof MY !== 'undefined' && v.roomCode === MY.code) {
         if (!session || session.id !== v.id || v.version >= session.version) { session = v; code = MY.code; renderPanel(); }
       }

@@ -24,7 +24,7 @@ const {createDms} = require('./dms');
 const {createErrorLog} = require('./errorlog');
 const {securityHeaders} = require('./security-headers');
 const {createAdmin} = require('./admin');
-const {createCourts} = require('./courts');
+const {createCourts, CourtError} = require('./courts');
 const {createCourtsApi} = require('./courts-api');
 const {createModeration} = require('./moderation');
 const {cleanText} = require('./textclean');
@@ -513,6 +513,30 @@ const courtRooms = {
     if (ok === false || g.phase === PHASES.LOBBY) return { error: 'A játék nem indulhatott el (válassz ügyiratmappát a lobbiban).' };
     return { ok: true };
   },
+  // Szerver által létrehozott (üres) szoba a Discordról nyitott tárgyaláshoz: az első belépő a vezető (join_room átadja a házigazdaságot).
+  createEmpty(hostUserId) {
+    if (rooms.size >= MAX_ROOMS) return null;
+    const code = newCode();
+    if (!code) return null;
+    const g = new Game(code, io);
+    g.creatorIp = 'court';
+    g.courtHostUserId = hostUserId;
+    rooms.set(code, g);
+    return code;
+  },
+  drop(code) {
+    const g = rooms.get(code);
+    if (g && g.activePlayers().length === 0) { g.dispose(); rooms.delete(code); }
+  },
+  // A tárgyalás szobája létezzen: ha megszűnt (takarítás / telepítés), újat nyitunk; folyó játék szobáját nem pótoljuk.
+  ensureRoom(session) {
+    const existing = rooms.get(session.roomCode);
+    if (existing) { existing.courtHostUserId = existing.courtHostUserId || session.hostUserId; return session.roomCode; }
+    if (session.status === 'IN_PROGRESS') throw new CourtError('no_room', 'A szoba megszűnt, a folyó tárgyalás nem folytatható.');
+    const code = this.createEmpty(session.hostUserId);
+    if (!code) throw new CourtError('rooms_full', 'A szerver jelenleg betelt, próbáld később.');
+    return code;
+  },
   // A weboldalról indított játék előtt: ha van sorsolt tárgyalás a szobához, az előre sorsolt szerepeket használjuk.
   presetFor(g) {
     const s = courts.forRoom(g.code);
@@ -520,6 +544,13 @@ const courtRooms = {
     return courtsApi.startPrereq(s);
   }
 };
+// Szándékos kilépés / kirúgás a szobából: a játékos kikerül a tárgyalás jelentkezői közül is (Discord-panel, role-ok követik).
+function courtLeft(game, playerId) {
+  try {
+    const p = game.getPlayer(playerId);
+    if (p && p.userId) courts.leaveFromRoom(game.code, p.userId);
+  } catch (e) { reportError('court-leave', e); }
+}
 const courtsApi = createCourtsApi({ courts, auth: authApi, io, rooms: courtRooms, botToken: process.env.BOT_SERVICE_TOKEN || '', onError: reportError });
 app.use('/api/bot', courtsApi.bot);
 app.use('/api', courtsApi.web);
@@ -1084,6 +1115,7 @@ io.on('connection', (socket) => {
   function dropIfAbandoned(code) {
     const game = rooms.get(code);
     if (!game || game.phase !== PHASES.LOBBY) return;
+    if (courts.forRoom(code)) return; // élő Discord-tárgyalás szobáját megtartjuk
     if ([...game.players.values()].some((p) => !p.isBot && p.connected)) return; // a botok nem tartanak életben szobát
     if ([...sockets.values()].some((x) => x.code === code)) return;
     game.dispose();
@@ -1172,6 +1204,11 @@ io.on('connection', (socket) => {
     }
     meP.profile = profileFor(socket, name, profile);
     meP.userId = socialApi.userOf(socket.id) || null;
+    // Discordról nyitott tárgyalás szobája: a tárgyalás vezetője a házigazda, akkor is, ha más lépett be előbb.
+    if (game.courtHostUserId && meP.userId === game.courtHostUserId && game.phase === 'lobby' && !meP.isHost) {
+      for (const p of game.players.values()) p.isHost = false;
+      meP.isHost = true;
+    }
     if (!meP.sessionToken) meP.sessionToken = crypto.randomBytes(24).toString('hex');
     socket.join(norm);
     socket.join(pidRoom(pid, norm));
@@ -1394,6 +1431,7 @@ io.on('connection', (socket) => {
     if (!target) return ack && ack({ error: 'Nincs ilyen játékos a szobában.' });
     const ok = game.kickPlayer(targetId);
     if (!ok) return ack && ack({ error: 'Nem sikerült a kirúgás.' });
+    try { if (target.userId) courts.leaveFromRoom(game.code, target.userId); } catch (e) { reportError('court-leave', e); }
     // A kirúgott socket-munkamenetei megszűnnek (nem kaphat több szoba-eseményt,
     // és nem tud eseményeket küldeni – pl. szavazatot).
     for (const [sid, s] of sockets) {
@@ -1416,7 +1454,7 @@ io.on('connection', (socket) => {
     sockets.delete(socket.id);
     socket.leave(sess.code);
     socket.leave(pidRoom(sess.playerId, sess.code));
-    if (game) game.handleLeave(sess.playerId);
+    if (game) { courtLeft(game, sess.playerId); game.handleLeave(sess.playerId); }
     dropIfAbandoned(sess.code);
     presenceChanged();
     ack && ack({ ok: true });
@@ -1440,7 +1478,7 @@ io.on('connection', (socket) => {
       if (game.activePlayers().length === 0) {
         setTimeout(() => {
           const g = rooms.get(sess.code);
-          if (g && g.activePlayers().length === 0) {
+          if (g && g.activePlayers().length === 0 && !courts.forRoom(sess.code)) {
             g.dispose();
             rooms.delete(sess.code);
             console.log('room removed:', sess.code);
@@ -1460,7 +1498,7 @@ const ROOM_EMPTY_LIFETIME_MS = 10 * 60 * 1000;
 setInterval(() => {
   const now = Date.now();
   for (const [code, game] of rooms) {
-    if (game.activePlayers().length === 0 && now - (game.lastActivityAt || 0) > ROOM_EMPTY_LIFETIME_MS) {
+    if (game.activePlayers().length === 0 && now - (game.lastActivityAt || 0) > ROOM_EMPTY_LIFETIME_MS && !courts.forRoom(code)) {
       game.dispose();
       rooms.delete(code);
       console.log('room removed (idle):', code);
@@ -1520,4 +1558,33 @@ server.listen(PORT, HOST, () => {
     console.log('Adatbázis-mentés: naponta automatikusan (a legutóbbi 14 marad meg).');
   }
   if (adminApi.enabled) console.log('Admin felület: /admin (ADMIN_TOKEN beállítva).');
+  startEmbeddedBot();
 });
+
+// Beágyazott Discord bot: ugyanebben a folyamatban fut, így nem kell hozzá külön gép (README: DISCORD_OSSZEKOTES.md).
+// Bekapcsolás: DISCORD_BOT_TOKEN + BOT_SERVICE_TOKEN a környezetben (DISCORD_BOT_EMBEDDED=0 kikapcsolja). A bot hibája a játékot nem állítja le.
+function startEmbeddedBot() {
+  if (!process.env.DISCORD_BOT_TOKEN || !process.env.BOT_SERVICE_TOKEN || process.env.DISCORD_BOT_EMBEDDED === '0') return;
+  try {
+    require('./discord-bot/src/index').startBot({
+      token: process.env.DISCORD_BOT_TOKEN,
+      backendUrl: 'http://127.0.0.1:' + PORT, // a saját szerverünk: nincs külső kör
+      serviceToken: process.env.BOT_SERVICE_TOKEN,
+      gameUrl: process.env.KAMU_GAME_URL || process.env.AUTH_BASE_URL || '',
+      guildId: process.env.DISCORD_GUILD_ID || '',
+      embedded: true,
+      log: { log: (...a) => console.log(...a), error: (...a) => console.error(...a) }
+    });
+    console.log('Discord bot: beágyazva indul (nem kell külön gép).');
+  } catch (e) {
+    errors.record('discord-bot', e);
+    console.error('A Discord bot nem indult el:', e.message);
+  }
+  // Az ingyenes Render-szolgáltatás 15 perc külső forgalom nélkül elalszik, és a bot vele. A saját nyilvános címünk
+  // időnkénti lekérése a Render proxyján át érkezik, így ébren tartja (KEEP_AWAKE=0 kikapcsolja).
+  const pub = String(process.env.AUTH_BASE_URL || '').replace(/\/+$/, '');
+  if (process.env.KEEP_AWAKE !== '0' && /^https:\/\//.test(pub)) {
+    const t = setInterval(() => { fetch(pub + '/health', { signal: AbortSignal.timeout(15000) }).catch(() => {}); }, 8 * 60 * 1000);
+    t.unref();
+  }
+}

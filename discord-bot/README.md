@@ -13,12 +13,42 @@ csatornában (jelentkezés gombbal), a sorsolt szerepek ideiglenes `Kamu | …` 
 Bekapcsolás: a `.env`-ben `BACKEND_URL` és `BOT_SERVICE_TOKEN` (ugyanaz, mint a Render webszolgáltatáson). Nélkülük csak a
 `/setup` parancsok működnek. Játékosoknak: `/kapcsol kod:<kód>` (a kódot a weboldal menüjében, az **Összekötés** gombbal kapják).
 
+## Moderáció (automatikus, opcionális)
+
+A bot a Discord-szerver üzeneteit is moderálja: **szabályalapú szűrés** (mindig pontos, magyarázható), és **opcionálisan MI-alapú szöveg- és képértelmezés**.
+Alapból KI van kapcsolva (`MODERATION=0`), a játék-integrációt és a `/setup`-ot nem érinti.
+
+**Bekapcsolás (egyszer):**
+1. Developer Portal → a bot → **Bot** fül → **Privileged Gateway Intents** → **MESSAGE CONTENT INTENT = BE** → Save. (Enélkül a bot moderáció nélkül indul újra, és ezt naplózza.)
+2. Új jogok: **Manage Messages** (törlés) és **Moderate Members** (ideiglenes némítás). `npm run invite` → az új link → ugyanazt a szervert válaszd (a meglévő bot megkapja a jogokat). A bot role-ja legyen a role-lista tetején (különben nem tud némítani).
+3. `MODERATION=1` (a Renderen: Environment; önálló botnál: `.env`), majd újraindítás. Futtasd a `/setup-repair` parancsot: létrehozza a **🛡️・mod-napló** csatornát (csak Tulajdonos / Fejlesztő / Moderátor látja).
+
+**Mit szűr (szabályok):**
+| Szabály | Súlyosság | Példa |
+|---|---|---|
+| Gyűlöletbeszéd, uszítás (ragozva, „leet”-ben, szétszórt betűkkel is) | súlyos | rasszista / homofób szidalom, „dögölj meg” |
+| Átverés, adathalászat, IP-naplózó, hasonmás-domain, tömeges említés, több csatornás spam, veszélyes melléklet (.exe, .bat…) | súlyos | „ingyen Nitro” + link, `dlscord-gift.com`, 5+ említés |
+| Idegen Discord-meghívó, üzenet-áradat, ismételt üzenet | közepes | |
+| Durva káromkodás, csupa nagybetű, emoji-áradat, karakter-ismétlés, zalgo-szöveg, szövegfal, rövidített link | enyhe | |
+
+**Büntetési létra** (24 órás ablak, pontok: enyhe 1, közepes 2, súlyos 4): minden találat → az üzenet törlése + a tag értesítése (DM; ha tiltott, rövid, magától eltűnő jelzés a csatornában).
+4 pont → 10 perc némítás, 7 pont → 1 óra, 10 pont → 24 óra; **súlyos** találatnál azonnal legalább 1 óra. A stáb (Tulajdonos / Fejlesztő / Moderátor role, Administrator, szerver-tulajdonos) és a botok **kivételek**.
+Minden intézkedés a **🛡️・mod-naplóba** kerül (tag, csatorna, ok, tartalom-részlet), a némítás ott a **↩ Visszavonás** gombbal feloldható (a pontok is törlődnek). A szerkesztett üzenetet is újraellenőrzi. `/moderacio` (admin): állapot és statisztika.
+
+**MI-réteg (opcionális):** `MOD_AI=1` + `ANTHROPIC_API_KEY`. A bot ilyenkor a **képmellékleteket** (jpg/png/gif/webp, max. 5 MB, üzenetenként 3) és a **szöveget** is Claude-dal értékelteti: a szöveg-értelmezés a kerülő megfogalmazást, zaklatást, fenyegetést, öngyilkosságra uszítást, a képellenőrzés az explicit, véres vagy gyűlölet-szimbólumos képeket fogja meg.
+Az utasítás védi a játék humorát (játékbeli „vádak”, évődés nem szabálysértés). Csak **egyértelmű** (2–3 súlyosság), **magabiztos** (≥ 0,7) találat töröl; kétség esetén az üzenet átmegy. Szöveg alapból csak az 1 hétnél frissebb tagoknál megy az MI-hez (`MOD_AI_TEXT=new`; `all` / `off`), kép mindig. Legfeljebb 20 hívás/perc, hiba / időtúllépés esetén az üzenet átmegy (a chat sosem akad el).
+**Költség és adatvédelem:** a vizsgált szöveg / kép-link az Anthropic API-hoz kerül; a használat díjköteles. Ezt érdemes a 📜・szabályzatban jelezni a tagoknak. A kulcsot csak a környezetben (Render Environment / `.env`) add meg, soha ne commitold.
+
+**Korlátok (őszintén):** a szólista kiindulópont, nem tökéletes (téves riasztás és kihagyás előfordulhat); a `MOD_WORDLIST_FILE` JSON-nal bővíthető (`{"hate":[],"profanity":[],"allow":[]}`, a `*` végű szó tő). A büntetőpontok memóriában élnek (újraindításkor nullázódnak). Súlyos esetet (pl. kiskorút veszélyeztető tartalom) a Discord Trust & Safety felé is jelentsd. A Discord saját védelmeit (Server Settings → Safety Setup / AutoMod: explicit képszűrő, szülői beállítások) érdemes kézzel is bekapcsolni, a bot ezeket kiegészíti.
+
 ## Parancsok
 
 | Parancs | Mit csinál |
 |---|---|
 | `/setup` | Felépít mindent, ami hiányzik; a bot saját embedjeit frissíti. Újrafuttatható, nem duplikál. |
 | `/setup-status` | Csak ellenőriz: role-ok, hierarchia, csatornák, fórum-címkék, jogosultságok, embedek, bot-jogok. |
+| `/targyalas` | Bárkinek (összekötött fiókkal): új tárgyalás nyitása, a szobát a rendszer automatikusan létrehozza. |
+| `/moderacio` | Admin: az automatikus moderáció állapota. |
 | `/kapcsol kod:` | Bárkinek: a Discord-fiókot a Kamu Bíróság fiókjához köti (egyszer használatos, 10 perces kód a weboldalról). |
 | `/setup-repair` | Csak pótol: hiányzó elemeket és elromlott jogokat javít, meglévő üzenetet nem ír át. |
 
@@ -144,7 +174,7 @@ Mivel a bot külön folyamat, a játékszerver és a bot összekötése (pl. egy
 
 ```bash
 npm run lint   # szintaxis + titokellenőrzés
-npm test       # 13 offline teszt memóriában élő hamis Discord-szerveren (nincs hálózat, nincs token)
+npm test       # 33 offline teszt (setup + moderáció) memóriában élő hamis Discord-szerveren (nincs hálózat, nincs token)
 ```
 
 ## Hibaelhárítás

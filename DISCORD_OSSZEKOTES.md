@@ -65,11 +65,24 @@ Események: `COURT_SESSION_CREATED`, `PLAYER_JOINED`, `PLAYER_LEFT`, `SESSION_LO
 `ROLES_CLEARED`, `SESSION_STARTED`, `SESSION_FINISHED`, `SESSION_CANCELLED`, `SESSION_REBOUND`.
 Állapotok: `WAITING → LOCKED → DRAWING → READY → IN_PROGRESS → FINISHED`, bármelyik élőből `CANCELLED`.
 
+## Automatikus szoba és jelentkezők a szobában
+
+* **Nyitás Discordról:** `/targyalas` (összekötött fiókkal). A **szerver** azonnal létrehoz egy üres szobát, a panel a szobakódot és a
+  linket (`…/?court=KAMU-1003`) mutatja. A link megnyitása **jelentkezés is, és belépés is** a szobába; a tárgyalás vezetője lesz a
+  házigazda, akkor is, ha más lépett be előbb. A weben nyitott tárgyalás (lobbi → *Discord-tárgyalás nyitása*) ugyanígy működik.
+* **Ha a szoba megszűnt** (takarítás, telepítés), a link megnyitásakor a szerver újat nyit, és a tárgyaláshoz köti (a Discord-panel
+  az új kódot mutatja). Élő tárgyalás szobáját a szerver nem takarítja el. Folyó játék szobáját nem pótolja.
+* **Aki Discordon jelentkezik**, és épp a játék menüjében van (nyitott oldal, bejelentkezve), azt az oldal **automatikusan beviszi a
+  szobába**. Akinek nincs nyitva az oldal, annak a linkre kell kattintania (a böngészőt a szerver nem tudja „utánuk nyúlva” megnyitni).
+* **Kilépés a weben → kikerül a Discordról is:** ha a játékos szándékosan kilép a szobából (vagy a házigazda kirúgja), kikerül a
+  tárgyalás jelentkezői közül (panel frissül, a role-ja lekerül; sorsolás után a sorsolás érvényét veszti, vissza JELENTKEZÉS).
+  A vezető kilépése a szobából nem szünteti meg a tárgyalást; a folyó tárgyalás résztvevőit nem érinti. F5 / kapcsolatvesztés nem kilépés.
+
 ## Szerepsorsolás
 
 3 fő: Bíró, Ügyész, Vádlott. 4 fő: + Tanú. 5+ fő: + Védőügyvéd. A többiek Esküdtek (max. 8 fő).
-Fair: a szerepet az kapja, akinek eddig a legkevesebbszer volt, döntetlennél akinek az előző szerepe más volt, végül véletlen
-(`crypto.randomInt`). A statisztika (`roleStats`) csak elindult tárgyalás után frissül. A sorsolás **idempotens** (második
+Fair: a szerepeket **együtt** osztja ki (az összes lehetséges kiosztásból a legkisebb költségűek közül sorsol, `crypto.randomInt`): a sokszor
+szerepet kapó játékos drágább, az előző szerepének ismétlése is. A statisztika (`roleStats`) csak elindult tárgyalás után frissül. A sorsolás **idempotens** (második
 kattintás nem sorsol újra), újrasorsolás csak a vezetőnek, READY állapotból (`force`).
 
 **Az 1. kört a motor a sorsolt szerepekkel játssza** (bíró, ügyész, vádlott, védő, tanú); a következő körökben a játék
@@ -107,17 +120,34 @@ saját, kör-alapú forgatása dönt (ahogy eddig), de tudja, ki mit játszott a
 | Változó | Hová | Érték |
 |---|---|---|
 | `BOT_SERVICE_TOKEN` | **Render webszolgáltatás** (Environment) **és** a bot `.env`-je | ugyanaz a véletlen titok, ≥ 32 karakter. Generálás: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `BACKEND_URL` | a bot `.env`-je | `https://test-1-ndkt.onrender.com` |
+| `DISCORD_BOT_TOKEN` | **Render webszolgáltatás** (beágyazott bot) | a Developer Portal Bot fülén kapott token, TITKOS |
+| `DISCORD_GUILD_ID`, `KAMU_GAME_URL`, `KEEP_AWAKE`, `DISCORD_BOT_EMBEDDED` | Render, opcionális | lásd fent |
+| `MODERATION`, `MOD_PROFANITY`, `MOD_AI`, `ANTHROPIC_API_KEY`, `MOD_AI_MODEL`, `MOD_AI_TEXT`, `MOD_WORDLIST_FILE` | Render, opcionális (a moderációhoz) | részletek: `discord-bot/README.md` → Moderáció |
+| `BACKEND_URL` | csak önálló bot (`.env`) | `https://test-1-ndkt.onrender.com` |
 | `DISCORD_BOT_TOKEN`, `DISCORD_CLIENT_ID` | a bot `.env`-je | a Developer Portalról (lásd `discord-bot/README.md`) |
 | `KAMU_GAME_URL` | a bot `.env`-je | a játék címe (a panel linkjéhez); alapból a `BACKEND_URL` |
 | `KB_COURTS_FILE` | opcionális, csak fejlesztés/teszt | alapértelmezett: `data/courts.json` |
 
-A Render webszolgáltatásnak **csak** a `BOT_SERVICE_TOKEN` az új változója.
+Beágyazott botnál a Render webszolgáltatás új változói: `BOT_SERVICE_TOKEN` és `DISCORD_BOT_TOKEN`.
 
-## Kell-e külön bot-szolgáltatás?
+## Hol fut a bot? (nem kell külön gép)
 
-**Igen, a bot külön, folyamatosan futó folyamat.** A játék Render webszolgáltatása nem futtathat Discord-botot a
-kérések mellett megbízhatóan (az ingyenes csomag alszik). Lehetőségek: **Render Background Worker** (fizetős, a
+**Alapértelmezés: beágyazva a játék szerverébe.** Ha a Render webszolgáltatáson megvan a `DISCORD_BOT_TOKEN` **és** a
+`BOT_SERVICE_TOKEN`, a bot a szerverrel együtt indul (ugyanabban a folyamatban, a saját szerverét `127.0.0.1`-en éri el). A bot
+hibája (pl. rossz token) a játékot nem állítja le. `DISCORD_BOT_EMBEDDED=0` kikapcsolja.
+
+* **Ébren tartás:** az ingyenes Render-szolgáltatás 15 perc külső forgalom nélkül elalszik, és a bot vele. A szerver ezért 8 percenként
+  lekéri a saját nyilvános `/health` címét (a Render proxyján át érkezik, ébren tartja; `KEEP_AWAKE=0` kikapcsolja). Biztonsági hálónak
+  állíts be egy ingyenes külső pingelőt is (pl. UptimeRobot, HTTP monitor, 5 perc: `https://<a-játék-címe>/health`). Ha a szolgáltatás
+  mégis elalszik (vagy újraindul), a bot a következő kérésre / indításkor magától újrakapcsolódik, a panelek a backendből állnak vissza.
+* **Fontos:** a beágyazott bot mellett a saját gépeden futó botot **állítsd le**, különben két bot válaszol ugyanarra a gombra.
+* A bot a Render **Environment** fülén kapja: `DISCORD_BOT_TOKEN` (titok), `BOT_SERVICE_TOKEN` (titok), opcionálisan `DISCORD_GUILD_ID`,
+  `KAMU_GAME_URL` (alapból az `AUTH_BASE_URL`).
+* A `discord.js` a gyökér `package.json`-ban van, ezért a Render `npm install`-ja telepíti.
+
+## Kell-e külön bot-szolgáltatás? (alternatívák)
+
+A bot önállóan is futhat, ha nem a webszolgáltatásba ágyazod. Lehetőségek: **Render Background Worker** (fizetős, a
 `discord-bot` mappából: build `npm install`, start `npm start`), egy VPS vagy a saját gép (`npm start`). A `/setup` egyszeri;
 a tárgyalás-integrációhoz a botnak futnia kell. Ha a bot áll, a web működik tovább, a Discord-panelek az újraindulás után
 (az első egyeztetéskor) beállnak a pillanatnyi állapotra.
@@ -133,7 +163,7 @@ a tárgyalás-integrációhoz a botnak futnia kell. Ha a bot áll, a web működ
 ## Kézi teendők
 
 1. `BOT_SERVICE_TOKEN` generálása, beírása a Render Environmentbe **és** a `discord-bot/.env`-be, majd a Render újraindítása.
-2. `BACKEND_URL` kitöltése a `discord-bot/.env`-ben, a bot újraindítása.
+2. **Beágyazott bot (ajánlott):** a Renderen add meg a `DISCORD_BOT_TOKEN`-t is, a saját gépen futó botot állítsd le. (Önálló bot esetén: `BACKEND_URL` a `discord-bot/.env`-ben.)
 3. (Egyszeri) A Discordon: bot role-ja felülre; `/setup` (ha még nem futott).
 4. Játékosonként: weboldal → menü → **Összekötés** → a kapott kódot a Discordon: `/kapcsol kod:<kód>`.
 5. Tárgyalás: lobbi → **Discord-tárgyalás nyitása** → a 🎮・játék-kereső csatornában megjelenik a panel.
@@ -144,7 +174,7 @@ a tárgyalás-integrációhoz a botnak futnia kell. Ha a bot áll, a web működ
 ## Tesztek
 
 ```bash
-npm run test:court   # 16 magteszt + 6 motor-teszt + 21 lépéses körút (valódi szerver + valódi bot-logika + hamis Discord)
+npm run test:court   # 16 magteszt + 6 motor-teszt + 22 lépéses körút + 2 beágyazott-bot teszt (valódi szerver + valódi bot-logika + hamis Discord)
 cd discord-bot && npm test   # 13 setup-teszt
 ```
 

@@ -243,20 +243,33 @@ function createCourts({
     if (n >= 4 && witnessEnabled !== false) plan.push('witness');
     return plan;
   }
+  // A szerepeket EGYÜTT osztjuk ki: az összes lehetséges kiosztásból a legkisebb "költségű" közül sorsolunk (N ≤ 8, legfeljebb ~6700 eset).
+  // Költség = Σ (2·eddigi_alkalom + 1) szerepenként (konvex: a sokszor szerepet kapó drágább), + 1, ha az előző szerepe ugyanez volt.
   function drawRoles(participants, witnessEnabled) {
-    const pool = participants.map((p) => p.userId);
+    const ids = participants.map((p) => p.userId);
+    const plan = rolePlan(ids.length, witnessEnabled);
+    const stats = (id) => data.roleStats[id] || { counts: {}, last: null };
+    const cost = (id, role) => (2 * (stats(id).counts[role] || 0) + 1) * 10 + (stats(id).last === role ? 1 : 0);
+    let best = Infinity, bestList = [];
+    const used = new Set(), cur = [];
+    (function rec(i, sum) {
+      if (sum > best) return;
+      if (i === plan.length) {
+        if (sum < best) { best = sum; bestList = []; }
+        bestList.push(cur.slice());
+        return;
+      }
+      for (const id of ids) {
+        if (used.has(id)) continue;
+        used.add(id); cur.push(id);
+        rec(i + 1, sum + cost(id, plan[i]));
+        used.delete(id); cur.pop();
+      }
+    })(0, 0);
+    const chosen = bestList[randomInt(bestList.length)];
     const out = {};
-    for (const role of rolePlan(pool.length, witnessEnabled)) {
-      const stats = (id) => data.roleStats[id] || { counts: {}, last: null };
-      const min = Math.min(...pool.map((id) => stats(id).counts[role] || 0));
-      let cands = pool.filter((id) => (stats(id).counts[role] || 0) === min);
-      const fresh = cands.filter((id) => stats(id).last !== role);
-      if (fresh.length) cands = fresh;
-      const pick = cands[randomInt(cands.length)];
-      out[pick] = role;
-      pool.splice(pool.indexOf(pick), 1);
-    }
-    for (const id of pool) out[id] = 'juror';
+    plan.forEach((role, i) => { out[chosen[i]] = role; });
+    for (const id of ids) if (!out[id]) out[id] = 'juror';
     return out;
   }
 
@@ -329,6 +342,15 @@ function createCourts({
       s.roomCode = code;
       return { changed: true, event: EVENTS.REBOUND };
     });
+  }
+
+  // A játékos a weben kilépett a szobából: kikerül a tárgyalás jelentkezői közül is (a Discord-panel és a role-ok követik).
+  // A vezetőt és a már folyó tárgyalás résztvevőit nem érinti.
+  function leaveFromRoom(code, userId) {
+    const s = byRoom(code);
+    if (!s || !userId || userId === s.hostUserId || s.status === STATUS.IN_PROGRESS) return null;
+    if (!s.participants.some((p) => p.userId === userId)) return null;
+    return leave(s.id, { userId });
   }
 
   // ---------- a játékmotor visszajelzései (a szoba az igazság az indulásról/végéről) ----------
@@ -450,7 +472,7 @@ function createCourts({
 
   return {
     STATUS, ROLES, EVENTS, events, view, create, join, leave, lock, unlock, draw, begin, finish, cancel, rebind,
-    roomStarted, roomFinished, roomGone, setDiscordPanel, markAnnounced, setAppliedRoles,
+    roomStarted, roomFinished, roomGone, leaveFromRoom, setDiscordPanel, markAnnounced, setAppliedRoles,
     createLinkCode, consumeLinkCode, linkOfUser, unlink, purgeUser, userOfDiscord, canManage: (id, actor) => canManage(session(id), actor),
     get, getForBot, forRoom, listLive, listForBot, mine, hostSessionOf, expireStale, saveNow,
     _data: () => data

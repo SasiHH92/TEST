@@ -439,6 +439,63 @@ async function main() {
     for (const t of [et, ...others]) t.disconnect();
   });
 
+  await test('DISCORDRÓL nyitott tárgyalás: a szerver automatikusan szobát készít; a belépő jelentkezik és a szobába kerül; a vezető lesz a házigazda', async () => {
+    const gina = await account('GinaT'), hugo = await account('HugoT'), ivan = await account('IvanT');
+    for (const u of [gina, hugo, ivan]) { await linkViaCode(u); members[u.name] = guild.addMember(u.did); }
+    // nem összekötött Discord-tag nem nyithat
+    const replies0 = [];
+    await court.handleOpenCommand({ user: { id: stranger.did, username: 'idegen' }, async deferReply() {}, async editReply(t) { replies0.push(t); } });
+    assert.match(replies0[0], /nincs összekötve/);
+    // Gina a Discordról nyit tárgyalást
+    const replies = [];
+    await court.handleOpenCommand({ user: { id: gina.did, username: 'ginat' }, async deferReply() {}, async editReply(t) { replies.push(t); } });
+    assert.match(replies[0], /KAMU-\d+/, 'válasz: ' + replies[0]);
+    const sid = /KAMU-\d+/.exec(replies[0])[0];
+    assert.ok(replies[0].includes('/?court=' + sid));
+    await waitFor(() => panels(sid).length === 1, 'a panel megjelenik');
+    const s0 = (await gina.api('GET', '/api/court-sessions/' + sid)).data.session;
+    assert.match(s0.roomCode, /^[A-Z0-9]{4}$/, 'a szerver szobakódot adott');
+    assert.ok(panelText(sid).includes(s0.roomCode) && panelText(sid).includes('?court=' + sid));
+    // Ivan a menüben van (socket azonosítva, szobán kívül): élőben értesül a jelentkezéséről
+    const ivanTab = await tab(ivan);
+    assert.match(await press(ivan, 'join', sid), /Jelentkeztél/);
+    await waitFor(() => ivanTab.updates.some((u) => u.id === sid && u.participants.some((p) => p.name === 'IvanT') && u.roomCode === s0.roomCode), 'Ivan megkapja a court_update-et a szobakóddal (a kliens ebből automatikusan belép)');
+    // Hugo a linkkel érkezik: a belépés jelentkezés is
+    const hugoTab = await tab(hugo);
+    const eh = await hugo.api('POST', '/api/court-sessions/' + sid + '/enter', {});
+    assert.equal(eh.status, 200);
+    assert.equal(eh.data.roomCode, s0.roomCode);
+    await hugoTab.joinRoom(eh.data.roomCode);
+    assert.ok((await gina.api('GET', '/api/court-sessions/' + sid)).data.session.participants.some((p) => p.name === 'HugoT'));
+    await waitFor(() => panelText(sid).includes(`<@${hugo.did}>`), 'Hugo a Discord-panelen is');
+    // Gina (a vezető) érkezik utoljára, de ő lesz a házigazda
+    const ginaTab = await tab(gina);
+    const eg = await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {});
+    const rj = await ginaTab.joinRoom(eg.data.roomCode);
+    assert.equal(rj.state.hostId, ginaTab.pid, 'a tárgyalás vezetője a házigazda');
+    // Ivan belép a szobába
+    await ivanTab.joinRoom(s0.roomCode);
+    // Hugo a weben kilép → a Discordon is kikerül (panel, jelentkezők)
+    await emit(hugoTab, 'leave_room', {});
+    const after = (await gina.api('GET', '/api/court-sessions/' + sid)).data.session;
+    assert.ok(!after.participants.some((p) => p.name === 'HugoT'), 'Hugo kikerült a tárgyalásból');
+    await waitFor(() => !panelText(sid).includes(`<@${hugo.did}>`) && panelText(sid).includes('2/8'), 'a Discord-panel is frissül');
+    // az eltávolított játékos újra jelentkezhet a Discordon
+    assert.match(await press(hugo, 'join', sid), /Jelentkeztél/);
+    // a vezető nem léphet ki a tárgyalásból a szoba elhagyásával (a tárgyalás megmarad)
+    await emit(ginaTab, 'leave_room', {});
+    assert.ok((await gina.api('GET', '/api/court-sessions/' + sid)).data.session.participants.some((p) => p.name === 'GinaT'));
+    // mindenki kilépett a szobából: a szoba mégis megmarad az élő tárgyaláshoz (nem takarítódik el)
+    await emit(ivanTab, 'leave_room', {});
+    await pause(300);
+    const again = await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {});
+    assert.equal(again.data.roomCode, s0.roomCode, 'ugyanaz a szoba');
+    // lezárt tárgyalásba nem lehet belépni
+    assert.equal((await gina.api('POST', '/api/court-sessions/' + sid + '/cancel', {})).status, 200);
+    assert.equal((await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {})).status, 409);
+    for (const t of [ivanTab, hugoTab, ginaTab]) t.disconnect();
+  });
+
   await test('A szerver nem naplózott belső hibát', async () => {
     assert.ok(!/TypeError|ReferenceError|uncaughtException/.test(serverErrors), serverErrors.slice(0, 600));
   });

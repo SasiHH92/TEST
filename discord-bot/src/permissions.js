@@ -18,7 +18,14 @@ const BOT_PERMISSIONS = [
   [P.Speak, 'a hangcsatornák jogainak beállításához'],
 ];
 
+// Moderáció (opcionális, MODERATION=1): nélkülük a /setup és a tárgyalás-integráció működik, csak a moderáció nem tud törölni / némítani.
+const MODERATION_PERMISSIONS = [
+  [P.ManageMessages, 'szabálysértő üzenetek törlése (moderáció)'],
+  [P.ModerateMembers, 'ideiglenes némítás (timeout) súlyos / ismétlődő szabálysértésnél'],
+];
 const BOT_PERMISSION_BITS = BOT_PERMISSIONS.reduce((acc, [bit]) => acc | bit, 0n);
+
+const INVITE_PERMISSION_BITS = BOT_PERMISSION_BITS | MODERATION_PERMISSIONS.reduce((acc, [bit]) => acc | bit, 0n);
 
 function permissionName(bit) {
   return new PermissionsBitField(bit).toArray()[0];
@@ -30,4 +37,4 @@ function missingBotPermissions(perms) {
   return BOT_PERMISSIONS.filter(([bit]) => !perms.has(bit)).map(([bit]) => permissionName(bit));
 }
 
-module.exports = { BOT_PERMISSIONS, BOT_PERMISSION_BITS, missingBotPermissions, permissionName };
+module.exports = { BOT_PERMISSIONS, MODERATION_PERMISSIONS, INVITE_PERMISSION_BITS, BOT_PERMISSION_BITS, missingBotPermissions, permissionName };

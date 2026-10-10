@@ -8,7 +8,7 @@
     "start": "node src/index.js",
     "invite": "node src/invite.js",
     "lint": "node scripts/lint.js",
-    "test": "node --test test/setup.test.js"
+    "test": "node --test test/setup.test.js test/moderation.test.js"
   },
   "engines": {
     "node": ">=20.12"

@@ -12,6 +12,8 @@ const DEFINITIONS = [
   new SlashCommandBuilder().setName('kapcsol').setDescription('Összeköti a Discord-fiókodat a Kamu Bíróság fiókoddal')
     .setContexts(0)
     .addStringOption((o) => o.setName('kod').setDescription('A weboldalon kapott egyszer használatos kód').setRequired(true).setMinLength(6).setMaxLength(12)),
+  new SlashCommandBuilder().setName('targyalas').setDescription('Új Kamu Bíróság-tárgyalás nyitása (a szobát a rendszer automatikusan létrehozza)').setContexts(0),
+  adminOnly(new SlashCommandBuilder().setName('moderacio').setDescription('Az automatikus moderáció állapota és statisztikája')),
   adminOnly(new SlashCommandBuilder().setName('setup-repair').setDescription('Pótolja a hiányzó elemeket, a közösségi tartalmat nem törli')),
 ].map((c) => c.toJSON());
 

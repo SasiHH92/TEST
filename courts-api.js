@@ -173,6 +173,20 @@ function createCourtsApi({ courts, auth, io, botToken = '', rooms, onError = () 
     const r = courts.rebind(req.params.id, { userId: user.id }, code);
     res.json({ ...r, session: decorate(r.session) });
   }));
+  // Belépés a tárgyalás szobájába (a Discord-panel linkje: /?court=ID). A link megnyitása jelentkezés is; a szobát a szerver
+  // hozza létre, ha még nincs / megszűnt (a vezető érkezésekor ő lesz a házigazda).
+  web.post('/court-sessions/:id/enter', wrap((req, res) => {
+    const user = userOf(req);
+    let s = courts.get(req.params.id);
+    if (['FINISHED', 'CANCELLED'].includes(s.status)) throw new CourtError('closed', 'Ez a tárgyalás már lezárult.');
+    if (!s.participants.some((p) => p.uid === user.id)) {
+      courts.join(s.id, { userId: user.id, name: user.username, via: 'web' });
+      s = courts.get(s.id);
+    }
+    const code = rooms.ensureRoom(s);
+    if (code !== s.roomCode) s = courts.rebind(s.id, { staff: true }, code).session;
+    res.json({ ok: true, session: decorate(s), roomCode: code });
+  }));
   web.post('/court-sessions/:id/:action', wrap((req, res) => {
     const user = userOf(req);
     const action = req.params.action;
@@ -215,6 +229,19 @@ function createCourtsApi({ courts, auth, io, botToken = '', rooms, onError = () 
     return user || null;
   }
 
+  // Tárgyalás nyitása Discordról: a szerver a szobát is létrehozza (a vezető a linkkel lép be, és ő lesz a házigazda).
+  bot.post('/sessions', wrap((req, res) => {
+    const did = discordId(req.body);
+    const user = userOfDiscord(did);
+    if (!user) return res.status(409).json({ error: 'A Discord-fiókod még nincs összekötve a Kamu-fiókoddal.', code: 'not_linked' });
+    const code = rooms.createEmpty(user.id);
+    if (!code) throw new CourtError('rooms_full', 'A szerver jelenleg betelt, próbáld később.');
+    try {
+      const r = courts.create({ hostUserId: user.id, hostName: user.username, roomCode: code });
+      if (r.already) rooms.drop(code);
+      res.status(r.already ? 200 : 201).json({ ...r, session: decorate(r.session), kamuUsername: user.username });
+    } catch (e) { rooms.drop(code); throw e; }
+  }));
   bot.post('/link', wrap((req, res) => {
     const did = discordId(req.body);
     const r = courts.consumeLinkCode(req.body.code, did, req.body.discordUsername);

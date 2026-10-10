@@ -32,6 +32,7 @@ function createBackend({ baseUrl, token, fetchImpl = fetch, log = console }) {
     enabled,
     listSessions: async () => (await request('GET', '/sessions')).sessions,
     getSession: async (id) => (await request('GET', '/sessions/' + encodeURIComponent(id))).session,
+    createSession: (payload) => request('POST', '/sessions', payload),
     setPanel: (id, ref) => request('POST', '/sessions/' + encodeURIComponent(id) + '/panel', ref),
     announce: async (id, key) => (await request('POST', '/sessions/' + encodeURIComponent(id) + '/announce', { key })).first,
     setAppliedRoles: (id, assignments) => request('POST', '/sessions/' + encodeURIComponent(id) + '/applied-roles', { assignments }),

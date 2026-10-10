@@ -50,7 +50,11 @@ function renderPanel(s, gameUrl) {
     }).filter(Boolean);
     embed.addFields({ name: 'Szerepek', value: lines.join('\n') });
   }
-  if (live && s.roomCode) embed.addFields({ name: 'Csatlakozás', value: `Szobakód: **${s.roomCode}**` + (gameUrl ? `\n${gameUrl}/?room=${s.roomCode}` : '') });
+  if (live) {
+    // A link egyből a tárgyalás szobájába visz (a szerver szükség esetén létrehozza), és jelentkezésnek is számít.
+    const where = (s.roomCode ? `Szobakód: **${s.roomCode}**\n` : '') + (gameUrl ? `${gameUrl}/?court=${s.id}\n` : '');
+    embed.addFields({ name: 'Csatlakozás', value: where + 'A linkkel egyből a szobába lépsz (jelentkezésnek is számít).' });
+  }
   if (s.status === 'CANCELLED' && s.cancelReason) embed.addFields({ name: 'Ok', value: s.cancelReason });
   const components = [];
   if (live) {
@@ -256,6 +260,19 @@ function createCourtSync({ client, backend, gameUrl = '', log = console, reconci
     }
   }
 
+  async function handleOpenCommand(interaction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    try {
+      const r = await backend.createSession({ discordUserId: interaction.user.id, discordUsername: interaction.user.username });
+      await interaction.editReply((r.already ? 'ℹ️ Ehhez már van tárgyalás. ' : '⚖️ A tárgyalás megnyílt! ') + `Ügy: **#${r.session.id}**
+A jelentkezési panel pár másodpercen belül megjelenik a 🎮・játék-kereső csatornában.
+Érd el a szobát: ${gameUrl ? gameUrl + '/?court=' + r.session.id : 'a weboldalon'}`);
+      reconcile(r.session.id);
+    } catch (e) {
+      await interaction.editReply(ERROR_TEXT[e.code] || ('❌ ' + (e.message || 'Nem sikerült megnyitni a tárgyalást.')));
+    }
+  }
+
   function start() {
     if (!backend.enabled) { log.log('[bot] BACKEND_URL / BOT_SERVICE_TOKEN hiányzik: a tárgyalás-integráció ki van kapcsolva (a /setup működik).'); return; }
     let pending = new Map();
@@ -268,7 +285,7 @@ function createCourtSync({ client, backend, gameUrl = '', log = console, reconci
   }
   function stop() { if (stopStream) stopStream(); clearInterval(timer); }
 
-  return { start, stop, reconcile, reconcileAll, handleButton, handleLinkCommand, renderPanel: (s) => renderPanel(s, gameUrl), _cache: cache };
+  return { start, stop, reconcile, reconcileAll, handleButton, handleLinkCommand, handleOpenCommand, renderPanel: (s) => renderPanel(s, gameUrl), _cache: cache };
 }
 
 module.exports = { createCourtSync, renderPanel, isStaff, TEMP_ROLES, TEMP_NAMES, CHANNEL_NAME };
