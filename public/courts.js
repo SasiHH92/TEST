@@ -92,16 +92,22 @@
   }
 
   // ---------------- lobbi-panel ----------------
+  const roleImg = (r) => (typeof ROLE_IMG !== 'undefined' && ROLE_IMG[r]) || '';
+  const hue = (name) => (typeof nameHue === 'function' ? nameHue(String(name || '')) : 40);
+  const avatarHtml = (p) => {
+    if (p.avatar && typeof avatarSrc === 'function') return '<span class="cp-av"><img src="' + esc(avatarSrc(p.avatar)) + '" alt="" loading="lazy" decoding="async"></span>';
+    return '<span class="cp-av cp-mono" style="background:hsl(' + hue(p.name) + ',58%,42%)">' + esc((String(p.name || '?')[0] || '?').toUpperCase()) + '</span>';
+  };
+
   function roleCards(s) {
     const byRole = {};
-    for (const p of s.participants) (byRole[p.role || '-'] = byRole[p.role || '-'] || []).push(p);
-    if (!byRole['-'] || Object.keys(byRole).length > 1) {
-      return ROLE_ORDER.filter((r) => byRole[r]).map((r) =>
-        '<div class="court-role"><span class="court-role-ico">' + ROLE_ICON[r] + '</span><b>' + ROLE_LABEL[r] + '</b><span>' +
-        byRole[r].map((p) => esc(p.name)).join(', ') + '</span></div>').join('');
-    }
-    return '';
+    for (const p of s.participants) if (p.role) (byRole[p.role] = byRole[p.role] || []).push(p);
+    return ROLE_ORDER.filter((r) => byRole[r]).map((r) =>
+      '<div class="cp-role r-' + r + '">' +
+        (roleImg(r) ? '<span class="cp-role-img"><img src="' + esc(roleImg(r)) + '" alt="" loading="lazy" decoding="async"></span>' : '<span class="cp-role-img cp-role-ico">' + ROLE_ICON[r] + '</span>') +
+        '<b>' + ROLE_LABEL[r] + '</b><span class="cp-role-who">' + byRole[r].map((p) => esc(p.name)).join(', ') + '</span></div>').join('');
   }
+
   function renderPanel() {
     const el = $c('#courtPanel');
     if (!el) return;
@@ -112,11 +118,12 @@
       el.classList.toggle('hidden', !isHost);
       if (!isHost) return;
       const orphans = mySessions.filter((s) => s.roomCode !== MY.code);
-      el.innerHTML = '<h3>⚖️ DISCORD-TÁRGYALÁS</h3>' +
-        '<p class="hint">Nyiss egy tárgyalást ehhez a szobához: a Discord szerveren jelentkezési panel jelenik meg, a jelentkezők és a szerepek itt is látszanak.</p>' +
-        '<button id="courtCreate" class="btn small"' + (busy ? ' disabled' : '') + '>🔗 Discord-tárgyalás nyitása</button>' +
-        orphans.map((o) => '<p class="hint">Élő tárgyalásod: <b>' + esc(o.id) + '</b> (' + esc(STATUS_LABEL[o.status] || o.status) + ', ' + o.participants.length + ' jelentkező) <button class="btn small ghost" data-rebind="' + esc(o.id) + '">Ehhez a szobához kötöm</button></p>').join('') +
-        (note ? '<p class="court-note">' + esc(note) + '</p>' : '');
+      el.innerHTML =
+        '<div class="cp-head"><div class="cp-title"><span class="cp-gavel" aria-hidden="true">⚖️</span><div><small>DISCORD-TÁRGYALÁS</small><b>Még nincs megnyitva</b></div></div></div>' +
+        '<p class="cp-lead">Nyiss tárgyalást ehhez a szobához: a Discord szerveren jelentkezési panel, privát csevegő és hangcsatorna jön létre, a jelentkezők és a szerepek itt is látszanak.</p>' +
+        '<div class="cp-actions"><button id="courtCreate" class="btn"' + (busy ? ' disabled' : '') + '>🔗 Discord-tárgyalás nyitása</button></div>' +
+        orphans.map((o) => '<p class="cp-lead">Élő tárgyalásod: <b>' + esc(o.id) + '</b> (' + esc(STATUS_LABEL[o.status] || o.status) + ', ' + o.participants.length + ' jelentkező) <button class="btn small ghost" data-rebind="' + esc(o.id) + '">Ehhez a szobához kötöm</button></p>').join('') +
+        (note ? '<p class="court-note" role="alert">' + esc(note) + '</p>' : '');
       return;
     }
     el.classList.remove('hidden');
@@ -124,29 +131,48 @@
     const joined = s.participants.some((p) => p.uid === uid);
     const manage = s.hostUserId === uid;
     const live = !['FINISHED', 'CANCELLED'].includes(s.status);
-    const btn = (id, label, extra) => '<button class="btn small ' + (extra || '') + '" data-court="' + id + '"' + (busy ? ' disabled' : '') + '>' + label + '</button>';
+    const enough = s.participants.length >= s.minPlayers;
+    const btn = (id, label, cls) => '<button class="btn small ' + (cls || '') + '" data-court="' + id + '"' + (busy ? ' disabled' : '') + '>' + label + '</button>';
     const actions = [];
     if (live && s.status === 'WAITING' && !joined) actions.push(btn('join', '⚖️ Jelentkezem'));
     if (live && joined && s.status !== 'IN_PROGRESS' && !manage) actions.push(btn('leave', '❌ Visszalépek', 'ghost'));
     if (manage && live) {
+      if (s.status === 'READY') actions.push(btn('start', '▶️ Tárgyalás indítása', 'cp-primary'));
+      if (['WAITING', 'LOCKED'].includes(s.status)) actions.push(btn('draw', '🎲 Szerepsorsolás', enough ? 'cp-primary' : 'ghost'));
+      if (s.status === 'READY') actions.push(btn('draw-force', '🎲 Újrasorsolás', 'ghost'));
       if (s.status === 'WAITING') actions.push(btn('lock', '🔒 Jelentkezés lezárása', 'ghost'));
       if (s.status === 'LOCKED') actions.push(btn('unlock', '🔓 Jelentkezés megnyitása', 'ghost'));
-      if (['WAITING', 'LOCKED'].includes(s.status)) actions.push(btn('draw', '🎲 Szerepsorsolás', s.participants.length < s.minPlayers ? 'ghost' : ''));
-      if (s.status === 'READY') { actions.push(btn('start', '▶️ Tárgyalás indítása')); actions.push(btn('draw-force', '🎲 Újrasorsolás', 'ghost')); }
       if (s.status === 'IN_PROGRESS') actions.push(btn('finish', '🏁 Befejezés', 'ghost'));
       actions.push(btn('cancel', '✖️ Lemondás', 'ghost danger'));
     }
+    const voice = joined && s.discordVoiceUrl && live
+      ? '<a class="btn small court-voice" href="' + esc(s.discordVoiceUrl) + '" target="_blank" rel="noopener">🔊 Csatlakozás a hangcsatornához</a>' : '';
     const bot = s.discordBot || {};
-    const grid = roleCards(s);
+    const pct = Math.min(100, Math.round((s.participants.length / s.maxPlayers) * 100));
+    const minPct = Math.round((s.minPlayers / s.maxPlayers) * 100);
+    const roles = roleCards(s);
+    el.className = 'court-panel st-' + esc(s.status);
     el.innerHTML =
-      '<div class="court-head"><h3>⚖️ DISCORD-TÁRGYALÁS</h3><span class="court-case">' + esc(s.caseNo) + '</span><span class="court-status st-' + esc(s.status) + '">' + esc(STATUS_LABEL[s.status] || s.status) + '</span></div>' +
-      '<p class="court-meta">Jelentkezők: <b>' + s.participants.length + '/' + s.maxPlayers + '</b> (legalább ' + s.minPlayers + ' kell) · Discord: <b>' + (bot.online ? '🟢 bot online' : '⚪ bot offline') + '</b>' + (bot.panel ? ' · panel kint' : ' · panel még nincs') + '</p>' +
-      (grid ? '<div class="court-roles">' + grid + '</div>' : '') +
-      '<ul class="court-list">' + s.participants.map((p) => '<li>' + esc(p.name) + (p.uid === s.hostUserId ? ' <small>(vezető)</small>' : '') +
-        ' <small class="' + (p.discordLinked ? 'ok' : 'warn') + '">' + (p.discordLinked ? '✔ Discord' : '• nincs Discord-kapcsolat') + '</small>' + (p.roleLabel ? ' <i>' + esc(p.roleLabel) + '</i>' : '') + '</li>').join('') + '</ul>' +
-      (!link.linked ? '<p class="hint">Te még nem kötötted össze a Discordot – a menüben (Discord összekötés) pótolhatod.</p>' : '') +
-      '<div class="court-actions">' + actions.join('') + (joined && s.discordVoiceUrl && live ? '<a class="btn small court-voice" href="' + esc(s.discordVoiceUrl) + '" target="_blank" rel="noopener">🔊 Csatlakozás a hangcsatornához</a>' : '') + '</div>' +
-      (note ? '<p class="court-note">' + esc(note) + '</p>' : '');
+      '<div class="cp-head">' +
+        '<div class="cp-title"><span class="cp-gavel" aria-hidden="true">⚖️</span><div><small>DISCORD-TÁRGYALÁS</small><b>' + esc(s.caseNo) + '</b></div></div>' +
+        '<span class="court-status st-' + esc(s.status) + '">' + esc(STATUS_LABEL[s.status] || s.status) + '</span>' +
+      '</div>' +
+      '<div class="cp-meta">' +
+        '<div class="cp-progress"><div class="cp-bar" role="progressbar" aria-label="Jelentkezők" aria-valuemin="0" aria-valuemax="' + s.maxPlayers + '" aria-valuenow="' + s.participants.length + '"><i style="width:' + pct + '%"></i><u style="left:' + minPct + '%" title="legalább ' + s.minPlayers + ' fő kell"></u></div>' +
+          '<span><b>' + s.participants.length + '</b> / ' + s.maxPlayers + ' jelentkező' + (enough ? ' · elég a sorsoláshoz' : ' · legalább ' + s.minPlayers + ' kell') + '</span></div>' +
+        '<span class="cp-pill ' + (bot.online ? 'on' : 'off') + '"><i></i>' + (bot.online ? 'Discord bot online' : 'Discord bot offline') + '</span>' +
+      '</div>' +
+      (roles ? '<div class="cp-roles">' + roles + '</div>' : '') +
+      '<ul class="cp-roster">' + s.participants.map((p) =>
+        '<li class="cp-chip' + (p.uid === uid ? ' me' : '') + '">' + avatarHtml(p) +
+          '<span class="cp-name">' + esc(p.name) + '</span>' +
+          (p.uid === s.hostUserId ? '<small class="cp-badge host">vezető</small>' : '') +
+          '<small class="cp-badge ' + (p.discordLinked ? 'ok' : 'warn') + '" title="' + (p.discordLinked ? 'Discord-fiók összekötve' : 'Nincs Discord-kapcsolat') + '">' + (p.discordLinked ? 'Discord ✓' : 'nincs Discord') + '</small>' +
+          (p.roleLabel && !roles ? '<small class="cp-badge role">' + esc(p.roleLabel) + '</small>' : '') +
+        '</li>').join('') + '</ul>' +
+      (!link.linked ? '<p class="cp-lead">Te még nem kötötted össze a Discordot – a menüben (Discord összekötés) pótolhatod.</p>' : '') +
+      '<div class="cp-actions">' + voice + actions.join('') + '</div>' +
+      (note ? '<p class="court-note" role="alert">' + esc(note) + '</p>' : '');
   }
 
   async function act(action, extra) {
@@ -159,6 +185,11 @@
     } catch (e) { note = e.message; }
     busy = false; renderPanel();
   }
+
+  document.addEventListener('error', (ev) => {
+    const t = ev.target;
+    if (t && t.tagName === 'IMG' && t.closest && t.closest('.court-panel')) t.style.display = 'none';
+  }, true);
 
   document.addEventListener('click', async (ev) => {
     const t = ev.target.closest && ev.target.closest('[data-court],#courtCreate,[data-rebind],[data-court-enter],#dlStart,#dlRemove,#dlDone');

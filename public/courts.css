@@ -1,29 +1,138 @@
-/* Discord-tárgyalás panel + összekötés doboz (courts.js) */
-.court-panel { margin: 14px auto; max-width: 880px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px;
-  background: linear-gradient(180deg, rgba(20, 26, 38, .92), rgba(11, 16, 32, .92)); box-shadow: 0 6px 22px rgba(0,0,0,.35); }
-.court-panel h3 { font-family: var(--font-disp); letter-spacing: .06em; color: var(--gold); font-size: 1.05rem; }
-.court-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.court-case { font-family: var(--font-disp); background: rgba(242, 193, 78, .12); border: 1px dashed var(--gold-dark); color: var(--gold); padding: 2px 8px; border-radius: 6px; }
-.court-status { margin-left: auto; font-size: .72rem; font-weight: 800; letter-spacing: .08em; padding: 3px 9px; border-radius: 999px; background: #243148; color: #cfd8ea; }
-.court-status.st-WAITING { background: #1f3b2a; color: #7ee2a0; }
-.court-status.st-LOCKED { background: #3b3320; color: #f2c14e; }
-.court-status.st-READY { background: #1f2f4d; color: #8ab8ff; }
-.court-status.st-IN_PROGRESS { background: #4a2a1a; color: #ffb36b; }
+/* ============================================================
+   Discord-tárgyalás: lobbi-panel, szerepkártyák, összekötő doboz (courts.js)
+   Stílus: a játék éjszakai őrs / tárgyalóterem világa – sötét fa, sárgaréz keret, papír-akcentusok.
+   Asset-first: valódi avatárok és szerep-portrék (assets/…); hiányzó képnél monogram / ikon a tartalék.
+   ============================================================ */
+.court-panel {
+  --cp-brass: #b88a2e;
+  --cp-brass-soft: rgba(242, 193, 78, .35);
+  --cp-blurple: #5865f2;
+  position: relative;
+  margin: 14px auto;
+  max-width: 920px;
+  padding: 16px 18px 18px;
+  border-radius: 14px;
+  border: 1px solid #6b5326;
+  background:
+    radial-gradient(900px 220px at 12% -30%, rgba(242, 193, 78, .13), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .012) 0 3px, transparent 3px 7px),
+    linear-gradient(180deg, rgba(36, 27, 18, .96), rgba(14, 12, 22, .96));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(242, 193, 78, .08), inset 0 1px 0 rgba(255, 236, 190, .08);
+  animation: cp-in .35s ease-out both;
+}
+.court-panel::before, .court-panel::after { /* sárgaréz szegecsek */
+  content: ""; position: absolute; top: 9px; width: 7px; height: 7px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe9a8, var(--cp-brass) 60%, #5a4322);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+}
+.court-panel::before { left: 9px; }
+.court-panel::after { right: 9px; }
+@keyframes cp-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.cp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 0 14px; }
+.cp-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cp-gavel {
+  width: 44px; height: 44px; display: grid; place-items: center; font-size: 24px; flex: none;
+  border-radius: 12px; background: linear-gradient(180deg, #2b2112, #17120b);
+  border: 1px solid var(--cp-brass); box-shadow: inset 0 0 12px rgba(242, 193, 78, .18), 0 2px 6px rgba(0, 0, 0, .5);
+}
+.cp-title small { display: block; font-size: .66rem; letter-spacing: .16em; color: #b9a67a; font-weight: 700; }
+.cp-title b { font-family: var(--font-disp); font-size: 1.5rem; letter-spacing: .06em; color: var(--gold); line-height: 1.1; text-shadow: 0 2px 0 rgba(0, 0, 0, .5); }
+
+.court-status {
+  margin-left: auto; font-size: .72rem; font-weight: 800; letter-spacing: .1em; padding: 5px 12px; border-radius: 999px;
+  background: #243148; color: #cfd8ea; border: 1px solid rgba(255, 255, 255, .08); white-space: nowrap;
+}
+.court-status.st-WAITING { background: #17361f; color: #7ee2a0; border-color: #2a6b3c; }
+.court-status.st-LOCKED { background: #3b3320; color: #f2c14e; border-color: #7a6226; }
+.court-status.st-READY { background: #1b2c4d; color: #8ab8ff; border-color: #2f4f8a; }
+.court-status.st-IN_PROGRESS { background: #4a2a1a; color: #ffb36b; border-color: #8a4f26; }
 .court-status.st-FINISHED { background: #2a2f3a; color: #aab3c5; }
-.court-status.st-CANCELLED { background: #4a1f22; color: #ff8a8f; }
-.court-meta { margin: 8px 0; font-size: .85rem; color: #b8c2d6; }
-.court-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
-.court-role { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.05); border: 1px solid var(--line); }
-.court-role b { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
-.court-role-ico { font-size: 1.2rem; }
-.court-list { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 10px; font-size: .88rem; }
-.court-list small.ok { color: #7ee2a0; }
-.court-list small.warn { color: #8f9ab0; }
-.court-list i { color: var(--gold); font-style: normal; font-weight: 700; }
-.court-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.court-actions .danger { border-color: var(--red-dark); color: #ff9a9e; }
-.court-note { margin-top: 8px; color: #ffb36b; font-size: .85rem; }
-.discord-link-box { margin-top: 10px; padding: 8px 10px; font-size: .85rem; border: 1px solid var(--line); border-radius: 10px; background: rgba(88, 101, 242, .12); line-height: 1.7; }
-.discord-link-box code { background: rgba(0,0,0,.35); padding: 2px 6px; border-radius: 5px; user-select: all; font-size: .95em; }
-.court-mine .court-mine-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
-.court-actions .court-voice { text-decoration: none; display: inline-flex; align-items: center; }
+.court-status.st-CANCELLED { background: #4a1f22; color: #ff8a8f; border-color: #7a2e33; }
+
+.cp-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px 18px; flex-wrap: wrap; margin: 14px 14px 4px; }
+.cp-progress { flex: 1 1 260px; min-width: 200px; font-size: .85rem; color: #c3cde0; }
+.cp-progress b { color: #fff; font-size: 1rem; }
+.cp-bar { position: relative; height: 12px; margin-bottom: 6px; border-radius: 999px; background: rgba(255, 255, 255, .08); box-shadow: inset 0 1px 3px rgba(0, 0, 0, .6); overflow: visible; }
+.cp-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c78f22, var(--gold)); box-shadow: 0 0 10px rgba(242, 193, 78, .45); transition: width .45s cubic-bezier(.2, .9, .3, 1); }
+.cp-bar u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #e8e6df; opacity: .65; border-radius: 1px; }
+.cp-pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; font-size: .75rem; font-weight: 700; background: rgba(255, 255, 255, .06); color: #aab3c5; border: 1px solid rgba(255, 255, 255, .08); }
+.cp-pill i { width: 8px; height: 8px; border-radius: 50%; background: #6b7488; }
+.cp-pill.on { color: #8ff0b0; border-color: rgba(60, 200, 110, .35); }
+.cp-pill.on i { background: #3ddc84; box-shadow: 0 0 8px #3ddc84; }
+
+.cp-lead { margin: 12px 14px 0; font-size: .9rem; line-height: 1.5; color: #b8c2d6; }
+
+/* szerepkártyák (sorsolás után): valódi szerep-portrék aranykeretben */
+.cp-roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; margin: 14px 14px 4px; }
+.cp-role {
+  --rc: #f2c14e;
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 12px 8px 10px;
+  border-radius: 12px; border: 1px solid color-mix(in srgb, var(--rc) 45%, #000);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 12%, #14121a), #100e16);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .45), inset 0 0 18px color-mix(in srgb, var(--rc) 10%, transparent);
+  animation: cp-in .4s ease-out both;
+}
+.cp-role.r-judge { --rc: #f2c14e; } .cp-role.r-prosecutor { --rc: #e5484d; } .cp-role.r-defender { --rc: #3b82f6; }
+.cp-role.r-defendant { --rc: #f5a524; } .cp-role.r-witness { --rc: #22c55e; } .cp-role.r-juror { --rc: #a78bfa; }
+.cp-role-img {
+  width: 64px; height: 64px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; flex: none;
+  border: 2px solid var(--rc); background: #0b0a10; box-shadow: 0 0 0 3px rgba(0, 0, 0, .35), 0 0 14px color-mix(in srgb, var(--rc) 40%, transparent);
+}
+.cp-role-img img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+.cp-role-ico { font-size: 28px; }
+.cp-role b { font-family: var(--font-disp); font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--rc); }
+.cp-role-who { font-size: .88rem; color: #fff; font-weight: 600; word-break: break-word; }
+
+/* jelentkezők */
+.cp-roster { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 14px 2px; padding: 0; }
+.cp-chip {
+  display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border-radius: 999px; font-size: .86rem;
+  background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .09); animation: cp-in .3s ease-out both;
+}
+.cp-chip.me { border-color: var(--cp-brass-soft); background: rgba(242, 193, 78, .08); }
+.cp-av { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex: none; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .18); }
+.cp-av img { width: 100%; height: 100%; object-fit: cover; }
+.cp-av.cp-mono { color: #fff; font-weight: 800; font-size: .85rem; }
+.cp-name { font-weight: 700; color: #f1ece0; }
+.cp-badge { font-size: .64rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+.cp-badge.host { background: var(--gold); color: #2b2010; }
+.cp-badge.ok { background: rgba(88, 101, 242, .22); color: #aab4ff; }
+.cp-badge.warn { background: rgba(255, 255, 255, .06); color: #8f9ab0; }
+.cp-badge.role { background: rgba(242, 193, 78, .16); color: var(--gold); }
+
+/* gombok */
+.cp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 14px 0; }
+.cp-actions .btn.small { font-size: 13px; padding: 9px 14px; }
+.cp-actions .btn.ghost { background: transparent; color: #d8d2c2; border: 1px solid rgba(242, 193, 78, .35); box-shadow: none; }
+.cp-actions .btn.ghost:hover { background: rgba(242, 193, 78, .1); filter: none; }
+.cp-actions .btn.danger { border-color: #7a2e33; color: #ff9a9e; }
+.cp-actions .btn.danger:hover { background: rgba(229, 72, 77, .14); }
+.cp-actions .cp-primary { box-shadow: 0 3px 0 #7a5a1c, 0 0 18px rgba(242, 193, 78, .35); }
+.cp-actions .court-voice, .court-actions .court-voice {
+  text-decoration: none; display: inline-flex; align-items: center; color: #fff; background: linear-gradient(180deg, #6573ff, var(--cp-blurple));
+  border: 1px solid #3a46c4; box-shadow: 0 3px 0 #2f3aa6, 0 0 16px rgba(88, 101, 242, .35);
+}
+.court-note { margin: 10px 14px 0; color: #ffb36b; font-size: .85rem; }
+
+/* Discord összekötő / saját tárgyalások doboz (menü) */
+.discord-link-box {
+  margin-top: 10px; padding: 10px 12px; font-size: .85rem; line-height: 1.7; color: #d7dcf5;
+  border: 1px solid rgba(88, 101, 242, .45); border-left: 3px solid var(--cp-blurple, #5865f2); border-radius: 10px;
+  background: linear-gradient(180deg, rgba(88, 101, 242, .16), rgba(88, 101, 242, .07));
+}
+.discord-link-box code { background: rgba(0, 0, 0, .4); padding: 2px 7px; border-radius: 5px; user-select: all; font-size: .95em; color: #fff; }
+.court-mine .court-mine-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .06); }
+
+@media (max-width: 640px) {
+  .court-panel { margin: 10px 8px; padding: 14px 4px 14px; }
+  .cp-title b { font-size: 1.25rem; }
+  .cp-roles { grid-template-columns: repeat(2, 1fr); }
+  .cp-actions .btn { flex: 1 1 100%; text-align: center; justify-content: center; }
+  .cp-pill { order: 3; }
+}
+@media (prefers-reduced-motion: reduce), (hover: none) and (prefers-reduced-motion: reduce) {
+  .court-panel, .cp-role, .cp-chip { animation: none; }
+  .cp-bar i { transition: none; }
+}
+body.reduced-motion .court-panel, body.reduced-motion .cp-role, body.reduced-motion .cp-chip { animation: none; }

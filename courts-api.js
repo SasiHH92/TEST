@@ -38,7 +38,13 @@ function safeEqual(a, b) {
 function createCourtsApi({ courts, auth, io, botToken = '', rooms, onError = () => {}, now = () => Date.now() }) {
   const streams = new Set();
   const botOnline = () => streams.size > 0;
-  const decorate = (v) => (v ? { ...v, discordBot: { online: botOnline(), panel: v.discordPanel } } : v);
+  // A jelentkezők profil-avatárja (csak érvényes, katalógusbeli azonosító); a Discord-azonosítók továbbra sem kerülnek a weboldalra.
+  const avatarOf = (uid) => {
+    const u = auth.directory.byId(uid);
+    const av = u && u.profile && u.profile.avatar;
+    return typeof av === 'string' && /^av\d\d$/.test(av) ? av : '';
+  };
+  const decorate = (v) => (v ? { ...v, participants: v.participants.map((p) => ({ ...p, avatar: avatarOf(p.uid) })), discordBot: { online: botOnline(), panel: v.discordPanel } } : v);
 
   // ---------- esemény-szétosztás: web (socket.io) + bot (SSE) ----------
   courts.events.on('event', (evt) => {
