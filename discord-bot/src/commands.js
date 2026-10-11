@@ -1,5 +1,5 @@
 'use strict';
-const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { runSetup, checkStatus, findRole } = require('./setup');
 const { JOIN_BUTTON_ID } = require('./content');
 const { ROLES } = require('./spec');
@@ -13,6 +13,7 @@ const DEFINITIONS = [
     .setContexts(0)
     .addStringOption((o) => o.setName('kod').setDescription('A weboldalon kapott egyszer használatos kód').setRequired(true).setMinLength(6).setMaxLength(12)),
   new SlashCommandBuilder().setName('targyalas').setDescription('Új Kamu Bíróság-tárgyalás nyitása (a szobát a rendszer automatikusan létrehozza)').setContexts(0),
+  new SlashCommandBuilder().setName('tamogatas').setDescription('Önkéntesen támogathatod a Kamu Bíróság fejlesztését (nem jár érte előny)').setContexts(0),
   adminOnly(new SlashCommandBuilder().setName('moderacio').setDescription('Az automatikus moderáció állapota és statisztikája')),
   adminOnly(new SlashCommandBuilder().setName('setup-repair').setDescription('Pótolja a hiányzó elemeket, a közösségi tartalmat nem törli')),
 ].map((c) => c.toJSON());
@@ -86,4 +87,13 @@ async function handleButton(interaction) {
   return true;
 }
 
-module.exports = { DEFINITIONS, isAuthorized, handleCommand, handleButton, formatReport, formatStatus };
+// A /tamogatas válasza (csak a kérőnek látszik): rövid, nyomásmentes, hivatkozással a támogatási oldalra. Nincs ígéret ellenszolgáltatásra.
+function supportPayload(baseUrl) {
+  const url = String(baseUrl || '').trim().replace(/\/+$/, '');
+  const embed = new EmbedBuilder().setColor(0xc9a227).setTitle('❤️ Támogasd a Kamu Bíróságot!')
+    .setDescription('„A tárgyalás ingyenes, de a fejlesztő kávéja nem!” ☕\nA támogatás teljesen önkéntes, és nem jár érte semmilyen ellenszolgáltatás vagy játékbeli előny.');
+  if (!url) return { embeds: [embed], components: [] };
+  return { embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setLabel('A támogatási oldal').setEmoji('❤️').setStyle(ButtonStyle.Link).setURL(url + '/tamogatas'))] };
+}
+
+module.exports = { supportPayload, DEFINITIONS, isAuthorized, handleCommand, handleButton, formatReport, formatStatus };

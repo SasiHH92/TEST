@@ -2926,6 +2926,8 @@ function renderPhaseContent() {
           (Number.isFinite(c.value) ? '<span class="award-stat">' + c.value + ' ' + c.unit + '</span>' : '') + '</div>'
         ).join('') + '</div>';
       }
+      // diszkrét, önkéntes támogatási sor (új lapon nyílik: a szoba és az automatikus új játék nem szakad meg; nincs felugró ablak)
+      html += '<p class="go-support">❤️ Tetszett az est? <a href="/tamogatas" target="_blank" rel="noopener">Támogasd a Kamu Bíróságot</a> <small>– önkéntesen, játékbeli előny nélkül.</small></p>';
       html += '</div>'; // results-scroll vége
       html += '<div class="fixed-actions">';
       if (S.hostId === MY.playerId) {

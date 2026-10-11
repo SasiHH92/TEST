@@ -3,8 +3,8 @@
 //  - önállóan:   node src/index.js   (a .env fájlból; a saját gépeden vagy külön szolgáltatásként)
 //  - beágyazva:  a játék szervere (server.js) hívja a startBot()-ot ugyanabban a folyamatban, így nem kell külön gép.
 // A require() önmagában semmit nem indít el.
-const { Client, GatewayIntentBits, Events } = require('discord.js');
-const { DEFINITIONS, handleCommand, handleButton, isAuthorized } = require('./commands');
+const { Client, GatewayIntentBits, Events, MessageFlags } = require('discord.js');
+const { DEFINITIONS, handleCommand, handleButton, isAuthorized, supportPayload } = require('./commands');
 const announcer = require('./announcer');
 const { createBackend } = require('./backend');
 const { createCourtSync } = require('./court');
@@ -71,6 +71,7 @@ function startBot(o) {
         if (interaction.isChatInputCommand()) {
           if (interaction.commandName === 'kapcsol') await court.handleLinkCommand(interaction);
           else if (interaction.commandName === 'targyalas') await court.handleOpenCommand(interaction);
+          else if (interaction.commandName === 'tamogatas') await interaction.reply({ ...supportPayload(o.gameUrl || o.backendUrl), flags: MessageFlags.Ephemeral });
           else if (interaction.commandName === 'moderacio') {
             if (!isAuthorized(interaction)) await interaction.reply({ content: '⛔ Ezt csak admin használhatja.', ephemeral: true });
             else await moderator.handleCommand(interaction);

@@ -3902,3 +3902,14 @@ body[data-screen="name"] .comfort-dock, body[data-screen="menu"] .comfort-dock, 
 /* ❤️ Támogatás link (menü) */
 .support-link { display: inline-block; text-decoration: none; margin-top: 8px; }
 #btnSupportOpen { text-decoration: none; display: inline-block; text-align: center; }
+
+/* ❤️ Támogatás a lobbiban: apró, ne zavarjon; keskeny kijelzőn csak az ikon */
+.support-mini { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; opacity: .85; }
+.support-mini:hover { opacity: 1; }
+@media (max-width: 520px) { .support-mini span { display: none; } }
+
+/* ❤️ Támogatás a játék vége képernyőn: halvány, a pódiumot és a díjakat nem zavarja */
+.go-support { margin: 14px 0 4px; text-align: center; font-size: .85rem; color: #b9a67a; }
+.go-support a { color: #f2c14e; font-weight: 700; text-decoration: none; border-bottom: 1px dotted rgba(242, 193, 78, .6); }
+.go-support a:hover { border-bottom-style: solid; }
+.go-support small { opacity: .8; }

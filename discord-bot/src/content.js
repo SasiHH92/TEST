@@ -7,11 +7,17 @@ const GOLD = 0xc9a227;
 const marker = (key) => `kamu:${key}`;
 
 function gameUrl() {
-  return (process.env.KAMU_GAME_URL || '').trim().replace(/\/+$/, '');
+  return (process.env.KAMU_GAME_URL || process.env.AUTH_BASE_URL || '').trim().replace(/\/+$/, '');
 }
 
 function base(key, title, color = GOLD) {
   return new EmbedBuilder().setColor(color).setTitle(title).setFooter({ text: `Kamu Bíróság • ${marker(key)}` });
+}
+
+// Diszkrét, önkéntes támogatási sor (csak ha ismert a játék címe). Nincs benne ígéret és nincs nyomás: a támogatás ellenszolgáltatás nélküli.
+function supportField() {
+  const url = gameUrl();
+  return url ? { name: '❤️ Támogatás', value: 'A tárgyalás ingyenes. Ha tetszik a játék, itt önkéntesen támogathatod a fejlesztést (ellenszolgáltatás és játékbeli előny nélkül): ' + url + '/tamogatas' } : null;
 }
 
 // A {rules} helyére a szabályzat csatorna említése kerül (ha ismert).
@@ -30,6 +36,7 @@ const EMBEDS = {
         { name: '🔊 Hang', value: 'Játék közben ülj be egy **Tárgyalóterem** hangcsatornába – a bírósághoz hang dukál.' },
       );
     if (url) e.addFields({ name: '🎮 Játék', value: `[Belépés a tárgyalóterembe](${url})` });
+    const sup = supportField(); if (sup) e.addFields(sup);
     return e;
   },
   rules() {
@@ -55,6 +62,7 @@ const EMBEDS = {
       { name: 'Hibát találtam!', value: 'Ha tesztelő vagy: 🐛・hibajelentés. Ha nem, szólj egy moderátornak.' },
     ];
     if (url) fields.push({ name: 'Hol játszhatok?', value: url });
+    const sup = supportField(); if (sup) fields.push(sup);
     return base('faq', '❓ Gyakran ismételt kérdések').addFields(fields);
   },
   bugs() {
@@ -110,4 +118,4 @@ function hasMarker(message, key) {
   return (message.embeds || []).some((e) => e.footer && String(e.footer.text || '').includes(marker(key)));
 }
 
-module.exports = { EMBEDS, build, marker, hasMarker, JOIN_BUTTON_ID };
+module.exports = { supportField, gameUrl, EMBEDS, build, marker, hasMarker, JOIN_BUTTON_ID };
