@@ -60,7 +60,8 @@ function renderPanel(s, gameUrl) {
   if (live) {
     components.push(new ActionRowBuilder().addComponents(
       BTN(s.id, 'join', '⚖️ Jelentkezem', ButtonStyle.Success, s.status !== 'WAITING'),
-      BTN(s.id, 'leave', '❌ Visszalépek', ButtonStyle.Secondary, s.status === 'IN_PROGRESS')));
+      BTN(s.id, 'leave', '❌ Visszalépek', ButtonStyle.Secondary, s.status === 'IN_PROGRESS'),
+      ...(gameUrl ? [new ButtonBuilder().setLabel('🚪 Belépés a szobába').setStyle(ButtonStyle.Link).setURL(`${gameUrl}/?court=${s.id}`)] : [])));
     components.push(new ActionRowBuilder().addComponents(
       s.status === 'LOCKED' ? BTN(s.id, 'unlock', '🔓 Megnyit', ButtonStyle.Secondary, false) : BTN(s.id, 'lock', '🔒 Lezár', ButtonStyle.Secondary, s.status !== 'WAITING'),
       BTN(s.id, 'draw', '🎲 Sorsolás', ButtonStyle.Primary, !['WAITING', 'LOCKED', 'READY'].includes(s.status)),

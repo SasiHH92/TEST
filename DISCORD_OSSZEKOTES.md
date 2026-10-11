@@ -76,7 +76,10 @@ Események: `COURT_SESSION_CREATED`, `PLAYER_JOINED`, `PLAYER_LEFT`, `SESSION_LO
   szobába**. Akinek nincs nyitva az oldal, annak a linkre kell kattintania (a böngészőt a szerver nem tudja „utánuk nyúlva” megnyitni).
 * **Kilépés a weben → kikerül a Discordról is:** ha a játékos szándékosan kilép a szobából (vagy a házigazda kirúgja), kikerül a
   tárgyalás jelentkezői közül (panel frissül, a role-ja lekerül; sorsolás után a sorsolás érvényét veszti, vissza JELENTKEZÉS).
-  A vezető kilépése a szobából nem szünteti meg a tárgyalást; a folyó tárgyalás résztvevőit nem érinti. F5 / kapcsolatvesztés nem kilépés.
+  **Ha a gazda (a tárgyalás vezetője) kilép a szobából, a tárgyalás automatikusan megszűnik**: a Discord-panel lezárul, a role-ok lekerülnek,
+  az üres szoba eltűnik. Folyó játékot ez nem érint. F5 / kapcsolatvesztés nem kilépés.
+* **Csatlakozás:** a Discord-panelen a **🚪 Belépés a szobába** gomb (a gazdának ez nyitja meg a szobát, a többieknek ez a csatlakozás), a játék
+  menüjében pedig a „Discord-tárgyalásaid” lista **🚪 Csatlakozás** gombja.
 
 ## Szerepsorsolás
 

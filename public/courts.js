@@ -56,9 +56,25 @@
       if (ok && auto) toast('⚖️ A Discordon jelentkeztél, belépsz a tárgyalás szobájába…');
     } catch (e) { if (!auto) toast(e.message); }
   }
+  // A menüben: a Discordon jelentkezett / általam vezetett élő tárgyalások, „Csatlakozás” gombbal
+  const STATUS_SHORT = { WAITING: 'jelentkezés', LOCKED: 'lezárva', READY: 'szerepek kiosztva', IN_PROGRESS: 'folyamatban', DRAWING: 'sorsolás' };
+  async function loadMine() {
+    try { mySessions = link ? (await api('GET', '/court-sessions/mine')).sessions : []; } catch (e) { mySessions = []; }
+    renderMine();
+  }
+  function renderMine() {
+    const el = $c('#courtMine');
+    if (!el) return;
+    const inRoom = typeof MY !== 'undefined' && MY.code;
+    const list = (mySessions || []).filter((s) => s.roomCode && s.status !== 'FINISHED' && s.status !== 'CANCELLED');
+    if (!link || inRoom || !list.length) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.innerHTML = '<b>⚖️ Discord-tárgyalásaid:</b>' + list.map((s) => '<div class="court-mine-row"><span><b>' + esc(s.caseNo) + '</b> · ' + esc(STATUS_SHORT[s.status] || s.status) + ' · ' + s.participants.length + '/' + s.maxPlayers + ' fő' + (s.hostUserId === link.uid ? ' · te vagy a vezető' : '') + '</span> <button class="btn small" data-court-enter="' + esc(s.id) + '">🚪 Csatlakozás</button></div>').join('');
+  }
   async function loadLink() {
     try { link = await api('GET', '/discord/link'); } catch (e) { link = null; }
     renderLinkBoxes();
+    loadMine();
     if (pendingCourt) {
       const id = pendingCourt;
       if (link) { pendingCourt = null; enter(id, false); }
@@ -145,8 +161,9 @@
   }
 
   document.addEventListener('click', async (ev) => {
-    const t = ev.target.closest && ev.target.closest('[data-court],#courtCreate,[data-rebind],#dlStart,#dlRemove,#dlDone');
+    const t = ev.target.closest && ev.target.closest('[data-court],#courtCreate,[data-rebind],[data-court-enter],#dlStart,#dlRemove,#dlDone');
     if (!t) return;
+    if (t.dataset.courtEnter) return enter(t.dataset.courtEnter, false);
     if (t.dataset.court) return act(t.dataset.court);
     if (t.id === 'courtCreate') {
       busy = true; note = ''; renderPanel();
@@ -193,13 +210,14 @@
         const key = v.id + ':' + v.roomCode;
         if (!entered.has(key)) { entered.add(key); enter(v.id, true); }
       }
+      loadMine();
       if (typeof MY !== 'undefined' && v.roomCode === MY.code) {
         if (!session || session.id !== v.id || v.version >= session.version) { session = v; code = MY.code; renderPanel(); }
       }
     });
     socket.on('state', () => {
       if (typeof MY === 'undefined') return;
-      if (MY.code !== code) loadSession(); else renderPanel();
+      if (MY.code !== code) { loadSession(); renderMine(); } else renderPanel();
     });
     socket.on('connect', () => { loadLink().then(loadSession); });
   }

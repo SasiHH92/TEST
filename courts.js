@@ -348,7 +348,9 @@ function createCourts({
   // A vezetőt és a már folyó tárgyalás résztvevőit nem érinti.
   function leaveFromRoom(code, userId) {
     const s = byRoom(code);
-    if (!s || !userId || userId === s.hostUserId || s.status === STATUS.IN_PROGRESS) return null;
+    if (!s || !userId || s.status === STATUS.IN_PROGRESS) return null;
+    // A gazda kilépésével a tárgyalás (és a szobája) megszűnik; a Discord-panel lezárul, a role-ok lekerülnek.
+    if (userId === s.hostUserId) return cancel(s.id, null, 'A tárgyalás vezetője kilépett a szobából.');
     if (!s.participants.some((p) => p.userId === userId)) return null;
     return leave(s.id, { userId });
   }

@@ -212,6 +212,8 @@ async function main() {
     assert.ok(text.includes(code), 'szobakód a panelen');
     const ids = panels(id)[0].components[0].components.map((c) => c.data.custom_id);
     assert.deepEqual(ids.slice(0, 2), [`kamu:court:join:${id}`, `kamu:court:leave:${id}`]);
+    const link = panels(id)[0].components[0].components.map((c) => c.data).find((d) => d.url);
+    assert.ok(link && link.url === BASE + '/?court=' + id && /Belépés a szobába/.test(link.label), 'a „Belépés a szobába” link-gomb a panelen');
     // a panel azonosítója a backendben is megvan (újraindításhoz)
     const bs = (await backend.getSession(id)).discord;
     assert.equal(bs.messageId, panels(id)[0].id);
@@ -482,17 +484,23 @@ async function main() {
     await waitFor(() => !panelText(sid).includes(`<@${hugo.did}>`) && panelText(sid).includes('2/8'), 'a Discord-panel is frissül');
     // az eltávolított játékos újra jelentkezhet a Discordon
     assert.match(await press(hugo, 'join', sid), /Jelentkeztél/);
-    // a vezető nem léphet ki a tárgyalásból a szoba elhagyásával (a tárgyalás megmarad)
-    await emit(ginaTab, 'leave_room', {});
-    assert.ok((await gina.api('GET', '/api/court-sessions/' + sid)).data.session.participants.some((p) => p.name === 'GinaT'));
-    // mindenki kilépett a szobából: a szoba mégis megmarad az élő tárgyaláshoz (nem takarítódik el)
+    // Ivan kilép a szobából, a szoba a gazdával tovább él
     await emit(ivanTab, 'leave_room', {});
+    await pause(200);
+    assert.equal((await gina.api('GET', '/api/court-sessions/' + sid)).data.session.status, 'WAITING');
+    assert.equal((await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {})).data.roomCode, s0.roomCode, 'ugyanaz a szoba');
+    // A GAZDA kilépésével a tárgyalás automatikusan megszűnik: a Discord-panel lezárul, a szoba eltűnik
+    await emit(ginaTab, 'leave_room', {});
+    await waitFor(async () => (await gina.api('GET', '/api/court-sessions/' + sid)).data.session.status === 'CANCELLED', 'a tárgyalás megszűnik');
+    await waitFor(() => panelText(sid).includes('LEMONDVA') && panels(sid)[0].components.length === 0, 'a Discord-panel lezárul');
+    assert.match(panelText(sid), /vezetője kilépett/);
+    assert.equal((await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {})).status, 409, 'megszűnt tárgyalásba nem lehet belépni');
+    // a szoba (az üres, már nem védett lobbi) eltűnik: a kóddal nem lehet belépni
     await pause(300);
-    const again = await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {});
-    assert.equal(again.data.roomCode, s0.roomCode, 'ugyanaz a szoba');
-    // lezárt tárgyalásba nem lehet belépni
-    assert.equal((await gina.api('POST', '/api/court-sessions/' + sid + '/cancel', {})).status, 200);
-    assert.equal((await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {})).status, 409);
+    const gone = await tab(hugo);
+    const rg = await emit(gone, 'join_room', { code: s0.roomCode, name: hugo.name, avatar: '', playerId: gone.pid, profile: null });
+    assert.ok(rg.error, 'a szoba megszűnt: ' + JSON.stringify(rg).slice(0, 80));
+    gone.disconnect();
     for (const t of [ivanTab, hugoTab, ginaTab]) t.disconnect();
   });
 

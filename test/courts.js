@@ -140,6 +140,22 @@ function fill(c, id, n) { for (let i = 1; i <= n; i++) c.join(id, user(i)); }
     throwsCode(() => c.leave(id, host), 'host_leave');
   });
 
+  await test('a gazda kilépése a szobából lemondja a tárgyalást; a jelentkező kilépése csak őt veszi ki; folyó játékot nem érint', () => {
+    const c = createCourts();
+    const id = c.create({ hostUserId: host.userId, hostName: 'Host', roomCode: 'VVVV' }).session.id;
+    fill(c, id, 3);
+    c.leaveFromRoom('VVVV', 'u2');
+    assert.deepEqual(c.get(id).participants.map((p) => p.uid).sort(), ['u-host', 'u1', 'u3']);
+    c.leaveFromRoom('VVVV', host.userId);
+    assert.equal(c.get(id).status, 'CANCELLED');
+    assert.match(c.get(id).cancelReason, /kilépett/);
+    const id2 = c.create({ hostUserId: host.userId, hostName: 'Host', roomCode: 'WWWW' }).session.id;
+    fill(c, id2, 2);
+    c.draw(id2, host); c.begin(id2, host);
+    assert.equal(c.leaveFromRoom('WWWW', host.userId), null);
+    assert.equal(c.get(id2).status, 'IN_PROGRESS');
+  });
+
   await test('szoba-visszajelzések: a játékmotor indulása/vége állítja az állapotot, sorsolás nélkül is', () => {
     const c = createCourts();
     const a = c.create({ hostUserId: host.userId, hostName: 'Host', roomCode: 'KKKK' }).session.id;
