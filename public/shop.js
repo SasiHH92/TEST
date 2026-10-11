@@ -77,6 +77,7 @@
     const prev = JSON.stringify(state);
     try {
       state = await call('GET', '/state');
+      if (state && state.testerBonus && typeof showToast === 'function') showToast('🎁 Tesztelői jutalom: +' + fmt(state.testerBonus) + ' 🍪 pogácsa a pénztárcádban – köszönjük a tesztelést!');
       fetchedAt = Date.now();
     } catch (_) { return state; }
     changed(prev);

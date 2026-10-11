@@ -3244,6 +3244,11 @@ function verdictCue(v) {
   if (motionReduced()) return;
   // BŰNÖS: a jelenet rázkódását a court.js adja az ítélet-pecséttel együtt; FELMENTÉS: békegalambok.
   if (!v.guilty) releaseDoves(v.unanimous ? 8 : 5);
+  // FELMENTÉS (turbó): két egymás utáni konfetti-sorozat és több galamb – a felmentés ünnep, nem csak egy szám
+  if (!v.guilty) {
+    setTimeout(() => { if (S && S.phase === 'verdict') confettiBurst(v.unanimous ? 120 : 80, 'acquit'); }, 450);
+    setTimeout(() => { if (S && S.phase === 'verdict') { confettiBurst(60, 'acquit'); releaseDoves(v.unanimous ? 6 : 3); } }, 1100);
+  }
 }
 
 // ============================================================

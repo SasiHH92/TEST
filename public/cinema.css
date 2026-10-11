@@ -308,3 +308,23 @@ html.auth-video-on .auth-shade { background: linear-gradient(180deg, rgba(23, 12
   .stage-plate.speaking { transform: translateX(-50%); }
   .stage-plate, .court-card { transition: none !important; }
 }
+
+/* ---------------- FELMENTÉS – turbó ünnep (csak megjelenítés; csökkentett mozgásnál kikapcsolva) ---------------- */
+.court-verdict.flash-acquitted .verdict-card.acquitted { position: relative; box-shadow: 0 0 0 2px rgba(125, 251, 160, .55), 0 0 46px rgba(125, 251, 160, .5), 0 18px 50px rgba(0, 0, 0, .55); animation: vd-glow 1.6s ease-in-out 0.4s infinite alternate; }
+.court-verdict.flash-acquitted .verdict-card.acquitted::before { /* forgó fénysugarak a kártya mögött */
+  content: ''; position: absolute; left: 50%; top: 50%; width: 170%; aspect-ratio: 1; transform: translate(-50%, -50%); z-index: -1; pointer-events: none; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 236, 160, .22) 0 6deg, transparent 6deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 68%); mask-image: radial-gradient(circle, #000 18%, transparent 68%);
+  animation: vd-rays 14s linear infinite;
+}
+.court-verdict.flash-acquitted .verdict-card.acquitted .vd-headline { color: #7dfba0; text-shadow: 0 0 40px rgba(125, 251, 160, .7), 0 5px 0 rgba(0, 0, 0, .3); }
+.court-verdict.flash-acquitted .verdict-card.acquitted .court-stamp { animation: vd-stamp-pop 0.6s 0.25s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes vd-glow { from { filter: brightness(1); } to { filter: brightness(1.12) saturate(1.1); } }
+@keyframes vd-rays { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes vd-stamp-pop { 0% { transform: scale(2.4) rotate(-14deg); opacity: 0; } 60% { transform: scale(0.92) rotate(-6deg); opacity: 1; } 100% { transform: scale(1) rotate(-6deg); opacity: 1; } }
+.reduced-motion .court-verdict.flash-acquitted .verdict-card.acquitted, .reduced-motion .court-verdict.flash-acquitted .verdict-card.acquitted::before,
+.reduced-motion .court-verdict.flash-acquitted .verdict-card.acquitted .court-stamp { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .court-verdict.flash-acquitted .verdict-card.acquitted, .court-verdict.flash-acquitted .verdict-card.acquitted::before,
+  .court-verdict.flash-acquitted .verdict-card.acquitted .court-stamp { animation: none; }
+}

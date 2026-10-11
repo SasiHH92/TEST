@@ -19,6 +19,11 @@ const CATALOG = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'shop.js
 const ITEMS = new Map(CATALOG.targyak.map((i) => [i.id, i]));
 const SLOTS = new Set(CATALOG.slotok.map((s) => s.id));
 const SEASONS = new Map((CATALOG.szezonok || []).map((s) => [s.id, s]));
+// Tesztelői jutalom: a legendás (alapító) kártyát igénylő fiókok EGYSZER, automatikusan ennyi pogácsát kapnak (TESTER_POGACSA környezeti változóval állítható).
+const TESTER_BONUS = (() => {
+  const n = parseInt(process.env.TESTER_POGACSA, 10);
+  return Number.isFinite(n) ? Math.max(0, Math.min(100000, n)) : 5000; // 0 = kikapcsolva
+})();
 const GIFTS_PER_DAY = 5; // egy játékos naponta legfeljebb ennyi ajándékot küldhet
 const UNLOCKS = { discord: (user) => !!(user && user.providers && user.providers.discord) };
 const UNLOCK_NAMES = { discord: 'a Discord-fiókod összekapcsolásával' };
@@ -54,6 +59,7 @@ function shopOf(user) {
     owned: [...new Set([...(Array.isArray(s.owned) ? s.owned.filter((id) => ITEMS.has(id)) : []), ...grantedIds(user)])],
     equipped: s.equipped && typeof s.equipped === 'object' ? s.equipped : {},
     claims: s.claims && typeof s.claims === 'object' ? s.claims : {},
+    testerBonus: s.testerBonus === true, // a tesztelői jutalmat már megkapta
     offered: Array.isArray(s.offered) ? s.offered.filter((id) => ITEMS.has(id)) : [] // a feloldott tárgyak, amiket már egyszer automatikusan felvettünk
   };
 }
@@ -144,8 +150,18 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
   }
 
   router.get('/state', (req, res) => {
-    const user = requireUser(req);
-    res.json(stateFor(user));
+    let user = requireUser(req);
+    let granted = 0;
+    // Legendás kártyás (tesztelő) fiók: az első megnyitáskor egyszeri, bőséges pogácsa-jutalom (idempotens: a jelzőt a fiók őrzi).
+    if (user.legend && TESTER_BONUS > 0 && !shopOf(user).testerBonus) {
+      user = change(user, (s) => {
+        if (s.testerBonus) return;
+        s.testerBonus = true;
+        s.wallet += TESTER_BONUS;
+        granted = TESTER_BONUS;
+      });
+    }
+    res.json({ ...stateFor(user), ...(granted ? { testerBonus: granted } : {}) });
   });
 
   router.post('/claim', (req, res) => {
