@@ -145,7 +145,7 @@
       '<ul class="court-list">' + s.participants.map((p) => '<li>' + esc(p.name) + (p.uid === s.hostUserId ? ' <small>(vezető)</small>' : '') +
         ' <small class="' + (p.discordLinked ? 'ok' : 'warn') + '">' + (p.discordLinked ? '✔ Discord' : '• nincs Discord-kapcsolat') + '</small>' + (p.roleLabel ? ' <i>' + esc(p.roleLabel) + '</i>' : '') + '</li>').join('') + '</ul>' +
       (!link.linked ? '<p class="hint">Te még nem kötötted össze a Discordot – a menüben (Discord összekötés) pótolhatod.</p>' : '') +
-      '<div class="court-actions">' + actions.join('') + '</div>' +
+      '<div class="court-actions">' + actions.join('') + (joined && s.discordVoiceUrl && live ? '<a class="btn small court-voice" href="' + esc(s.discordVoiceUrl) + '" target="_blank" rel="noopener">🔊 Csatlakozás a hangcsatornához</a>' : '') + '</div>' +
       (note ? '<p class="court-note">' + esc(note) + '</p>' : '');
   }
 

@@ -119,6 +119,7 @@ function newBot() {
   court = createCourtSync({ client, backend, gameUrl: BASE, log: quiet, reconcileEveryMs: 100000, chatGraceMs: 700 });
   return court;
 }
+const voiceOf = (sid) => [...guild.channels.cache.values()].find((c) => c.name === '🔊 Tárgyalás #' + String(sid).replace('KAMU-', ''));
 const chatOf = (sid) => [...guild.channels.cache.values()].find((c) => c.name === '⚖️・targyalas-' + String(sid).replace('KAMU-', ''));
 const tempRoles = (member) => [...member.roles.cache.values()].map((r) => r.name).filter((n) => n.startsWith('Kamu | ')).sort();
 
@@ -239,6 +240,13 @@ async function main() {
     assert.equal(ow(cili.did), undefined, 'aki nem jelentkezett, nem látja');
     assert.ok(panelText(id).includes('<#' + chat.id + '>'), 'a panel a csevegőre hivatkozik');
     assert.equal((await backend.getSession(id)).discord.chatChannelId, chat.id, 'az azonosító a backendben');
+    // privát hangcsatorna + a weboldal linkje hozzá
+    const voice = await waitFor(() => voiceOf(id), 'a hangcsatorna létrejön');
+    assert.ok(voice.permissionOverwrites.cache.get(guild.roles.everyone.id).deny.has(PermissionFlagsBits.ViewChannel));
+    await waitFor(() => voice.permissionOverwrites.cache.get(anna.did) && voice.permissionOverwrites.cache.get(anna.did).allow.has(PermissionFlagsBits.Connect), 'Anna csatlakozhat a hangcsatornához');
+    assert.equal(voice.permissionOverwrites.cache.get(cili.did), undefined);
+    const webView = await waitFor(async () => { const s = (await host.api('GET', '/api/court-sessions/' + id)).data.session; return s.discordVoiceUrl ? s : null; }, 'a weboldal megkapja a hangcsatorna linkjét');
+    assert.equal(webView.discordVoiceUrl, 'https://discord.com/channels/' + guild.id + '/' + voice.id);
   });
 
   await test('Nem összekötött Discord-tag jelentkezése elutasítva, útmutatóval; a bot nem hamisíthat Kamu-felhasználót', async () => {
@@ -355,7 +363,7 @@ async function main() {
     assert.ok(chatOf(id), 'a befejezés után még röviden megmarad a csevegő');
     await pause(900);
     await court.reconcileAll();
-    await waitFor(() => !chatOf(id), 'a csevegőcsatorna törlődik a türelmi idő után');
+    await waitFor(() => !chatOf(id) && !voiceOf(id), 'a csevegő- és hangcsatorna törlődik a türelmi idő után');
     assert.equal((await backend.getSession(id)).discord.chatChannelId, '', 'a backend is tudja');
     await waitFor(async () => (await backend.listSessions()).every((s) => s.id !== id), 'a takarítás készen van, a bot nem kapja többé');
     assert.equal((await press(anna, 'join', id)), '❌ Ez a tárgyalás már lezárult.');
@@ -513,7 +521,7 @@ async function main() {
     await waitFor(async () => (await gina.api('GET', '/api/court-sessions/' + sid)).data.session.status === 'CANCELLED', 'a tárgyalás megszűnik');
     await waitFor(() => panelText(sid).includes('LEMONDVA') && panels(sid)[0].components.length === 0, 'a Discord-panel lezárul');
     assert.match(panelText(sid), /vezetője kilépett/);
-    await waitFor(() => !chatOf(sid), 'a gazda kilépésével a csevegőcsatorna azonnal törlődik');
+    await waitFor(() => !chatOf(sid) && !voiceOf(sid), 'a gazda kilépésével a csevegő és a hangcsatorna azonnal törlődik');
     assert.equal((await backend.getSession(sid)).discord.chatChannelId, '');
     assert.equal((await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {})).status, 409, 'megszűnt tárgyalásba nem lehet belépni');
     // a szoba (az üres, már nem védett lobbi) eltűnik: a kóddal nem lehet belépni

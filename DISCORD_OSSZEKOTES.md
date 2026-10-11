@@ -78,6 +78,9 @@ Események: `COURT_SESSION_CREATED`, `PLAYER_JOINED`, `PLAYER_LEFT`, `SESSION_LO
   tárgyalás jelentkezői közül (panel frissül, a role-ja lekerül; sorsolás után a sorsolás érvényét veszti, vissza JELENTKEZÉS).
   **Ha a gazda (a tárgyalás vezetője) kilép a szobából, a tárgyalás automatikusan megszűnik**: a Discord-panel lezárul, a role-ok lekerülnek,
   az üres szoba eltűnik. Folyó játékot ez nem érint. F5 / kapcsolatvesztés nem kilépés.
+* **Saját hangcsatorna:** a csevegő mellé egy `🔊 Tárgyalás #<szám>` **hangcsatorna** is készül (csak a jelentkezők csatlakozhatnak: Connect/Speak). A Discord-panelen
+  **🔊 Hangcsatorna** link-gomb, a weboldal lobbi-paneljén **🔊 Csatlakozás a hangcsatornához** gomb viszi oda a jelentkezőt (a Discord megnyitja a csatornát;
+  a hangba a Discord alkalmazásban kell belépni). A csevegővel együtt törlődik.
 * **Saját csevegőcsatorna:** minden tárgyaláshoz a bot létrehoz egy `⚖️・targyalas-<szám>` szövegcsatornát a 🎮 JÁTÉK kategóriában. Csak a **jelentkezők** (összekötött
   Discord-fiókkal) és a stáb látják; aki jelentkezik, megkapja a jogot, aki visszalép, elveszíti. A panel hivatkozik rá. **Ha a tárgyalás megszűnik (pl. a gazda
   kilép a szobából), a csatorna azonnal törlődik**; befejezett tárgyalásnál 10 percig megmarad (búcsúzásra), aztán törlődik. Ha valaki kézzel törli, a bot újra

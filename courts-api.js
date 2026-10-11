@@ -255,6 +255,9 @@ function createCourtsApi({ courts, auth, io, botToken = '', rooms, onError = () 
   bot.post('/sessions/:id/chat', wrap((req, res) => {
     res.json({ session: courts.setDiscordChat(req.params.id, req.body.channelId) });
   }));
+  bot.post('/sessions/:id/voice', wrap((req, res) => {
+    res.json({ session: courts.setDiscordVoice(req.params.id, req.body.channelId) });
+  }));
   bot.post('/sessions/:id/announce', wrap((req, res) => {
     res.json({ first: courts.markAnnounced(req.params.id, String(req.body.key || '').slice(0, 40)) });
   }));

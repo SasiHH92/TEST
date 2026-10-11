@@ -174,7 +174,7 @@ Mivel a bot külön folyamat, a játékszerver és a bot összekötése (pl. egy
 
 ```bash
 npm run lint   # szintaxis + titokellenőrzés
-npm test       # 37 offline teszt (setup + moderáció + tárgyalás-csevegő) memóriában élő hamis Discord-szerveren (nincs hálózat, nincs token)
+npm test       # 38 offline teszt (setup + moderáció + tárgyalás-csevegő) memóriában élő hamis Discord-szerveren (nincs hálózat, nincs token)
 ```
 
 ## Hibaelhárítás

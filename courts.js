@@ -119,14 +119,16 @@ function createCourts({
       })),
       createdAt: s.createdAt, updatedAt: s.updatedAt, drawnAt: s.drawnAt || null,
       startedAt: s.startedAt || null, finishedAt: s.finishedAt || null, cancelReason: s.cancelReason || null,
-      discordPanel: !!(s.discord && s.discord.messageId)
+      discordPanel: !!(s.discord && s.discord.messageId),
+      // a tárgyalás privát hangcsatornájának linkje (a Discord megnyitja; csak a jelentkezők látják a csatornát)
+      discordVoiceUrl: s.discord && s.discord.voiceChannelId && s.discord.guildId ? 'https://discord.com/channels/' + s.discord.guildId + '/' + s.discord.voiceChannelId : null
     };
   }
   // A bot nézete: a Discord-azonosítók és a panel-hivatkozások is benne vannak (a web soha nem kapja meg).
   function botView(s) {
     const v = view(s);
     v.participants = v.participants.map((p) => ({ ...p, discordUserId: discordIdOf(p.uid) }));
-    v.discord = { guildId: null, channelId: null, messageId: null, chatChannelId: '', announced: [], appliedRoles: {}, ...(s.discord || {}) };
+    v.discord = { guildId: null, channelId: null, messageId: null, chatChannelId: '', voiceChannelId: '', announced: [], appliedRoles: {}, ...(s.discord || {}) };
     return v;
   }
 
@@ -380,6 +382,7 @@ function createCourts({
     const s = session(id);
     s.discord = { announced: [], appliedRoles: {}, ...(s.discord || {}), guildId: String(guildId || ''), channelId: String(channelId || ''), messageId: String(messageId || '') };
     s.updatedAt = now(); save();
+    emit('DISCORD_CHANNELS_UPDATED', s);
     return botView(s);
   }
   // A tárgyalás saját Discord-csevegőcsatornája (a bot hozza létre / törli; az azonosító itt él, hogy újraindítás után is törölhető legyen)
@@ -387,6 +390,13 @@ function createCourts({
     const s = session(id);
     s.discord = { announced: [], appliedRoles: {}, ...(s.discord || {}), chatChannelId: String(channelId || '') };
     save();
+    return botView(s);
+  }
+  function setDiscordVoice(id, channelId) {
+    const s = session(id);
+    s.discord = { announced: [], appliedRoles: {}, ...(s.discord || {}), voiceChannelId: String(channelId || '') };
+    s.updatedAt = now(); save();
+    emit('DISCORD_CHANNELS_UPDATED', s);
     return botView(s);
   }
   function markAnnounced(id, key) {
@@ -462,7 +472,7 @@ function createCourts({
     .filter((s) => LIVE.includes(s.status) || hasPendingDiscordCleanup(s))
     .map(botView);
   const hasPendingDiscordCleanup = (s) => !LIVE.includes(s.status) && s.discord && (
-    Object.keys(s.discord.appliedRoles || {}).length > 0 || !!s.discord.chatChannelId || (s.discord.messageId && !(s.discord.announced || []).includes('closed:' + s.status)));
+    Object.keys(s.discord.appliedRoles || {}).length > 0 || !!s.discord.chatChannelId || !!s.discord.voiceChannelId || (s.discord.messageId && !(s.discord.announced || []).includes('closed:' + s.status)));
   const mine = (userId) => Object.values(data.sessions)
     .filter((s) => LIVE.includes(s.status) && (s.hostUserId === userId || s.participants.some((p) => p.userId === userId))).map(view);
   const hostSessionOf = (userId) => Object.values(data.sessions).filter((s) => LIVE.includes(s.status) && s.hostUserId === userId).map(view);
@@ -481,7 +491,7 @@ function createCourts({
 
   return {
     STATUS, ROLES, EVENTS, events, view, create, join, leave, lock, unlock, draw, begin, finish, cancel, rebind,
-    roomStarted, roomFinished, roomGone, leaveFromRoom, setDiscordPanel, setDiscordChat, markAnnounced, setAppliedRoles,
+    roomStarted, roomFinished, roomGone, leaveFromRoom, setDiscordPanel, setDiscordChat, setDiscordVoice, markAnnounced, setAppliedRoles,
     createLinkCode, consumeLinkCode, linkOfUser, unlink, purgeUser, userOfDiscord, canManage: (id, actor) => canManage(session(id), actor),
     get, getForBot, forRoom, listLive, listForBot, mine, hostSessionOf, expireStale, saveNow,
     _data: () => data
