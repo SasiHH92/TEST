@@ -51,12 +51,21 @@ async function main() {
     assert.equal(new Set(frames).size, 12, 'a keretek mind különbözőek');
   });
 
-  await test('A legenda-keretek és -hátterek nem kaphatók a boltban (nem hamisíthatók fiókkal)', async () => {
-    const shopIds = new Set(shop.targyak.map((i) => i.id));
+  await test('A legenda-keretek és -hátterek nem vásárolhatók és nem hamisíthatók: csak FELOLDHATÓ tárgyak, kizárólag a legenda gazdájáé (szekrény), ingyenesek, nem ajándékozhatók', async () => {
+    const byId = new Map(shop.targyak.map((i) => [i.id, i]));
     for (const p of players) {
-      assert.ok(!shopIds.has(p.keret), p.nev + ': a keret nem lehet bolti tárgy');
-      assert.ok(!shopIds.has(p.hatter), p.nev + ': a háttér nem lehet bolti tárgy');
+      for (const [id, slot] of [[p.keret, 'frame'], [p.hatter, 'bg']]) {
+        const item = byId.get(id);
+        assert.ok(item, p.nev + ': a ' + slot + ' szerepel a katalógusban (a szekrényben)');
+        assert.equal(item.feloldas, 'legend', p.nev + ': csak feloldható (nem vásárolható)');
+        assert.equal(item.legenda, p.nev, p.nev + ': kizárólag a legenda gazdájáé');
+        assert.equal(item.ar, 0);
+        assert.equal(item.slot, slot);
+      }
     }
+    // más (nem legendás) tárgy nem viselheti ezeket az azonosítókat
+    const legendIds = new Set(players.flatMap((p) => [p.keret, p.hatter]));
+    for (const i of shop.targyak) if (legendIds.has(i.id)) assert.equal(i.feloldas, 'legend', i.id + ': vásárolható tárgy nem lehet legenda-azonosítójú');
   });
 
   await test('12 egyedi háttér van, mindegyiknek saját, mozgó stílusa a stíluslapban', async () => {

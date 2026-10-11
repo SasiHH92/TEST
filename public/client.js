@@ -1427,6 +1427,7 @@ function renderProfileStats(me) {
       '<button type="button" id="btnQuestsOpen" class="btn">📜 NAPI KÜLDETÉSEK' + (ready ? ' <i class="shop-badge">' + ready + '</i>' : '') + '</button>' +
       '<button type="button" id="btnFriendsOpen" class="btn">👥 BARÁTOK' + (friendReq ? ' <i class="shop-badge">' + friendReq + '</i>' : '') + '</button>' +
       '<button type="button" id="btnRankOpen" class="btn">🏆 RANGLISTA</button>' +
+      '<a id="btnSupportOpen" class="btn" href="/tamogatas">❤️ TÁMOGATÁS</a>' +
       '<button type="button" id="btnLogout" class="btn ghost ps-logout">⎋ KIJELENTKEZÉS</button>' +
     '</div>';
   const rankBtn = $('#btnRankOpen');

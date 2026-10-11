@@ -43,7 +43,9 @@
     "build-role-assets": "node scripts/build-role-assets.js",
     "test:court": "node test/courts.js && node test/court-preset.js && node test/court-discord-e2e.js && node test/embedded-bot.js",
     "smoke": "node scripts/live-smoke.js",
-    "test:tester": "node test/tester-bonus.js"
+    "test:tester": "node test/tester-bonus.js",
+    "test:support": "node test/support.js",
+    "test:wardrobe": "node test/wardrobe-ui.js"
   },
   "engines": {
     "node": ">=18"

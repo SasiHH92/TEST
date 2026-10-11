@@ -181,8 +181,10 @@
       : '<button type="button" class="btn small" data-buy="' + i.id + '">MEGVESZEM · ' + fmt(i.ar) + ' 🍪</button>';
   }
 
+  // A fül szerinti tárgyak: BOLT = a vásárolható / kapható tárgyak (a legendák egyedi tárgyai nem itt vannak); SZEKRÉNY = minden, ami a tiéd.
+  const tabItems = () => (tab === 'wardrobe' ? items().filter((x) => state.owned.includes(x.id)) : items().filter((x) => x.feloldas !== 'legend'));
   // A szűrő szerint látható tárgyak (a lista, az előnézeti lapozás és a szűrő egyaránt ezt használja).
-  const visibleItems = () => items().filter((x) => slotFilter === 'all' || (slotFilter === 'szezon' ? !!x.szezon : x.slot === slotFilter));
+  const visibleItems = () => tabItems().filter((x) => slotFilter === 'all' || (slotFilter === 'szezon' ? !!x.szezon : x.slot === slotFilter));
 
   // Nagy előnézeti ablak: a saját kártyád a megnézett tárggyal, a tárgy adataival és a vásárlás gombbal.
   function previewHtml(i) {
@@ -212,7 +214,7 @@
         : '<p class="pop-price">Ára: <b>' + fmt(i.ar) + ' 🍪</b> · nálad: <b>' + fmt(s.wallet) + ' 🍪</b></p>') +
       '<div class="it-act">' + actionHtml(i, s) + '</div>' + nav +
       '<p id="shopPopMsg" class="auth-form-message pop-msg" role="status" aria-live="polite"></p>' +
-      '<button type="button" class="btn small ghost pop-close" data-pop-close="1">VISSZA A BOLTHOZ</button></div></div>';
+      '<button type="button" class="btn small ghost pop-close" data-pop-close="1">' + (tab === 'wardrobe' ? 'VISSZA A SZEKRÉNYHEZ' : 'VISSZA A BOLTHOZ') + '</button></div></div>';
   }
 
   function renderPop() {
@@ -249,10 +251,18 @@
   function shopHtml() {
     const s = state;
     const slots = s.catalog.slotok;
-    const hasSeason = items().some((x) => x.szezon);
-    const filters = [{ id: 'all', nev: 'Összes' }, ...slots, ...(hasSeason ? [{ id: 'szezon', nev: '⏳ Szezonális' }] : [])].map((f) =>
+    const wardrobe = tab === 'wardrobe';
+    const pool = tabItems();
+    const hasSeason = pool.some((x) => x.szezon);
+    const usedSlots = slots.filter((x) => !wardrobe || pool.some((i) => i.slot === x.id)); // a szekrényben csak azok a helyek, ahol van tárgyad
+    if (slotFilter !== 'all' && slotFilter !== 'szezon' && !usedSlots.some((x) => x.id === slotFilter)) slotFilter = 'all';
+    const filters = [{ id: 'all', nev: 'Összes' }, ...usedSlots, ...(hasSeason ? [{ id: 'szezon', nev: '⏳ Szezonális' }] : [])].map((f) =>
       '<button type="button" class="sf' + (slotFilter === f.id ? ' active' : '') + '" data-filter="' + f.id + '">' + escapeHtml(f.nev) + '</button>').join('');
     const list = visibleItems();
+    const equippedNow = wardrobe ? slots.map((sl) => { const it = items().find((x) => x.id === s.equipped[sl.id]); return it ? '<span class="wd-on"><small>' + escapeHtml(sl.nev) + '</small> <b>' + escapeHtml(it.nev) + '</b></span>' : ''; }).join('') : '';
+    const empty = wardrobe
+      ? '<p class="shop-info">' + (pool.length ? 'Ebben a kategóriában még nincs tárgyad.' : 'Még nincs egyetlen tárgyad sem. Nézz be a <b>🛒 Boltba</b>, és vegyél valamit a pogácsádból!') + '</p>'
+      : '';
     const grid = list.map((i) => {
       const owned = s.owned.includes(i.id);
       const equipped = s.equipped[i.slot] === i.id;
@@ -275,9 +285,11 @@
       label: 'A TE KÁRTYÁD', cosm, name: acc.username || 'Neved', badge: prof.jelveny || '',
       title: prof.titulus || 'Új gyanúsított', avatar: AVATARS.includes(prof.avatar) ? prof.avatar : '', pick: false
     }) + '</div>';
-    return giftBanner + '<div class="shop-layout"><div class="shop-preview-col"><span class="profile-preview-label">A JELENLEGI KÁRTYÁD</span>' + preview +
-      '<p class="shop-hint">Bármelyik tárgynál az <b>👁 ELŐNÉZET</b> gombbal megnézheted, hogyan állna a kártyádon. Megvenni csak akkor lehet, ha van rá elég pogácsád.</p></div>' +
-      '<div class="shop-items"><div class="shop-filters">' + filters + '</div><div class="item-grid">' + grid + '</div></div></div>';
+    const hint = wardrobe
+      ? '<p class="shop-hint">Itt vannak a tárgyaid: a <b>megvásároltak</b> és a <b>legendás kártyáddal járó egyedi</b> tárgyak. A <b>FELVESZEM / LEVESZEM</b> gombbal cserélheted őket, nem vesznek el.</p>'
+      : '<p class="shop-hint">Bármelyik tárgynál az <b>👁 ELŐNÉZET</b> gombbal megnézheted, hogyan állna a kártyádon. Megvenni csak akkor lehet, ha van rá elég pogácsád.</p>';
+    return giftBanner + '<div class="shop-layout"><div class="shop-preview-col"><span class="profile-preview-label">A JELENLEGI KÁRTYÁD</span>' + preview + hint + '</div>' +
+      '<div class="shop-items">' + (equippedNow ? '<div class="wd-equipped" aria-label="Jelenleg rajtad">' + equippedNow + '</div>' : '') + '<div class="shop-filters">' + filters + '</div>' + (list.length ? '<div class="item-grid">' + grid + '</div>' : empty) + '</div></div>';
   }
 
   function render() {
@@ -285,18 +297,21 @@
     $s('#shopWallet').textContent = fmt(state.wallet);
     $s('#shopTabQuests').setAttribute('aria-selected', String(tab === 'quests'));
     $s('#shopTabShop').setAttribute('aria-selected', String(tab === 'shop'));
+    $s('#shopTabWardrobe').setAttribute('aria-selected', String(tab === 'wardrobe'));
+    const wc = $s('#shopWardrobeCount');
+    if (wc) { const n = items().filter((x) => state.owned.includes(x.id)).length; wc.textContent = String(n); wc.classList.toggle('hidden', !n); }
     const body = $s('#shopBody');
     const scroll = body.scrollTop;
-    body.innerHTML = tab === 'quests' ? questsHtml() : shopHtml();
+    body.innerHTML = tab === 'quests' ? questsHtml() : shopHtml(); // (bolt és szekrény ugyanazt a rácsot használja)
     body.scrollTop = scroll;
-    if (tab !== 'shop') previewId = null;
+    if (tab !== 'shop' && tab !== 'wardrobe') previewId = null;
     renderPop(); // vásárlás/felvétel után az előnézeti ablak is az új állapotot mutatja
     updateBadge();
   }
 
   async function open(which) {
     if (!window.kbAccount) return;
-    tab = which === 'shop' ? 'shop' : 'quests';
+    tab = which === 'shop' ? 'shop' : which === 'wardrobe' ? 'wardrobe' : 'quests';
     previewId = null;
     setMessage('');
     $s('#shopModal').classList.remove('hidden');
@@ -356,7 +371,8 @@
     if (previewId && e.key === 'ArrowRight') stepPreview(1);
   });
   $s('#shopTabQuests').addEventListener('click', () => { tab = 'quests'; render(); });
-  $s('#shopTabShop').addEventListener('click', () => { tab = 'shop'; render(); });
+  $s('#shopTabShop').addEventListener('click', () => { tab = 'shop'; slotFilter = 'all'; render(); });
+  $s('#shopTabWardrobe').addEventListener('click', () => { tab = 'wardrobe'; slotFilter = 'all'; giftTo = null; render(); });
 
   $s('#shopBody').addEventListener('click', (e) => {
     const t = e.target.closest('button, [data-preview]');
