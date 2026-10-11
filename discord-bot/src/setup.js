@@ -116,14 +116,29 @@ async function orderRoles(guild, me, report) {
   if (done) report.fixed.push('role-hierarchia rendezve');
 }
 
+// A szabályok sorrendje FONTOS: elsőként a bot saját joga (hogy a csatornát a továbbiakban is lássa), a stáb-role-ok következnek, és
+// az "@everyone" korlátozás (pl. a bétás terület elrejtése) UTOLJÁRA: különben a bot elveszíti a rálátást a saját csatornájára,
+// és a többi beállítás "Missing Access" hibával elbukik.
+const RULE_ORDER = (rule) => (rule.subject === 'bot' ? 0 : rule.subject === 'everyone' ? 2 : 1);
+
 async function applyPreset(guild, me, roles, channel, presetName, report, label) {
-  for (const rule of PRESETS[presetName]) {
+  const rules = [...PRESETS[presetName]].sort((x, y) => RULE_ORDER(x) - RULE_ORDER(y));
+  for (const rule of rules) {
     const id = subjectId(guild, me, roles, rule.subject);
     if (!id) continue;
     const miss = overwriteMissing(channel, id, rule);
     if (!miss.length) continue;
-    const ok = await guarded(report, `jogosultság ${label}`, () => channel.permissionOverwrites.edit(id, flagObject(rule), { reason: REASON }));
-    if (ok) report.fixed.push(`jogosultság: ${label} (${rule.subject}) ${miss.join(' ')}`);
+    try {
+      await channel.permissionOverwrites.edit(id, flagObject(rule), { reason: REASON });
+      report.fixed.push(`jogosultság: ${label} (${rule.subject}) ${miss.join(' ')}`);
+    } catch (err) {
+      const noAccess = err && (err.code === 50001 || /Missing Access/i.test(String(err.message)));
+      // Ha a bot nem látja a csatornát, a többi szabályt sem tudja beállítani: egyetlen, érthető hibát adunk
+      report.errors.push(noAccess
+        ? `jogosultság ${label}: a bot nem látja ezt a csatornát (Missing Access)`
+        : `jogosultság ${label}: ${err && err.message ? err.message : err}`);
+      if (noAccess) return;
+    }
   }
 }
 

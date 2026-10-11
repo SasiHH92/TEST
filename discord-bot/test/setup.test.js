@@ -196,3 +196,37 @@ test('normName kezeli az emoji-változatjelölőt és a Discord-átírást', () 
   assert.equal(normName('🛡️ Moderátor'), normName('🛡 Moderátor'));
   assert.equal(normName('🔊 Tárgyalóterem #1'), normName('🔊-tárgyalóterem-#1'));
 });
+
+test('jogosultság-sorrend: a bot saját joga elsőként, az @everyone korlátozás utolsóként (a bot nem zárja ki magát a bétás csatornákból)', async () => {
+  const guild = makeGuild();
+  const orig = guild.channels.create.bind(guild.channels);
+  const log = new Map(); // csatorna -> az edit hívások célpontjai sorrendben
+  guild.channels.create = async (opts) => {
+    const ch = await orig(opts);
+    const edit = ch.permissionOverwrites.edit.bind(ch.permissionOverwrites);
+    ch.permissionOverwrites.edit = async (target, flags) => { const id = target.id || target; (log.get(ch.name) || log.set(ch.name, []).get(ch.name)).push(id); return edit(target, flags); };
+    return ch;
+  };
+  await runSetup(guild);
+  const me = guild.members.me.id, everyone = guild.roles.everyone.id;
+  const hidden = ['🧪 BÉTA / FEJLESZTÉS', '🧪・tesztelők', '🛡️・mod-napló', '🐛・hibajelentés'];
+  for (const name of hidden) {
+    const order = log.get(name);
+    assert.ok(order && order.length >= 3, name + ': vannak beállítások');
+    assert.equal(order[0], me, name + ': a bot saját joga az első');
+    assert.equal(order[order.length - 1], everyone, name + ': az @everyone korlátozás az utolsó');
+  }
+});
+
+test('ha a bot nem látja a csatornát (Missing Access), egyetlen érthető hibát ad, nem szólítja meg a többi szabályt', async () => {
+  const guild = makeGuild();
+  await runSetup(guild);
+  const ch = [...guild.channels.cache.values()].find((c) => c.name === '🧪・tesztelők');
+  ch.permissionOverwrites.cache.clear(); // újra hiányosak a jogok
+  let calls = 0;
+  ch.permissionOverwrites.edit = async () => { calls++; const e = new Error('Missing Access'); e.code = 50001; throw e; };
+  const report = await runSetup(guild, { mode: 'repair' });
+  assert.equal(calls, 1, 'az első elutasítás után abbahagyja ezt a csatornát');
+  assert.ok(report.errors.some((l) => /tesztelők.*nem látja/.test(l)));
+  assert.equal(report.errors.filter((l) => /tesztelők/.test(l)).length, 1);
+});

@@ -34,7 +34,10 @@ function formatReport(title, report) {
   if (report.fixed.length) lines.push(`🔧 Javítva (${report.fixed.length}):`, ...report.fixed.map((l) => `• ${l}`));
   lines.push(`✔️ Már megvolt: ${report.kept} elem`);
   if (report.warnings.length) lines.push('⚠️ Figyelmeztetés:', ...[...new Set(report.warnings)].map((l) => `• ${l}`));
-  if (report.errors.length) lines.push('❌ Hiba:', ...report.errors.map((l) => `• ${l}`));
+  if (report.errors.length) lines.push('❌ Hiba:', ...[...new Set(report.errors)].map((l) => `• ${l}`));
+  if (report.errors.some((l) => /nem látja|Missing Access/i.test(l))) {
+    lines.push('🔧 **Teendő:** a bot nem látja a fenti csatornákat (valószínűleg egy korábbi futás elrejtette előle). Szerverbeállítások → Szerepkörök → a bot role-ja → add meg ideiglenesen az **Administrator** jogot, futtasd újra a `/setup-repair` parancsot, majd **vedd le** az Administrator jogot (a javítás után a bot saját jogot kap a csatornákra).');
+  }
   if (!report.errors.length) lines.push('🎉 Kész.');
   return lines.join('\n');
 }
