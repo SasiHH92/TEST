@@ -2,9 +2,10 @@
 // A Discord oldali felület a backend tárgyalásaihoz: jelentkezési panel, gombok, szerepsorsolás-üzenet,
 // ideiglenes "Kamu | …" role-ok. NINCS saját állapota: minden a backendből jön (reconcile), így a bot
 // újraindulása után a panelek, jelentkezők és szerepek a backend állapotából állnak helyre.
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChannelType, MessageFlags, PermissionFlagsBits: P } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ChannelType, OverwriteType, MessageFlags, PermissionFlagsBits: P } = require('discord.js');
 const { STRUCTURE, ROLES: SERVER_ROLES } = require('./spec');
 const { findChannel } = require('./setup');
+const { permissionName } = require('./permissions');
 const { normName } = require('./util');
 const { BackendError } = require('./backend');
 
@@ -55,6 +56,7 @@ function renderPanel(s, gameUrl) {
     const where = (s.roomCode ? `Szobakód: **${s.roomCode}**\n` : '') + (gameUrl ? `${gameUrl}/?court=${s.id}\n` : '');
     embed.addFields({ name: 'Csatlakozás', value: where + 'A linkkel egyből a szobába lépsz (jelentkezésnek is számít).' });
   }
+  if (live && s.discord && s.discord.chatChannelId) embed.addFields({ name: 'Csevegő', value: '<#' + s.discord.chatChannelId + '> (a tárgyalás végén törlődik)' });
   if (s.status === 'CANCELLED' && s.cancelReason) embed.addFields({ name: 'Ok', value: s.cancelReason });
   const components = [];
   if (live) {
@@ -98,7 +100,10 @@ const OK_TEXT = {
   draw: '🎲 A szerepek kiosztva!', start: '▶️ A tárgyalás elindult!', finish: '🏁 A tárgyalás befejezve.', cancel: '✖️ A tárgyalás lemondva.'
 };
 
-function createCourtSync({ client, backend, gameUrl = '', log = console, reconcileEveryMs = 60000 }) {
+const CHAT_ALLOW = [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.EmbedLinks, P.AttachFiles, P.AddReactions];
+const chatName = (s) => '⚖️・targyalas-' + String(s.id).replace(/^KAMU-/, '');
+
+function createCourtSync({ client, backend, gameUrl = '', log = console, reconcileEveryMs = 60000, chatGraceMs = 10 * 60 * 1000, now = () => Date.now() }) {
   const lastRender = new Map(); // id -> JSON (felesleges szerkesztés elkerülése)
   const cache = new Map();      // id -> legutóbbi backend-állapot (role-ütközések elkerülése)
   const chains = new Map();     // id -> Promise (egy tárgyalás egyeztetései sorban futnak)
@@ -189,6 +194,74 @@ function createCourtSync({ client, backend, gameUrl = '', log = console, reconci
     if (await backend.announce(s.id, key)) await channel.send(build());
   }
 
+  // ----- a tárgyalás saját csevegőcsatornája: csak a jelentkezők (és a stáb) látják; a tárgyalás végén törlődik -----
+  const wantedMembers = (s) => new Set(s.participants.filter((p) => p.discordUserId).map((p) => p.discordUserId));
+  function chatOverwrites(guild, s) {
+    const out = [
+      { id: guild.id, type: OverwriteType.Role, deny: [P.ViewChannel] },
+      { id: guild.members.me.id, type: OverwriteType.Member, allow: [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.EmbedLinks] }
+    ];
+    for (const r of SERVER_ROLES.filter((x) => ['owner', 'dev', 'mod'].includes(x.key))) {
+      const role = guild.roles.cache.find((x) => !x.managed && normName(x.name) === normName(r.name));
+      if (role) out.push({ id: role.id, type: OverwriteType.Role, allow: CHAT_ALLOW });
+    }
+    for (const did of wantedMembers(s)) out.push({ id: did, type: OverwriteType.Member, allow: CHAT_ALLOW });
+    return out;
+  }
+  async function ensureChat(guild, panelChannel, s) {
+    s.discord = s.discord || {};
+    let ch = s.discord.chatChannelId ? guild.channels.cache.get(s.discord.chatChannelId) : null;
+    if (!ch) {
+      const base = {
+        name: chatName(s), type: ChannelType.GuildText, parent: panelChannel.parentId || undefined,
+        topic: 'A(z) #' + s.caseNo + ' tárgyalás csevegője. A tárgyalás végén ez a csatorna törlődik.', reason: 'Kamu Bíróság tárgyalás-csevegő'
+      };
+      try {
+        ch = await guild.channels.create({ ...base, permissionOverwrites: chatOverwrites(guild, s) });
+      } catch (e) {
+        // pl. egy jelentkező már nem tagja a szervernek: alap-jogokkal létrehozzuk, a tagokat egyenként adjuk hozzá
+        log.error('[bot] a csevegő teljes jogosultság-listával nem jött létre (' + e.message + '), egyenként próbálom.');
+        ch = await guild.channels.create({ ...base, permissionOverwrites: chatOverwrites(guild, { ...s, participants: [] }) });
+      }
+      await backend.setChat(s.id, ch.id);
+      s.discord.chatChannelId = ch.id;
+      if (await backend.announce(s.id, 'chat:welcome')) {
+        await ch.send({ embeds: [new EmbedBuilder().setColor(0xc9a227).setTitle('💬 A tárgyalás csevegője')
+          .setDescription('Itt beszélgethettek a(z) **#' + s.caseNo + '** tárgyalás alatt (csak a jelentkezők és a stáb látja).\nA csatorna a tárgyalás végén (pl. ha a gazda kilép) automatikusan törlődik.')] }).catch(() => {});
+      }
+      if (wantedMembers(s).size && ![...wantedMembers(s)].every((d) => ch.permissionOverwrites.cache.has(d))) await syncChatMembers(ch, s, guild);
+      return ch;
+    }
+    await syncChatMembers(ch, s, guild);
+    return ch;
+  }
+  async function syncChatMembers(ch, s, guild) {
+    // jogosultságok igazítása a jelentkezőkhöz (új jelentkező belép, aki visszalépett, kikerül)
+    const me = guild.members.me.id, want = wantedMembers(s);
+    for (const did of want) {
+      if (ch.permissionOverwrites.cache.has(did)) continue;
+      try { await ch.permissionOverwrites.edit(did, Object.fromEntries(CHAT_ALLOW.map((b) => [permissionName(b), true])), { reason: 'jelentkezett' }); }
+      catch (e) { log.error('[bot] a csevegő-jog nem adható meg (' + did + '): ' + e.message); } // pl. nem tagja a szervernek
+    }
+    for (const ow of [...ch.permissionOverwrites.cache.values()]) {
+      const isMember = ow.type !== undefined ? ow.type === OverwriteType.Member : !guild.roles.cache.has(ow.id);
+      if (isMember && ow.id !== me && !want.has(ow.id)) await ch.permissionOverwrites.delete(ow.id, 'visszalépett');
+    }
+  }
+  // true = a csevegő nincs (már) kint; false = még kint van (a befejezett tárgyalás türelmi ideje)
+  async function closeChat(guild, s) {
+    const id = s.discord && s.discord.chatChannelId;
+    if (!id) return true;
+    if (s.status === 'FINISHED' && now() - (s.finishedAt || 0) < chatGraceMs) return false; // a befejezés után még egy ideig megmarad
+    const ch = guild.channels.cache.get(id);
+    if (ch) {
+      try { await ch.delete('A tárgyalás véget ért'); } catch (e) { log.error('[bot] a csevegő törlése nem sikerült: ' + e.message); return false; }
+    }
+    await backend.setChat(s.id, '');
+    s.discord.chatChannelId = '';
+    return true;
+  }
+
   async function reconcileOne(s) {
     cache.set(s.id, s);
     const guild = guildFor(s);
@@ -199,15 +272,24 @@ function createCourtSync({ client, backend, gameUrl = '', log = console, reconci
     const live = LIVE.includes(s.status);
     // 1) role-ok (a tárgyalás vége után is eltávolítjuk, ha maradt)
     await syncRoles(guild, s);
-    // 2) panel
+    // 2) csevegőcsatorna (élő tárgyalásnál létrehozza / igazítja; a végén törli)
+    let chatDone = true;
+    try {
+      if (live) await ensureChat(guild, channel, s); else chatDone = await closeChat(guild, s);
+    } catch (e) {
+      log.error('[bot] a tárgyalás-csevegő kezelése sikertelen (' + s.id + '): ' + e.message);
+      if (!live) chatDone = false;
+    }
+    // 3) panel
     if (live || (s.discord && s.discord.messageId)) await ensurePanel(guild, channel, s);
-    // 3) egyszeri állapotüzenetek (a backend jegyzi, melyik ment ki: újraindítás után sem duplikál)
+    // 4) egyszeri állapotüzenetek (a backend jegyzi, melyik ment ki: újraindítás után sem duplikál)
     if (s.status === 'READY') {
       await announceOnce(channel, s, 'drawn:' + (s.drawnAt || 0), () => ({ embeds: [rolesEmbed(s)] }));
     }
     if (s.status === 'IN_PROGRESS') {
       await announceOnce(channel, s, 'started', () => ({ embeds: [new EmbedBuilder().setColor(0xe67e22).setTitle('⚖️ A TÁRGYALÁS ELKEZDŐDÖTT!').setDescription(`Ügy: #${s.caseNo}` + (s.roomCode ? `\nSzobakód: **${s.roomCode}**` : ''))] }));
     }
+    if (!live && !chatDone) return; // a csevegő törlésére még vár: később újra
     if (!live) {
       const title = s.status === 'FINISHED' ? '🏁 A TÁRGYALÁS BEFEJEZŐDÖTT' : '✖️ A TÁRGYALÁS LEMONDVA';
       await announceOnce(channel, s, 'end:' + s.status, () => ({ embeds: [new EmbedBuilder().setColor(STATUS_COLOR[s.status]).setTitle(title).setDescription(`Ügy: #${s.caseNo}\nAz ideiglenes szerepek lekerültek.`)] }));
