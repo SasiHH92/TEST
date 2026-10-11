@@ -67,7 +67,7 @@ async function main() {
     assert.ok(item, 'a bg_discord szerepel a katalógusban');
     assert.equal(item.slot, 'bg'); assert.equal(item.ar, 0); assert.equal(item.feloldas, 'discord'); assert.ok(!item.szezon);
     assert.ok(CATALOG.ritkasagok.includes(item.ritkasag));
-    assert.equal(CATALOG.targyak.filter((i) => i.feloldas).length, 1, 'jelenleg egyetlen feloldható tárgy');
+    assert.equal(CATALOG.targyak.filter((i) => i.feloldas === 'discord').length, 1, 'jelenleg egyetlen Discord-feloldású tárgy (a legendás egyedi tárgyak külön, feloldas: legend)');
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'style.css'), 'utf8');
     assert.ok(css.includes('.mug-card.cos-bg-discord, .poster.cos-bg-discord {'), 'a kártya- és plakát-háttér CSS megvan');
     assert.ok(/--bg-anim: cos-discord /.test(css) && css.includes('@keyframes cos-discord '), 'a háttér mozog, és a mozgás kikapcsolható (--bg-anim)');

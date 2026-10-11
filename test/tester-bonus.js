@@ -9,6 +9,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { legendCode } = require('../legend-claims');
+const io = require('socket.io-client');
 
 const root = path.resolve(__dirname, '..');
 const PORT = 3196, BASE = 'http://127.0.0.1:' + PORT;
@@ -85,6 +86,51 @@ async function stop() {
     assert.equal(after.status, 200, 'a munkamenet a fájlból tér vissza');
     assert.equal(after.data.wallet, 5000 - cheap.ar, 'újraindítás után sem adja meg újra');
     assert.equal(after.data.testerBonus, undefined);
+  });
+  await test('SZEKRÉNY: a legenda egyedi kerete/háttere tárgy (felvéve), más nem látja; mást felvéve az egyedi nem tűnik el, és visszavehető – a játékban is', async () => {
+    const st = (await http('GET', '/api/shop/state', undefined, tester)).data;
+    const ids = st.catalog.targyak.filter((i) => i.feloldas === 'legend').map((i) => i.id).sort();
+    assert.deepEqual(ids, ['bg_glitch', 'frame_glitch'], 'csak a saját legendájának tárgyai látszanak');
+    assert.ok(st.owned.includes('frame_glitch') && st.owned.includes('bg_glitch'));
+    assert.equal(st.equipped.frame, 'frame_glitch', 'az első megnyitáskor fel van véve');
+    assert.equal(st.equipped.bg, 'bg_glitch');
+    const nst = (await http('GET', '/api/shop/state', undefined, normal)).data;
+    assert.ok(!nst.catalog.targyak.some((i) => i.feloldas === 'legend'), 'sima fióknak nem látszik');
+    assert.equal((await http('POST', '/api/shop/buy', { itemId: 'frame_glitch' }, normal)).status, 403, 'nem vásárolható');
+    assert.equal((await http('POST', '/api/shop/equip', { slot: 'frame', itemId: 'frame_glitch' }, normal)).status === 200, false, 'más nem veheti fel');
+
+    // vásárol egy másik keretet és felveszi: az egyedi nem tűnik el
+    const other = st.catalog.targyak.find((i) => i.slot === 'frame' && !i.feloldas && !i.szezon && i.ar > 0 && i.ar <= 1000 && !st.owned.includes(i.id));
+    assert.equal((await http('POST', '/api/shop/buy', { itemId: other.id }, tester)).status, 200);
+    let eq = await http('POST', '/api/shop/equip', { slot: 'frame', itemId: other.id }, tester);
+    assert.equal(eq.status, 200, JSON.stringify(eq.data));
+    assert.equal(eq.data.equipped.frame, other.id);
+    assert.ok(eq.data.owned.includes('frame_glitch'), 'az egyedi keret megmaradt a szekrényben');
+    assert.ok(eq.data.catalog.targyak.some((i) => i.id === 'frame_glitch'), 'a boltban továbbra is ott van');
+    // az újramegnyitás nem veszi fel újra erőszakosan (egyszeri automatikus felvétel)
+    assert.equal((await http('GET', '/api/shop/state', undefined, tester)).data.equipped.frame, other.id);
+
+    // a JÁTÉKBAN is a felvett keret látszik, és visszaváltható az egyedire
+    const ticket = async () => (await http('POST', '/api/friends/ticket', {}, tester)).data.ticket;
+    const emit = (s, ev, p) => new Promise((res, rej) => { const to = setTimeout(() => rej(new Error('ack: ' + ev)), 5000); s.emit(ev, p, (r) => { clearTimeout(to); res(r); }); });
+    const sock = io(BASE, { transports: ['websocket'], reconnection: false });
+    await new Promise((res, rej) => { sock.once('connect', res); sock.once('connect_error', rej); });
+    await emit(sock, 'identify', { ticket: await ticket() });
+    const frameInRoom = async (pid) => {
+      const r = await emit(sock, 'create_room', { name: legend, avatar: '', playerId: pid, profile: null });
+      assert.ok(r.code, JSON.stringify(r));
+      const me = r.state.players.find((p) => p.id === pid);
+      await emit(sock, 'leave_room', {});
+      return me.profile && me.profile.cosm && me.profile.cosm.frame;
+    };
+    assert.equal(await frameInRoom('p-' + Date.now() + 'a'), other.id, 'a játékban a felvett (vásárolt) keret látszik, nem az egyedi');
+    eq = await http('POST', '/api/shop/equip', { slot: 'frame', itemId: 'frame_glitch' }, tester);
+    assert.equal(eq.status, 200);
+    assert.equal(await frameInRoom('p-' + Date.now() + 'b'), 'frame_glitch', 'visszavéve: az egyedi keret újra látszik');
+    const un = await http('POST', '/api/shop/equip', { slot: 'frame', itemId: null }, tester);
+    assert.equal(un.status, 200);
+    assert.equal(await frameInRoom('p-' + Date.now() + 'c'), 'frame_glitch', 'felvett keret nélkül a legenda alapértelmezése érvényes');
+    sock.disconnect();
   });
   await test('Az összeg környezeti változóból állítható (TESTER_POGACSA), 0 = kikapcsolva', async () => {
     await stop();

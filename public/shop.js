@@ -207,7 +207,8 @@
       '<h3>' + escapeHtml(i.nev) + '</h3><p>' + escapeHtml(i.leiras) + '</p>' +
       (i.szezon ? '<p class="it-season">' + escapeHtml(seasonText(i.szezon)) + '</p>' : '') +
       (giftTo ? '<p class="gift-note">🎁 Ajándék neki: <b>' + escapeHtml(giftTo.username) + '</b></p>' : '') +
-      (i.feloldas ? '<p class="pop-price">🔗 <b>Ingyen jár</b> a Discord-fiók összekapcsolásáért</p>'
+      (i.feloldas === 'legend' ? '<p class="pop-price">🌟 <b>A legendás kártyáddal jár</b> – bármikor visszaveheted</p>'
+        : i.feloldas ? '<p class="pop-price">🔗 <b>Ingyen jár</b> a Discord-fiók összekapcsolásáért</p>'
         : '<p class="pop-price">Ára: <b>' + fmt(i.ar) + ' 🍪</b> · nálad: <b>' + fmt(s.wallet) + ' 🍪</b></p>') +
       '<div class="it-act">' + actionHtml(i, s) + '</div>' + nav +
       '<p id="shopPopMsg" class="auth-form-message pop-msg" role="status" aria-live="polite"></p>' +

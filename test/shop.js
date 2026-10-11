@@ -78,7 +78,8 @@ async function main() {
     assert.equal(r.data.quests.length, 3);
     assert.deepEqual(r.data.quests.map((q) => q.id), quests.map((q) => q.id));
     assert.ok(r.data.quests.every((q) => !q.done && !q.claimed && q.progress === 0));
-    assert.equal(r.data.catalog.targyak.length, CATALOG.targyak.length);
+    // a legendák egyedi tárgyai csak a gazdájuknak látszanak: egy sima fióknak a többi (a katalógus legendás tárgyak nélküli része)
+    assert.equal(r.data.catalog.targyak.length, CATALOG.targyak.filter((i) => i.feloldas !== 'legend').length);
     assert.equal(r.data.bonus.available, false);
     assert.ok(r.data.resetsInMs > 0);
   });

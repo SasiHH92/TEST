@@ -600,7 +600,9 @@ function profileFor(socket, name, rawProfile) {
     if (legend && legend.keret) {
       profile = profile || { titulus: '', priusz: '', jelveny: '' };
       // a legenda keret/háttér/felirata; a gazdája bolt-tárgyai (névhatás, pecsét) megmaradnak
-      profile.cosm = { ...(profile.cosm || {}), frame: legend.keret, ...(legend.hatter ? { bg: legend.hatter } : {}), labelText: LEGEND_LABEL };
+      // (alapértelmezés: ha a tulajdonos nem vett fel mást a boltból; a "szekrényből" bármikor visszaveheti az egyedi kereteit)
+      const mine = profile.cosm || {};
+      profile.cosm = { ...mine, frame: mine.frame || legend.keret, ...(legend.hatter ? { bg: mine.bg || legend.hatter } : {}), labelText: mine.labelText || LEGEND_LABEL };
     }
   } catch (e) { /* a profil a kozmetikum nélkül is érvényes */ }
   return profile;

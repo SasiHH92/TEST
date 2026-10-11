@@ -25,10 +25,14 @@ const TESTER_BONUS = (() => {
   return Number.isFinite(n) ? Math.max(0, Math.min(100000, n)) : 5000; // 0 = kikapcsolva
 })();
 const GIFTS_PER_DAY = 5; // egy játékos naponta legfeljebb ennyi ajándékot küldhet
-const UNLOCKS = { discord: (user) => !!(user && user.providers && user.providers.discord) };
-const UNLOCK_NAMES = { discord: 'a Discord-fiókod összekapcsolásával' };
+const UNLOCKS = {
+  discord: (user) => !!(user && user.providers && user.providers.discord),
+  // a legendák egyedi kerete / háttere: csak annak a legendának a fiókja kapja, akié (item.legenda)
+  legend: (user, item) => !!(user && user.legend && item && user.legend === item.legenda)
+};
+const UNLOCK_NAMES = { discord: 'a Discord-fiókod összekapcsolásával', legend: 'a legendás kártyáddal' };
 // A fiók állapota alapján most feloldott tárgyak azonosítói.
-const grantedIds = (user) => CATALOG.targyak.filter((i) => i.feloldas && UNLOCKS[i.feloldas] && UNLOCKS[i.feloldas](user)).map((i) => i.id);
+const grantedIds = (user) => CATALOG.targyak.filter((i) => i.feloldas && UNLOCKS[i.feloldas] && UNLOCKS[i.feloldas](user, i)).map((i) => i.id);
 
 // Egy szezonális tárgy állapota a megadott napra ("ÉÉÉÉ-HH-NN"): kapható-e most, meddig / mikortól.
 // A szezon minden évben ismétlődik (tol/ig: "HH-NN"); az évhatáron átnyúló szezon (pl. 12-15 … 01-06) is jó.
@@ -132,7 +136,10 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
       // a szezonális tárgyaknál a mai állapot (kapható-e, meddig / mikortól) is jön
       catalog: {
         slotok: CATALOG.slotok, ritkasagok: CATALOG.ritkasagok, szezonok: CATALOG.szezonok || [],
-        targyak: CATALOG.targyak.map((i) => (i.szezon ? { ...i, szezon: seasonInfo(i, date) } : i))
+        // a legendák egyedi tárgyai csak a gazdájuknak látszanak (a többieknek nem kínáljuk)
+        targyak: CATALOG.targyak.filter((i) => i.feloldas !== 'legend' || shop.owned.includes(i.id))
+          .sort((a, b) => (b.feloldas === 'legend') - (a.feloldas === 'legend')) // a saját (legendás) tárgyak elöl; a többi sorrend változatlan (stabil rendezés)
+          .map((i) => (i.szezon ? { ...i, szezon: seasonInfo(i, date) } : i))
       }
     };
   }
@@ -152,14 +159,23 @@ function createShop({ auth, dailyCounts, today = () => budapestDate(), areFriend
   router.get('/state', (req, res) => {
     let user = requireUser(req);
     let granted = 0;
-    // Legendás kártyás (tesztelő) fiók: az első megnyitáskor egyszeri, bőséges pogácsa-jutalom (idempotens: a jelzőt a fiók őrzi).
-    if (user.legend && TESTER_BONUS > 0 && !shopOf(user).testerBonus) {
-      user = change(user, (s) => {
-        if (s.testerBonus) return;
-        s.testerBonus = true;
-        s.wallet += TESTER_BONUS;
-        granted = TESTER_BONUS;
-      });
+    // Legendás kártyás (tesztelő) fiók: (1) egyszeri, bőséges pogácsa-jutalom, (2) az egyedi keret / háttér EGYSZER automatikusan fel van véve
+    // (utána szabadon cserélhető, és a "szekrényből" bármikor visszavehető). A jelzőket a fiók őrzi, ezért idempotens.
+    if (user.legend) {
+      const mine = CATALOG.targyak.filter((i) => i.feloldas === 'legend' && i.legenda === user.legend);
+      const sh = shopOf(user);
+      const needBonus = TESTER_BONUS > 0 && !sh.testerBonus;
+      const needEquip = mine.some((i) => !sh.offered.includes(i.id));
+      if (needBonus || needEquip) {
+        user = change(user, (st) => {
+          if (needBonus && !st.testerBonus) { st.testerBonus = true; st.wallet += TESTER_BONUS; granted = TESTER_BONUS; }
+          for (const i of mine) {
+            if (st.offered.includes(i.id)) continue;
+            st.offered.push(i.id);
+            if (!st.equipped[i.slot]) st.equipped[i.slot] = i.id;
+          }
+        });
+      }
     }
     res.json({ ...stateFor(user), ...(granted ? { testerBonus: granted } : {}) });
   });
