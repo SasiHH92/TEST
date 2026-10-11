@@ -1,15 +1,14 @@
 'use strict';
 // ============================================================
-// KAMU BÍRÓSÁG – "Támogasd a Kamu Bíróságot!" oldal
-//  - a fizetés ALAPBÓL KIKAPCSOLT (nincs checkout, a webhook nem létezik), és semmi sem jár a támogatásért,
-//  - szerver-oldali összeg-ellenőrzés (az 5 lehetőség + egyedi összeg határai),
-//  - a "KÖSZÖNJÜK" csak aláírt, szerver-oldali visszaigazolás után (szimulált szolgáltatóval, valódi pénz nélkül),
-//  - a régi bolt és útvonalak sértetlenek (/api/shop védett, /shop biztonságosan átirányít),
-//  - böngésző: betöltés, kártyák, egyedi összeg, mobil (nincs vízszintes görgetés), hibamentes konzol, kikapcsolt gomb.
+// KAMU BÍRÓSÁG – "Támogasd a Kamu Bíróságot!" oldal (Ko-fi)
+//  - a támogatás TELJES EGÉSZÉBEN a Ko-fi oldalán történik: a fő gomb egy külső link (új lap, noopener noreferrer),
+//  - a weboldalon NINCS fizetési logika, űrlap, kártyaadat-mező, visszaigazolás / "köszönjük" képernyő, szerver-végpont,
+//  - tájékoztató összegek (1 / 5 / 10 € / egyedi), önkéntességi szöveg, "mire fordítjuk" szekció megvan,
+//  - a régi bolt és útvonalak sértetlenek; mobil / tablet / asztali elrendezés; billentyűzet; új lap megnyitása.
+// Nem történik valódi kapcsolat a Ko-fi-vel és nem történik pénzügyi tranzakció: a külső címet a teszt elfogja.
 // Futtatás: node test/support.js
 // ============================================================
 const assert = require('assert/strict');
-const crypto = require('crypto');
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -19,6 +18,7 @@ let chromium;
 try { ({ chromium } = require('playwright-core')); } catch (_) { /* böngésző nélkül a böngészős rész kimarad */ }
 
 const root = path.resolve(__dirname, '..');
+const KOFI = 'https://ko-fi.com/kamubirosag';
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kamu-support-'));
 const f = (n) => path.join(tmp, n);
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -27,117 +27,74 @@ async function test(name, work) {
   try { await work(); passed++; console.log('PASS: ' + name); }
   catch (e) { failed++; console.error('FAIL: ' + name + '\n' + e.stack); }
 }
-const servers = [];
-async function start(port, env = {}) {
+let child = null;
+async function start(port) {
   const base = 'http://127.0.0.1:' + port;
-  const child = spawn(process.execPath, ['server.js'], {
+  child = spawn(process.execPath, ['server.js'], {
     cwd: root,
-    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', AUTH_BASE_URL: base, DISCORD_BOT_TOKEN: '', SUPPORT_ENABLED: '', SUPPORT_PROVIDER: '', SUPPORT_SIM_SECRET: '', SUPPORT_PREVIEW: '', ...env,
-      AUTH_STORE_PATH: f('a' + port + '.json'), KB_AVATARS_FILE: f('av' + port + '.json'), KB_STATS_FILE: f('st' + port + '.json'), KB_COURTS_FILE: f('c' + port + '.json'),
-      KB_DMS_FILE: f('d' + port + '.json'), KB_MODERATION_FILE: f('m' + port + '.json'), KB_ERRORS_FILE: f('e' + port + '.json') },
+    env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', AUTH_BASE_URL: base, DISCORD_BOT_TOKEN: '',
+      AUTH_STORE_PATH: f('a.json'), KB_AVATARS_FILE: f('av.json'), KB_STATS_FILE: f('st.json'), KB_COURTS_FILE: f('c.json'),
+      KB_DMS_FILE: f('d.json'), KB_MODERATION_FILE: f('m.json'), KB_ERRORS_FILE: f('e.json') },
     stdio: ['ignore', 'ignore', 'pipe']
   });
-  let err = ''; child.stderr.on('data', (d) => { err += d; });
-  servers.push({ child, errors: () => err });
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base + '/health')).ok) return base; } catch (_) { await pause(100); } }
-  throw new Error('a szerver nem indult el: ' + err.slice(0, 300));
+  throw new Error('a szerver nem indult el');
 }
-const post = (base, p, body, headers = {}) => fetch(base + p, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: base, ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
 
 (async () => {
-  const OFF = await start(3201);                  // alapértelmezés: kikapcsolva
-  const SECRET = 'szimulalt-titok-0123456789abcdef';
-  const ON = await start(3202, { SUPPORT_ENABLED: '1', SUPPORT_PROVIDER: 'simulated', SUPPORT_SIM_SECRET: SECRET, SUPPORT_PREVIEW: '1' });
+  const BASE = await start(3201);
 
-  await test('Alapból minden kikapcsolva: a config enabled=false, az intent 503, a webhook nem létezik, a verify nem igazol', async () => {
-    const cfg = await (await fetch(OFF + '/api/support/config')).json();
-    assert.equal(cfg.enabled, false);
-    assert.equal(cfg.preview, false);
-    assert.deepEqual(cfg.tiers.map((t) => t.id), ['kis', 'kave', 'birosag', 'nagylelku', 'egyedi']);
-    assert.deepEqual(cfg.tiers.filter((t) => !t.custom).map((t) => t.amountCents), [100, 300, 500, 1000]);
-    const intent = await post(OFF, '/api/support/intent', { tierId: 'kave' });
-    assert.equal(intent.status, 503);
-    assert.equal((await intent.json()).code, 'disabled');
-    assert.equal((await post(OFF, '/api/support/webhook/simulated', '{}')).status, 404);
-    assert.equal((await post(OFF, '/api/support/webhook/kofi', '{}')).status, 404);
-    const v = await (await fetch(OFF + '/api/support/verify?ref=' + 'a'.repeat(32))).json();
-    assert.equal(v.verified, false);
-    assert.equal((await fetch(OFF + '/api/support/verify?ref=bad')).status, 400);
-  });
-
-  await test('Ismeretlen / hiányos szolgáltató és bekapcsolás nélküli beállítás sem aktiválja (nincs éles adapter)', async () => {
-    const X = await start(3203, { SUPPORT_ENABLED: '1', SUPPORT_PROVIDER: 'kofi' });
-    assert.equal((await (await fetch(X + '/api/support/config')).json()).enabled, false, 'éles adapter nincs → kikapcsolt marad');
-    const Y = await start(3204, { SUPPORT_PROVIDER: 'simulated', SUPPORT_SIM_SECRET: SECRET });
-    assert.equal((await (await fetch(Y + '/api/support/config')).json()).enabled, false, 'SUPPORT_ENABLED nélkül kikapcsolt');
-    const Z = await start(3205, { SUPPORT_ENABLED: '1', SUPPORT_PROVIDER: 'simulated', SUPPORT_SIM_SECRET: 'rovid' });
-    assert.equal((await (await fetch(Z + '/api/support/config')).json()).enabled, false, 'gyenge titokkal nem kapcsol be');
-  });
-
-  await test('Összeg-ellenőrzés szerver-oldalon: ismeretlen opció, 0,99 €, 500,01 €, szöveg, 3 tizedes, más eredetű kérés mind elutasítva', async () => {
-    for (const body of [{ tierId: 'nincs' }, { tierId: 'egyedi', amount: '0,99' }, { tierId: 'egyedi', amount: '500,01' }, { tierId: 'egyedi', amount: 'sok' }, { tierId: 'egyedi', amount: '1.234' }, { tierId: 'egyedi' }, {}, { amount: 5 }]) {
-      const r = await post(ON, '/api/support/intent', body);
-      assert.equal(r.status, 400, JSON.stringify(body));
-    }
-    assert.equal((await post(ON, '/api/support/intent', { tierId: 'kave' }, { Origin: 'https://gonosz.example' })).status, 403);
-    assert.equal((await fetch(ON + '/api/support/intent', { method: 'POST', headers: { 'Content-Type': 'text/plain', Origin: ON }, body: 'x' })).status, 415);
-    // a kliens által küldött összeg a fix lehetőségeknél nem számít: a szerver a saját összegét használja
-    const r = await post(ON, '/api/support/intent', { tierId: 'kave', amount: '999' });
-    assert.equal(r.status, 200);
-    assert.equal((await r.json()).amountCents, 300);
-    const c = await post(ON, '/api/support/intent', { tierId: 'egyedi', amount: '7,5' });
-    assert.equal((await c.json()).amountCents, 750);
-    for (const a of ['1', '500', '0.01'.replace('0.01', '12,34')]) assert.equal((await post(ON, '/api/support/intent', { tierId: 'egyedi', amount: a })).status, 200, a);
-  });
-
-  const sign = (body) => crypto.createHmac('sha256', SECRET).update(body).digest('hex');
-  await test('A KÖSZÖNJÜK alapja: csak aláírt, egyező összegű, ismert hivatkozású visszaigazolás igazol; idempotens; hamis nem', async () => {
-    const intent = await (await post(ON, '/api/support/intent', { tierId: 'birosag' })).json();
-    assert.match(intent.ref, /^[a-f0-9]{32}$/);
-    assert.ok(intent.checkoutUrl.includes('szimulalt=' + intent.ref), 'a szimulált fizetési oldal a saját szerverre mutat');
-    const verify = async (ref) => (await (await fetch(ON + '/api/support/verify?ref=' + ref)).json());
-    assert.deepEqual(await verify(intent.ref), { verified: false, pending: true });
-    const ok = JSON.stringify({ ref: intent.ref, amountCents: 500, txnId: 'T-1' });
-    // aláírás nélkül / rossz aláírással: elutasítva, nem igazol
-    assert.equal((await post(ON, '/api/support/webhook/simulated', ok)).status, 401);
-    assert.equal((await post(ON, '/api/support/webhook/simulated', ok, { 'x-signature': 'ab'.repeat(32) })).status, 401);
-    assert.equal((await verify(intent.ref)).verified, false, 'a kliens/hamis kérés nem igazolhat');
-    // kevesebb összeg: nem igazolja
-    const less = JSON.stringify({ ref: intent.ref, amountCents: 100, txnId: 'T-2' });
-    assert.equal((await post(ON, '/api/support/webhook/simulated', less, { 'x-signature': sign(less) })).status, 202);
-    assert.equal((await verify(intent.ref)).verified, false);
-    // ismeretlen hivatkozás: figyelmen kívül
-    const unk = JSON.stringify({ ref: 'c'.repeat(32), amountCents: 500, txnId: 'T-3' });
-    assert.equal((await post(ON, '/api/support/webhook/simulated', unk, { 'x-signature': sign(unk) })).status, 202);
-    // érvényes: igazol, kétszer is ugyanaz (idempotens)
-    assert.equal((await post(ON, '/api/support/webhook/simulated', ok, { 'x-signature': sign(ok) })).status, 200);
-    assert.deepEqual(await verify(intent.ref), { verified: true, amountCents: 500 });
-    const again = await (await post(ON, '/api/support/webhook/simulated', ok, { 'x-signature': sign(ok) })).json();
-    assert.ok(again.ok);
-    assert.equal((await post(ON, '/api/support/webhook/kofi', ok, { 'x-signature': sign(ok) })).status, 404, 'más szolgáltató végpontja nincs');
-  });
-
-  await test('Régi útvonalak és a bolt sértetlen: /api/shop és /api/auth változatlanul védett, /shop és /bolt a főoldalra visz, az oldal kiszolgálva', async () => {
-    assert.equal((await fetch(OFF + '/api/shop/state')).status, 401);
-    const red = await fetch(OFF + '/shop', { redirect: 'manual' });
+  await test('Az oldal és a stíluslap / szkript kiszolgálva; a régi útvonalak sértetlenek (/shop, /bolt átirányít; a bolt API védett)', async () => {
+    for (const p of ['/tamogatas', '/tamogatas/', '/support', '/support.css', '/support.js']) assert.equal((await fetch(BASE + p)).status, 200, p);
+    const red = await fetch(BASE + '/shop', { redirect: 'manual' });
     assert.equal(red.status, 302); assert.equal(red.headers.get('location'), '/');
-    assert.equal((await fetch(OFF + '/bolt', { redirect: 'manual' })).status, 302);
-    for (const p of ['/tamogatas', '/tamogatas/', '/support', '/support.css', '/support.js']) assert.equal((await fetch(OFF + p)).status, 200, p);
-    const html = await (await fetch(OFF + '/tamogatas')).text();
-    assert.match(html, /TÁMOGASD A KAMU BÍRÓSÁGOT/);
-    assert.match(html, /A tárgyalás ingyenes, de a fejlesztő kávéja nem!/);
-    assert.match(html, /Játékfejlesztés/); assert.match(html, /Szerverfenntartás/); assert.match(html, /Grafikai fejlesztések/);
-    assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i.test(html), 'nincs inline szkript (CSP)');
-    assert.ok(!/fonts\.googleapis|google-analytics|googletagmanager|facebook/i.test(html), 'nincs külső betűtípus / követő (adatvédelem)');
-    const csp = (await fetch(OFF + '/tamogatas')).headers.get('content-security-policy') || '';
-    assert.match(csp, /script-src 'self'/);
+    assert.equal((await fetch(BASE + '/bolt', { redirect: 'manual' })).status, 302);
+    assert.equal((await fetch(BASE + '/api/shop/state')).status, 401, 'a pogácsa-bolt API változatlanul védett');
+    assert.equal((await fetch(BASE + '/api/auth/status')).status, 200);
   });
 
-  await test('Támogatás nem ad játékbeli előnyt: a támogatási kód nem nyúl a fiókokhoz, a bolthoz, a tárgyakhoz', async () => {
-    const src = fs.readFileSync(path.join(root, 'support.js'), 'utf8');
-    for (const bad of ['shopOf', 'wallet', 'equipped', 'owned', 'auth.mutate', 'user.profile', 'storage.push']) assert.ok(!src.includes(bad), 'a support.js nem használhatja: ' + bad);
-    const client = fs.readFileSync(path.join(root, 'public', 'support.js'), 'utf8') + fs.readFileSync(path.join(root, 'public', 'tamogatas.html'), 'utf8');
-    for (const bad of ['VIP-rang kapsz', 'prémium karakter kapsz', 'localStorage', 'document.cookie']) assert.ok(!client.includes(bad), bad);
+  await test('Tartalom: főcím, alcím, önkéntességi szöveg, tájékoztató összegek (1 / 5 / 10 € / egyedi), "Mire fordítjuk" 3 kártya; nincs 3 €-os kártya', async () => {
+    const html = await (await fetch(BASE + '/tamogatas')).text();
+    for (const need of ['TÁMOGASD A KAMU BÍRÓSÁGOT!', 'A tárgyalás ingyenes, de a fejlesztő kávéja nem!', 'A támogatás teljesen önkéntes.', 'Nem jár érte játékbeli előny, prémium funkció vagy más ellenszolgáltatás',
+      'Játékfejlesztés', 'Új funkciók, karakterek és játékmódok.', 'Szerverfenntartás', 'A Kamu Bíróság működtetésének költségei.', 'Grafikai fejlesztések', 'Új animációk, karakterek és vizuális elemek.',
+      'Mire fordítjuk a támogatásokat?', '>1 €<', '>5 €<', '>10 €<', 'legalább 1 €']) assert.ok(html.includes(need), 'hiányzik: ' + need);
+    assert.ok(!html.includes('>3 €<'), 'a 3 €-os kártya nem szerepel (a Ko-fi-n nincs ilyen összeg)');
+    assert.ok(!/kizárólag ezekre fordítjuk/i.test(html), 'nem állítjuk, hogy kizárólag ezekre fordítjuk');
+  });
+
+  await test('Ko-fi link: pontosan https://ko-fi.com/kamubirosag, target=_blank, rel=noopener noreferrer; ez az egyetlen külső hivatkozás; nincs űrlap / beviteli mező / kártya-mező / külső szkript, betűtípus, követő', async () => {
+    const html = await (await fetch(BASE + '/tamogatas')).text();
+    const m = /<a[^>]*id="fo-gomb"[^>]*>/.exec(html);
+    assert.ok(m, 'a fő gomb megvan');
+    assert.ok(m[0].includes('href="' + KOFI + '"'));
+    assert.ok(m[0].includes('target="_blank"'));
+    assert.match(m[0], /rel="noopener noreferrer"/);
+    const ext = [...html.matchAll(/(?:href|src|action)="(https?:\/\/[^"]+)"/g)].map((x) => x[1]);
+    assert.deepEqual([...new Set(ext)], [KOFI], 'egyetlen külső cím: a Ko-fi oldal; kapott: ' + ext.join(', '));
+    assert.ok(!/<(form|input|textarea|select|iframe)\b/i.test(html), 'nincs űrlap / beviteli mező / keret');
+    assert.ok(!/<button\b/i.test(html), 'nincs gomb: nincs fizetési interakció (csak a link)');
+    assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i.test(html), 'nincs inline szkript (CSP)');
+    assert.ok(!/fonts\.googleapis|google-analytics|googletagmanager|facebook|ko-fi\.com\/cdn|storage\.ko-fi/i.test(html), 'nincs külső betűtípus / követő / Ko-fi widget-szkript');
+    const js = fs.readFileSync(path.join(root, 'public', 'support.js'), 'utf8');
+    assert.ok(!/fetch\(|XMLHttpRequest|localStorage|cookie|\/api\//.test(js), 'a kliens szkript nem hív szervert és nem tárol semmit');
+  });
+
+  await test('Elavult / hibás támogatási komponensek eltávolítva: nincs support.js a szerveren, nincs /api/support végpont, nincs "KÖSZÖNJÜK" képernyő, összegválasztó, egyedi-összeg mező', async () => {
+    assert.equal(fs.existsSync(path.join(root, 'support.js')), false, 'a szerver-oldali támogatási modul törölve');
+    for (const p of ['/api/support/config', '/api/support/intent', '/api/support/verify?ref=' + 'a'.repeat(32)]) {
+      const r = await fetch(BASE + p, { method: p.includes('intent') ? 'POST' : 'GET' });
+      assert.ok([404].includes(r.status) || r.headers.get('content-type') !== 'application/json', p + ': ' + r.status);
+      assert.notEqual(r.status, 200, p + ' nem élhet');
+    }
+    assert.equal((await fetch(BASE + '/api/support/webhook/kofi', { method: 'POST', body: '{}' })).status, 404, 'nincs webhook');
+    const all = (await (await fetch(BASE + '/tamogatas')).text()) + fs.readFileSync(path.join(root, 'public', 'support.css'), 'utf8') + fs.readFileSync(path.join(root, 'public', 'support.js'), 'utf8');
+    for (const old of ['sp-thanks', 'KÖSZÖNJÜK', 'sp-custom-input', 'sp-go" disabled', 'szimulalt', 'elonezet', 'verify']) assert.ok(!all.includes(old), 'maradt belőle: ' + old);
+  });
+
+  await test('Nincs hamis visszaigazolás és nincs ígéret ellenszolgáltatásra: a szöveg nem állítja, hogy valaki támogatott; nincs VIP / rang / skin ígéret', async () => {
+    const html = (await (await fetch(BASE + '/tamogatas')).text()).replace(/<[^>]+>/g, ' ');
+    assert.ok(!/köszönjük, hogy támogattál|sikeres támogatás|támogatásod megérkezett/i.test(html));
+    assert.ok(!/(kapsz|jár)\s+(vip|prémium|skin|rang)/i.test(html.replace('Nem jár érte', '')));
   });
 
   // ---------------- böngésző ----------------
@@ -149,102 +106,96 @@ const post = (base, p, body, headers = {}) => fetch(base + p, { method: 'POST', 
   const browser = chromium ? await launch() : null;
   if (!browser) { skipped++; console.log('SKIP: böngésző nincs (playwright-core + Edge/Chrome kell) – a böngészős ellenőrzések kimaradnak'); }
   else {
-    const open = async (base, size, query = '') => {
-      const ctx = await browser.newContext({ viewport: size, locale: 'hu-HU' });
+    const open = async (size, extra = {}) => {
+      const ctx = await browser.newContext({ viewport: size, locale: 'hu-HU', ...extra });
+      // a Ko-fi felé menő kérést elfogjuk: a teszt nem lép kapcsolatba a valódi oldallal
+      await ctx.route('https://ko-fi.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<title>ko-fi (teszt)</title>' }));
       const page = await ctx.newPage();
-      const problems = [];
+      const problems = [], requests = [];
       page.on('pageerror', (e) => problems.push('pageerror: ' + e.message));
-      page.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/kaspersky/i.test(m.text() + (m.location().url || ''))) problems.push(m.type() + ': ' + m.text() + ' @ ' + (m.location().url || '')); });
-      page.on('requestfailed', (r) => { if (!/kaspersky/i.test(r.url())) problems.push('kérés hibás: ' + r.url()); });
-      // (a gépre telepített vírusirtók — pl. Kaspersky — saját szkriptet injektálnak az oldalba: azok nem az oldal kérései)
-      const foreign = (u) => !u.startsWith(base) && !/kaspersky|\.kis\.v2\./i.test(u);
-      page.on('request', (r) => { if (foreign(r.url())) problems.push('KÜLSŐ kérés: ' + r.url()); });
-      await page.goto(base + '/tamogatas' + query, { waitUntil: 'networkidle' });
-      return { ctx, page, problems };
+      page.on('console', (m) => { if (['error', 'warning'].includes(m.type()) && !/kaspersky/i.test(m.text() + (m.location().url || ''))) problems.push(m.type() + ': ' + m.text()); });
+      page.on('request', (r) => { const u = r.url(); if (!/kaspersky|\.kis\.v2\./i.test(u)) requests.push(u); });
+      await page.goto(BASE + '/tamogatas', { waitUntil: 'networkidle' });
+      return { ctx, page, problems, requests };
     };
-    for (const [label, size] of [['asztali 1366×768', { width: 1366, height: 768 }], ['telefon 375×812', { width: 375, height: 812 }], ['kis telefon 320×568', { width: 320, height: 568 }]]) {
-      await test(`Böngésző (${label}): betöltés, 5 kártya, nincs vízszintes görgetés, nincs konzolhiba / külső kérés, a gomb kikapcsolt`, async () => {
-        const { ctx, page, problems } = await open(OFF, size);
-        assert.equal(await page.locator('.sp-card').count(), 5);
-        const names = await page.locator('.sp-card .sp-name').allInnerTexts();
-        assert.deepEqual(names.map((n) => n.trim().toLowerCase()), ['egy kis segítség', 'kávé a fejlesztőnek', 'a bíróság támogatása', 'nagylelkű támogatás', 'egyedi támogatás']);
+    for (const [label, size] of [['telefon 375×812', { width: 375, height: 812 }], ['telefon 430×932', { width: 430, height: 932 }], ['tablet 768×1024', { width: 768, height: 1024 }], ['asztali 1366×768', { width: 1366, height: 768 }], ['kis telefon 320×568', { width: 320, height: 568 }]]) {
+      await test(`Böngésző (${label}): nincs vízszintes görgetés; a fő gomb a képernyőn belül marad, elég nagy; nincs hiba; csak saját kérések`, async () => {
+        const { ctx, page, problems, requests } = await open(size);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         assert.ok(overflow <= 1, 'vízszintes túlcsordulás: ' + overflow + 'px');
-        assert.equal(await page.locator('#sp-go').isDisabled(), true, 'a támogatás gombja kikapcsolt');
-        assert.equal(await page.locator('#sp-banner').isVisible(), true, 'látszik a "még nincs aktiválva" sáv');
-        assert.equal(await page.locator('#sp-thanks').isVisible(), false, 'KÖSZÖNJÜK alapból nem látszik');
-        const heroOk = await page.evaluate(() => { const i = document.querySelector('#sp-judge'); return i.complete && i.naturalWidth > 100; });
-        assert.ok(heroOk, 'a bíró-portré betöltődött');
-        // minden gomb elég nagy az ujjnak (mobilon)
-        if (size.width < 500) for (const b of await page.locator('.sp-card, #sp-go').all()) { const bb = await b.boundingBox(); assert.ok(bb.height >= 44, 'túl kicsi érintési felület: ' + bb.height); }
+        const btn = page.locator('#fo-gomb');
+        await btn.scrollIntoViewIfNeeded();
+        const bb = await btn.boundingBox();
+        assert.ok(bb.x >= 0 && bb.x + bb.width <= size.width + 0.5, 'a gomb kicsúszik a képernyőről: ' + JSON.stringify(bb));
+        assert.ok(bb.height >= 48, 'túl kicsi érintési felület: ' + bb.height);
+        const fs2 = await btn.evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+        assert.ok(fs2 >= 15, 'olvashatatlanul kicsi gombfelirat');
+        assert.equal(await page.locator('.sp-card').count(), 4);
+        assert.equal(await page.locator('.sp-use-card').count(), 3);
+        assert.equal((await page.locator('.sp-hero h1').innerText()).toUpperCase().includes('TÁMOGASD A KAMU BÍRÓSÁGOT'), true);
+        const hero = await page.evaluate(() => { const i = document.querySelector('#sp-judge'); return i.complete && i.naturalWidth > 100; });
+        assert.ok(hero, 'a bíró-portré betöltődött');
         assert.deepEqual(problems, [], problems.join(' | '));
+        assert.ok(requests.every((u) => u.startsWith(BASE)), 'külső kérés az oldalbetöltéskor: ' + requests.filter((u) => !u.startsWith(BASE)).join(', '));
+        assert.ok(!requests.some((u) => u.includes('/api/')), 'az oldal nem hív API-t');
         await ctx.close();
       });
     }
-    await test('Böngésző: kártyaválasztás (aria-pressed, összesítő), egyedi összeg határai és hibaüzenetei, billentyűzet-használat', async () => {
-      const { ctx, page } = await open(OFF, { width: 1280, height: 800 });
-      await page.locator('.t-kave').click();
-      assert.equal(await page.locator('.t-kave').getAttribute('aria-pressed'), 'true');
-      assert.match(await page.locator('#sp-summary').innerText(), /3 €/);
-      await page.locator('.t-kis').click();
-      assert.equal(await page.locator('.t-kave').getAttribute('aria-pressed'), 'false');
-      assert.match(await page.locator('#sp-summary').innerText(), /1 €/);
-      const input = page.locator('#sp-custom-input');
-      for (const [val, msg] of [['0,5', /Legalább 1/], ['501', /Legfeljebb 500/], ['abc', /Írj be/], ['1,234', /Írj be/]]) {
-        await input.fill(val);
-        assert.match(await page.locator('#sp-custom-error').innerText(), msg, val);
-        assert.equal(await input.getAttribute('aria-invalid'), 'true');
-      }
-      await input.fill('7,5');
-      assert.equal(await page.locator('#sp-custom-error').innerText(), '');
-      assert.match(await page.locator('#sp-summary').innerText(), /7,50 €/);
-      assert.equal(await page.locator('.t-kis').getAttribute('aria-pressed'), 'false', 'az egyedi összeg lecseréli a kártyát');
-      await input.fill('');
-      assert.match(await page.locator('#sp-summary').innerText(), /Válassz egy összeget/);
-      // billentyűzet: Tab a kártyákra, Enter kiválaszt
-      await page.locator('.t-birosag').focus();
-      await page.keyboard.press('Enter');
-      assert.equal(await page.locator('.t-birosag').getAttribute('aria-pressed'), 'true');
+    await test('Böngésző: a gombra kattintva a Ko-fi oldal ÚJ LAPON nyílik meg (noopener), az eredeti oldal nem navigál el', async () => {
+      const { ctx, page } = await open({ width: 1280, height: 800 });
+      const [popup] = await Promise.all([ctx.waitForEvent('page'), page.locator('#fo-gomb').click()]);
+      await popup.waitForLoadState();
+      assert.equal(popup.url(), KOFI, 'a Ko-fi oldal nyílt meg');
+      assert.equal(await popup.evaluate(() => window.opener), null, 'noopener: az új lap nem éri el az eredetit');
+      assert.ok(page.url().endsWith('/tamogatas'), 'az eredeti lap helyben maradt');
+      assert.equal(ctx.pages().length, 2);
       await ctx.close();
     });
-    await test('Böngésző: a KÖSZÖNJÜK jelölt előnézete csak az üzemeltetői kapcsolóval (SUPPORT_PREVIEW) látszik, és "nem valódi" jelzéssel', async () => {
-      const off = await open(OFF, { width: 1000, height: 700 }, '?elonezet=koszonjuk');
-      assert.equal(await off.page.locator('#sp-thanks').isVisible(), false, 'kapcsoló nélkül a paraméter semmit nem mutat');
-      await off.ctx.close();
-      const on = await open(ON, { width: 1000, height: 700 }, '?elonezet=koszonjuk');
-      assert.equal(await on.page.locator('#sp-thanks').isVisible(), true);
-      assert.match(await on.page.locator('#sp-thanks-tag').innerText(), /nem valódi/i);
-      await on.page.keyboard.press('Escape');
-      assert.equal(await on.page.locator('#sp-thanks').isVisible(), false);
-      await on.ctx.close();
-    });
-    await test('Böngésző (szimulált szolgáltatóval): a KÖSZÖNJÜK csak a szerver-oldali, aláírt visszaigazolás UTÁN jelenik meg; a puszta visszatérés nem elég', async () => {
-      const intent = await (await post(ON, '/api/support/intent', { tierId: 'kave' })).json();
-      const { ctx, page } = await open(ON, { width: 1000, height: 700 }, '?szimulalt=' + intent.ref);
-      assert.equal(await page.locator('#sp-go').isDisabled(), true, 'kártya nélkül nincs aktív gomb');
-      await pause(3600); // egy lekérdezési kör
-      assert.equal(await page.locator('#sp-thanks').isVisible(), false, 'visszaigazolás nélkül nincs köszönet');
-      const body = JSON.stringify({ ref: intent.ref, amountCents: 300, txnId: 'B-1' });
-      assert.equal((await post(ON, '/api/support/webhook/simulated', body, { 'x-signature': sign(body) })).status, 200);
-      await page.waitForSelector('#sp-thanks', { state: 'visible', timeout: 9000 });
-      assert.equal(await page.locator('#sp-thanks-tag').isVisible(), false, 'valódi (szimulált) visszaigazolásnál nincs "előnézet" jelzés');
+    await test('Böngésző: billentyűzettel is használható – Tab-bal elérhető látható fókuszjellel, Enterrel megnyitja a Ko-fi oldalt új lapon', async () => {
+      const { ctx, page } = await open({ width: 1280, height: 800 });
+      // Tab-bal a fő gombig
+      let reached = false;
+      for (let i = 0; i < 8 && !reached; i++) { await page.keyboard.press('Tab'); reached = await page.evaluate(() => document.activeElement && document.activeElement.id === 'fo-gomb'); }
+      assert.ok(reached, 'a fő gomb Tab-bal elérhető');
+      const outline = await page.locator('#fo-gomb').evaluate((el) => { const s = getComputedStyle(el); return s.outlineStyle + ' ' + s.outlineWidth; });
+      assert.ok(!/^none/.test(outline), 'látható fókuszjel: ' + outline);
+      const [popup] = await Promise.all([ctx.waitForEvent('page'), page.keyboard.press('Enter')]);
+      await popup.waitForLoadState();
+      assert.equal(popup.url(), KOFI);
       await ctx.close();
     });
-    await test('Böngésző: a főoldalon a ❤️ TÁMOGATÁS link megvan, a játék betölt (nincs JS-hiba), a bolt gombja továbbra is ott van', async () => {
-      const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-      const page = await ctx.newPage();
-      const errs = []; page.on('pageerror', (e) => errs.push(e.message));
-      await page.goto(OFF + '/', { waitUntil: 'networkidle' });
-      assert.ok((await page.content()).includes('href="/tamogatas"'), 'a menüben ott a támogatás-link');
+    await test('Böngésző: az összeg-kártyák tájékoztatók (nem kattinthatók, nem nyitnak semmit); a képernyőolvasónak a gomb új lapra figyelmeztet', async () => {
+      const { ctx, page } = await open({ width: 1280, height: 800 });
+      let opened = false; ctx.on('page', () => { opened = true; });
+      for (const c of await page.locator('.sp-card').all()) await c.click({ trial: false }).catch(() => {});
+      await pause(300);
+      assert.equal(opened, false, 'a kártyák nem nyitnak új lapot');
+      assert.equal(await page.locator('.sp-card a, .sp-card button').count(), 0);
+      assert.match(await page.locator('#fo-gomb').innerText(), /TÁMOGASD A KAMU BÍRÓSÁGOT/);
+      assert.match(await page.locator('#fo-gomb .sp-visually-hidden').textContent(), /új lapon/);
+      await ctx.close();
+    });
+    await test('Böngésző: csökkentett mozgás beállításnál nincs animáció; a főoldalon a támogatás-link megvan, a lobbiban új lapon nyílik; a játék betölt hibátlanul', async () => {
+      const { ctx, page } = await open({ width: 1000, height: 700 }, { reducedMotion: 'reduce' });
+      const anim = await page.locator('#fo-gomb').evaluate((el) => getComputedStyle(el).animationName);
+      assert.equal(anim, 'none');
+      await ctx.close();
+      const c2 = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const p2 = await c2.newPage();
+      const errs = []; p2.on('pageerror', (e) => errs.push(e.message));
+      await p2.goto(BASE + '/', { waitUntil: 'networkidle' });
+      const html = await p2.content();
+      assert.ok(html.includes('href="/tamogatas"'), 'a menüben ott a támogatás-link');
+      assert.match(html, /id="btnSupportLobby"[^>]*target="_blank"[^>]*rel="noopener"/, 'a lobbi-link új lapon nyílik (a szobából nem lép ki)');
       assert.deepEqual(errs, []);
-      await ctx.close();
+      await c2.close();
     });
     await browser.close();
   }
 
-  for (const s of servers) { try { s.child.kill('SIGKILL'); } catch (_) { /* */ } }
+  try { child.kill('SIGKILL'); } catch (_) { /* */ }
   await pause(300);
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log(`\nTámogatási oldal: ${passed} sikeres, ${failed} hibás${skipped ? ', ' + skipped + ' kihagyva' : ''}.`);
   process.exit(failed ? 1 : 0);
-})().catch((e) => { console.error(e); for (const s of servers) { try { s.child.kill('SIGKILL'); } catch (_) { /* */ } } process.exit(1); });
+})().catch((e) => { console.error(e); try { child.kill('SIGKILL'); } catch (_) { /* */ } process.exit(1); });

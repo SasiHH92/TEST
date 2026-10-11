@@ -26,7 +26,6 @@ const {securityHeaders} = require('./security-headers');
 const {createAdmin} = require('./admin');
 const {createCourts, CourtError} = require('./courts');
 const {createCourtsApi} = require('./courts-api');
-const {createSupport} = require('./support');
 const {createModeration} = require('./moderation');
 const {cleanText} = require('./textclean');
 const {budapestDate, weekStart, msUntilWeekReset} = require('./quests');
@@ -131,9 +130,8 @@ const shopApi = createShop({
   }
 });
 app.use('/api/shop',shopApi.router);
-// Önkéntes támogatás ("Támogasd a Kamu Bíróságot!"): a felület kész, de a fizetés ALAPBÓL KIKAPCSOLT (lásd support.js és TAMOGATAS.md).
-const supportApi = createSupport({ env: process.env, expectedOrigin: (req) => authApi.expectedOrigin(req) });
-app.use('/api/support', supportApi.router);
+// Önkéntes támogatás ("Támogasd a Kamu Bíróságot!"): statikus oldal; a támogatás teljes egészében a Ko-fi oldalán történik (https://ko-fi.com/kamubirosag).
+// A szerveren NINCS fizetési logika, webhook vagy visszaigazolás (lásd TAMOGATAS.md).
 app.get(['/tamogatas', '/tamogatas/', '/support', '/tamogatas.html'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'tamogatas.html')));
 // A bolt a játékon belül továbbra is a menüből nyílik; a régi, esetleg elmentett /shop és /bolt címek biztonságosan a főoldalra visznek.
 app.get(['/shop', '/shop/', '/bolt', '/bolt/'], (req, res) => res.redirect(302, '/'));

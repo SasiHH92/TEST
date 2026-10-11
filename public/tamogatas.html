@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Támogasd a Kamu Bíróságot! ❤️</title>
-  <meta name="description" content="A Kamu Bíróság független, magyar közösségi játék. Itt önkéntesen támogathatod a fejlesztést – ellenszolgáltatás és játékbeli előny nélkül.">
+  <meta name="description" content="A Kamu Bíróság független, magyar közösségi játék. A Ko-fi oldalunkon önkéntesen támogathatod a fejlesztést – ellenszolgáltatás és játékbeli előny nélkül.">
   <meta name="theme-color" content="#2a0b14">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❤️</text></svg>">
   <link rel="stylesheet" href="/support.css">
 </head>
 <body>
-  <a class="sp-skip" href="#kartyak">Ugrás a támogatási lehetőségekhez</a>
+  <a class="sp-skip" href="#fo-gomb">Ugrás a támogatás gombjához</a>
 
   <header class="sp-top">
     <a class="sp-back" href="/" aria-label="Vissza a játékba">⚖️ <span>Vissza a játékba</span></a>
@@ -24,7 +24,17 @@
         <h1 id="sp-title">❤️ TÁMOGASD A KAMU BÍRÓSÁGOT!</h1>
         <p class="sp-sub">„A tárgyalás ingyenes, de a fejlesztő kávéja nem!” ☕😂</p>
         <p class="sp-lead">A Kamu Bíróság egy független, magyar közösségi játék, amelyet folyamatosan fejlesztünk. Ha tetszik a játék, és szeretnéd támogatni a további fejlesztéseket, itt önkéntesen hozzájárulhatsz a projekt fenntartásához.</p>
-        <p class="sp-free"><b>Fontos:</b> a támogatásért semmilyen ellenszolgáltatás nem jár, és semmilyen játékbeli előnyt nem ad. A tárgyalás mindenkinek ugyanúgy ingyenes marad.</p>
+
+        <!-- FŐ GOMB: a Ko-fi oldalra visz, új lapon. A fizetés teljes egészében a Ko-fi felületén történik. -->
+        <div class="sp-cta">
+          <a id="fo-gomb" class="sp-go" href="https://ko-fi.com/kamubirosag" target="_blank" rel="noopener noreferrer">
+            <span class="sp-go-ico" aria-hidden="true">❤️</span>
+            <span>TÁMOGASD A KAMU BÍRÓSÁGOT!</span>
+            <span class="sp-go-ext" aria-hidden="true">↗</span>
+            <span class="sp-visually-hidden"> (a Ko-fi oldala új lapon nyílik meg)</span>
+          </a>
+          <p class="sp-cta-note">A támogatás a Ko-fi oldalán történik: ott választod ki az összeget és fizetsz. Nálunk nem fut fizetés, és nem kérünk bankkártyaadatot.</p>
+        </div>
       </div>
       <div class="sp-hero-art" aria-hidden="true">
         <div class="sp-spot"></div>
@@ -35,59 +45,36 @@
       </div>
     </section>
 
-    <!-- ÁLLAPOT-SÁV -->
-    <p id="sp-banner" class="sp-banner" role="status" aria-live="polite" hidden></p>
+    <!-- ÖNKÉNTES -->
+    <p class="sp-free"><b>A támogatás teljesen önkéntes.</b> Nem jár érte játékbeli előny, prémium funkció vagy más ellenszolgáltatás. A tárgyalás mindenkinek ugyanúgy ingyenes marad.</p>
 
-    <!-- TÁMOGATÁSI KÁRTYÁK -->
-    <section id="kartyak" class="sp-tiers" aria-labelledby="sp-tiers-title">
-      <h2 id="sp-tiers-title" class="sp-h2">Válassz egy összeget</h2>
-      <div class="sp-grid" role="group" aria-label="Támogatási összegek">
-        <button type="button" class="sp-card t-kis" data-tier="kis" data-cents="100" aria-pressed="false">
+    <!-- ÖSSZEGEK (tájékoztató: a Ko-fi oldalán választható) -->
+    <section class="sp-tiers" aria-labelledby="sp-tiers-title">
+      <h2 id="sp-tiers-title" class="sp-h2">Ennyivel segíthetsz a Ko-fi-n</h2>
+      <ul class="sp-grid" aria-label="Támogatási összegek a Ko-fi oldalán">
+        <li class="sp-card t-kis">
           <span class="sp-ico" aria-hidden="true">❤️</span>
           <span class="sp-name">Egy kis segítség</span>
           <span class="sp-amount">1 €</span>
-          <span class="sp-note">Egy apró gesztus, ami sokat jelent.</span>
-          <span class="sp-check" aria-hidden="true">✓</span>
-        </button>
-        <button type="button" class="sp-card t-kave" data-tier="kave" data-cents="300" aria-pressed="false">
-          <span class="sp-ico" aria-hidden="true">☕</span>
-          <span class="sp-name">Kávé a fejlesztőnek</span>
-          <span class="sp-amount">3 €</span>
-          <span class="sp-note">Egy jó kávé, egy újabb este fejlesztés.</span>
-          <span class="sp-check" aria-hidden="true">✓</span>
-        </button>
-        <button type="button" class="sp-card t-birosag" data-tier="birosag" data-cents="500" aria-pressed="false">
+        </li>
+        <li class="sp-card t-birosag">
           <span class="sp-ico" aria-hidden="true">⚖️</span>
           <span class="sp-name">A bíróság támogatása</span>
           <span class="sp-amount">5 €</span>
-          <span class="sp-note">Hozzájárulás a szerver és a fejlesztés költségeihez.</span>
-          <span class="sp-check" aria-hidden="true">✓</span>
-        </button>
-        <button type="button" class="sp-card t-nagylelku" data-tier="nagylelku" data-cents="1000" aria-pressed="false">
+        </li>
+        <li class="sp-card t-nagylelku">
           <span class="sp-ico" aria-hidden="true">👑</span>
           <span class="sp-name">Nagylelkű támogatás</span>
           <span class="sp-amount">10 €</span>
-          <span class="sp-note">Nagy segítség a projektnek – köszönjük!</span>
-          <span class="sp-check" aria-hidden="true">✓</span>
-        </button>
-        <div class="sp-card sp-custom t-egyedi" data-tier="egyedi" data-selected="false">
+        </li>
+        <li class="sp-card t-egyedi">
           <span class="sp-ico" aria-hidden="true">💎</span>
-          <span class="sp-name">Egyedi támogatás</span>
-          <label class="sp-amount-label" for="sp-custom-input">Szabadon megadható összeg (€)</label>
-          <span class="sp-input-wrap">
-            <input id="sp-custom-input" class="sp-input" type="text" inputmode="decimal" autocomplete="off" placeholder="pl. 7,50" maxlength="7" aria-describedby="sp-custom-help sp-custom-error">
-            <span class="sp-eur" aria-hidden="true">€</span>
-          </span>
-          <span id="sp-custom-help" class="sp-note">Legalább 1 €, legfeljebb 500 €.</span>
-          <span id="sp-custom-error" class="sp-error" role="alert" aria-live="assertive"></span>
-        </div>
-      </div>
-
-      <div class="sp-cta">
-        <p id="sp-summary" class="sp-summary" aria-live="polite">Válassz egy összeget a folytatáshoz.</p>
-        <button id="sp-go" type="button" class="sp-go" disabled>❤️ TÁMOGATOM</button>
-        <p class="sp-fine">A támogatás önkéntes, és nem jár érte ellenszolgáltatás: nincs VIP-rang, prémium karakter, különleges skin, extra játékfunkció vagy előny a tárgyalásokon.</p>
-      </div>
+          <span class="sp-name">Egyedi összeg</span>
+          <span class="sp-amount">tetszőleges</span>
+          <span class="sp-note">legalább 1 €</span>
+        </li>
+      </ul>
+      <p class="sp-fine">Az összeget a Ko-fi oldalán választod ki. Az itt látható lehetőségek tájékoztatók, ezek nem fizetési gombok.</p>
     </section>
 
     <!-- MIRE FORDÍTJUK -->
@@ -102,14 +89,15 @@
         <article class="sp-use-card reveal">
           <span class="sp-use-ico" aria-hidden="true">🖥️</span>
           <h3>Szerverfenntartás</h3>
-          <p>A Kamu Bíróság működtetése.</p>
+          <p>A Kamu Bíróság működtetésének költségei.</p>
         </article>
         <article class="sp-use-card reveal">
           <span class="sp-use-ico" aria-hidden="true">🎨</span>
           <h3>Grafikai fejlesztések</h3>
-          <p>Új animációk, látványvilág és effektek.</p>
+          <p>Új animációk, karakterek és vizuális elemek.</p>
         </article>
       </div>
+      <p class="sp-fine">Ezek a projekt legfontosabb költség- és fejlesztési területei; a támogatások a Kamu Bíróság fenntartásához és fejlesztéséhez járulnak hozzá.</p>
     </section>
   </main>
 
@@ -117,17 +105,6 @@
     <p>⚖️ Kamu Bíróság – független, magyar közösségi játék.</p>
     <p><a href="/">Vissza a játékba</a></p>
   </footer>
-
-  <!-- KÖSZÖNJÜK képernyő: CSAK a szolgáltató szerveroldalon ellenőrzött visszaigazolása után jelenik meg (vagy jelölt előnézetként, ha az üzemeltető bekapcsolta) -->
-  <div id="sp-thanks" class="sp-thanks" role="dialog" aria-modal="true" aria-labelledby="sp-thanks-title" hidden>
-    <div class="sp-thanks-box">
-      <p id="sp-thanks-tag" class="sp-thanks-tag" hidden>ELŐNÉZET – ez nem valódi támogatás</p>
-      <div class="sp-thanks-hearts" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      <h2 id="sp-thanks-title">KÖSZÖNJÜK!</h2>
-      <p>A támogatásod sokat jelent a Kamu Bíróságnak. Jó játékot, és a tárgyalás továbbra is ingyenes!</p>
-      <button id="sp-thanks-close" type="button" class="sp-go">VISSZA AZ OLDALRA</button>
-    </div>
-  </div>
 
   <script src="/support.js" defer></script>
 </body>

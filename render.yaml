@@ -30,8 +30,7 @@ services:
       #   sync: false
       # - key: BOT_SERVICE_TOKEN   # legalább 32 véletlen karakter – TITKOS; nélküle a Discord-integráció ki van kapcsolva
       #   sync: false
-      # Támogatási oldal (/tamogatas): a fizetés ALAPBÓL KIKAPCSOLT; a SUPPORT_ENABLED-et csak az üzemeltető jóváhagyása és egy elkészült
-      # szolgáltató-adapter után szabad megadni (lásd TAMOGATAS.md). Nélkülük semmi extra változó nem kell.
+      # Támogatási oldal (/tamogatas): statikus, a Ko-fi oldalra mutat; nincs hozzá környezeti változó.
       # Jelszó-visszaállító levél (Resend): lásd AUTH_BEALLITAS.md
       # - key: AUTH_MAIL_API_KEY
       #   sync: false
