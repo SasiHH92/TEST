@@ -65,6 +65,17 @@ const EMBEDS = {
     const sup = supportField(); if (sup) fields.push(sup);
     return base('faq', '❓ Gyakran ismételt kérdések').addFields(fields);
   },
+  support() {
+    const url = gameUrl();
+    const e = base('support', '❤️ Támogasd a Kamu Bíróságot!', 0xc0392b)
+      .setDescription('„A tárgyalás ingyenes, de a fejlesztő kávéja nem!” ☕😂\n\nA Kamu Bíróság egy független, magyar közösségi játék, amelyet folyamatosan fejlesztünk. Ha tetszik, és szeretnéd támogatni a további fejlesztéseket, itt önkéntesen hozzájárulhatsz a projekt fenntartásához.')
+      .addFields(
+        { name: '🤝 Teljesen önkéntes', value: 'A támogatásért **semmilyen ellenszolgáltatás nem jár**: nincs VIP-rang, prémium karakter, különleges skin, extra funkció vagy előny a tárgyalásokon, és nincs fizetős Discord-rang. A tárgyalás mindenkinek ingyenes marad.' },
+        { name: '🏛️ Mire fordítjuk?', value: '🎮 **Játékfejlesztés** – új funkciók, karakterek, játékmódok\n🖥️ **Szerverfenntartás** – a Kamu Bíróság működtetése\n🎨 **Grafikai fejlesztések** – új animációk, látványvilág, effektek' }
+      );
+    if (url) e.addFields({ name: '💳 Az oldal', value: '[kamubirosag – támogatási oldal](' + url + '/tamogatas)\nVagy használd a `/tamogatas` parancsot.' });
+    return e;
+  },
   bugs() {
     return base('bugs', '🐛 Hibajelentés sablon', 0xe74c3c)
       .setDescription('Másold be a sablont egy új posztba, és töltsd ki. Minél pontosabb vagy, annál gyorsabban javítjuk!')

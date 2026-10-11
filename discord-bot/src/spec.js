@@ -78,6 +78,7 @@ const STRUCTURE = [
       { name: '📢・bejelentések', kind: 'text', perm: 'readonly', topic: 'Hivatalos közlemények a Kamu Bíróság vezetésétől.' },
       { name: '📰・frissítések', kind: 'text', perm: 'readonly', topic: 'Újdonságok, új kártyák, javítások.' },
       { name: '❓・gyik', kind: 'text', perm: 'readonly', embed: 'faq', topic: 'Gyakran ismételt kérdések.' },
+      { name: '❤️・támogatás', kind: 'text', perm: 'readonly', embed: 'support', topic: 'Önkéntes támogatás – ellenszolgáltatás és játékbeli előny nélkül.' },
     ],
   },
   {

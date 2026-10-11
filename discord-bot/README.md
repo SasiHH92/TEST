@@ -130,7 +130,7 @@ nyitva kell maradnia, amíg használod. A parancsok a szerveren azonnal megjelen
 - **Role-ok** (fentről lefelé): 👑 Tulajdonos, 🛠️ Fejlesztő, 🛡️ Moderátor, 🧪 Tesztelő, ⚖️ Játékos, 🤖 Bot.
   A bot magának is kiosztja a 🤖 Bot role-t. Az üdvözlünk csatornán lévő **Játékos leszek** gomb a ⚖️ Játékos
   role-t adja a kattintónak.
-- **📜 BÍRÓSÁG**: 👋 üdvözlünk, 📜 szabályzat, 📢 bejelentések, 📰 frissítések, ❓ gyik (mind csak olvasható
+- **📜 BÍRÓSÁG**: 👋 üdvözlünk, 📜 szabályzat, 📢 bejelentések, 📰 frissítések, ❓ gyik, ❤️ támogatás (mind csak olvasható
   a játékosoknak; írhat: Tulajdonos, Fejlesztő, Moderátor és a bot).
 - **⚖️ KÖZÖSSÉG**: 💬 általános, 😂 mémek, 📸 képek-videók, 💡 ötletek (fórum, címkékkel).
 - **🎮 JÁTÉK**: 🎮 játék-kereső (30 mp lassított mód), 🔑 szobakódok (15 mp), 🏆 eredmények (csak olvasható,
