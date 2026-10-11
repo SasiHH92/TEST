@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const io = require('socket.io-client');
 
 const BOT = path.resolve(__dirname, '..', 'discord-bot');
-const { Collection, PermissionsBitField } = require(path.join(BOT, 'node_modules', 'discord.js'));
+const { Collection, PermissionsBitField, PermissionFlagsBits } = require(path.join(BOT, 'node_modules', 'discord.js'));
 const { makeGuild } = require(path.join(BOT, 'test', 'fake-guild'));
 const { runSetup } = require(path.join(BOT, 'src', 'setup'));
 const { createBackend } = require(path.join(BOT, 'src', 'backend'));
@@ -116,9 +116,10 @@ const allMessages = () => [...panelChannel().messageStore.values()].map((m) => J
 let court = null, backend = null;
 function newBot() {
   backend = createBackend({ baseUrl: BASE, token: TOKEN, log: quiet });
-  court = createCourtSync({ client, backend, gameUrl: BASE, log: quiet, reconcileEveryMs: 100000 });
+  court = createCourtSync({ client, backend, gameUrl: BASE, log: quiet, reconcileEveryMs: 100000, chatGraceMs: 700 });
   return court;
 }
+const chatOf = (sid) => [...guild.channels.cache.values()].find((c) => c.name === '⚖️・targyalas-' + String(sid).replace('KAMU-', ''));
 const tempRoles = (member) => [...member.roles.cache.values()].map((r) => r.name).filter((n) => n.startsWith('Kamu | ')).sort();
 
 // Egy Discord-gombnyomás (vagy parancs): a kapott (ephemeral) válasz szövegét adja vissza
@@ -229,6 +230,15 @@ async function main() {
     assert.ok(web.participants.find((p) => p.name === 'AnnaT').discordLinked);
     await waitFor(() => hostTab.updates.slice(before).some((u) => u.id === id && u.participants.some((p) => p.name === 'AnnaT')), 'court_update a böngészőnek');
     await waitFor(() => panelText(id).includes('2/8') && panelText(id).includes(`<@${anna.did}>`), 'a Discord-panel is frissül');
+    // a tárgyalás saját csevegője: csak a jelentkezők és a stáb látja
+    const chat = await waitFor(() => chatOf(id), 'a csevegőcsatorna létrejön');
+    const ow = (did) => chat.permissionOverwrites.cache.get(did);
+    assert.ok(chat.permissionOverwrites.cache.get(guild.roles.everyone.id).deny.has(PermissionFlagsBits.ViewChannel), 'mások nem látják');
+    assert.ok(ow(host.did).allow.has(PermissionFlagsBits.ViewChannel));
+    await waitFor(() => ow(anna.did) && ow(anna.did).allow.has(PermissionFlagsBits.SendMessages), 'Anna is látja és írhat');
+    assert.equal(ow(cili.did), undefined, 'aki nem jelentkezett, nem látja');
+    assert.ok(panelText(id).includes('<#' + chat.id + '>'), 'a panel a csevegőre hivatkozik');
+    assert.equal((await backend.getSession(id)).discord.chatChannelId, chat.id, 'az azonosító a backendben');
   });
 
   await test('Nem összekötött Discord-tag jelentkezése elutasítva, útmutatóval; a bot nem hamisíthat Kamu-felhasználót', async () => {
@@ -342,6 +352,11 @@ async function main() {
     await waitFor(() => Object.values(members).every((m) => tempRoles(m).length === 0), 'a role-ok lekerülnek');
     await waitFor(() => panelText(id).includes('BEFEJEZŐDÖTT') && panels(id)[0].components.length === 0, 'a panel lezárva, gombok nélkül');
     assert.deepEqual([...guild.members.me.roles.cache.values()].map((r) => r.name).filter((n) => n.startsWith('Kamu | ')), []);
+    assert.ok(chatOf(id), 'a befejezés után még röviden megmarad a csevegő');
+    await pause(900);
+    await court.reconcileAll();
+    await waitFor(() => !chatOf(id), 'a csevegőcsatorna törlődik a türelmi idő után');
+    assert.equal((await backend.getSession(id)).discord.chatChannelId, '', 'a backend is tudja');
     await waitFor(async () => (await backend.listSessions()).every((s) => s.id !== id), 'a takarítás készen van, a bot nem kapja többé');
     assert.equal((await press(anna, 'join', id)), '❌ Ez a tárgyalás már lezárult.');
     for (const t of [hostTab, ...Object.values(tabs)]) t.disconnect();
@@ -482,6 +497,10 @@ async function main() {
     const after = (await gina.api('GET', '/api/court-sessions/' + sid)).data.session;
     assert.ok(!after.participants.some((p) => p.name === 'HugoT'), 'Hugo kikerült a tárgyalásból');
     await waitFor(() => !panelText(sid).includes(`<@${hugo.did}>`) && panelText(sid).includes('2/8'), 'a Discord-panel is frissül');
+    const sidChat = chatOf(sid);
+    assert.ok(sidChat, 'van saját csevegő');
+    await waitFor(() => !sidChat.permissionOverwrites.cache.has(hugo.did), 'Hugo elveszíti a csevegő jogát');
+    assert.ok(sidChat.permissionOverwrites.cache.has(gina.did) && sidChat.permissionOverwrites.cache.has(ivan.did));
     // az eltávolított játékos újra jelentkezhet a Discordon
     assert.match(await press(hugo, 'join', sid), /Jelentkeztél/);
     // Ivan kilép a szobából, a szoba a gazdával tovább él
@@ -494,6 +513,8 @@ async function main() {
     await waitFor(async () => (await gina.api('GET', '/api/court-sessions/' + sid)).data.session.status === 'CANCELLED', 'a tárgyalás megszűnik');
     await waitFor(() => panelText(sid).includes('LEMONDVA') && panels(sid)[0].components.length === 0, 'a Discord-panel lezárul');
     assert.match(panelText(sid), /vezetője kilépett/);
+    await waitFor(() => !chatOf(sid), 'a gazda kilépésével a csevegőcsatorna azonnal törlődik');
+    assert.equal((await backend.getSession(sid)).discord.chatChannelId, '');
     assert.equal((await gina.api('POST', '/api/court-sessions/' + sid + '/enter', {})).status, 409, 'megszűnt tárgyalásba nem lehet belépni');
     // a szoba (az üres, már nem védett lobbi) eltűnik: a kóddal nem lehet belépni
     await pause(300);

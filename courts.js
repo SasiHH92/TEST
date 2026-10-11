@@ -126,7 +126,7 @@ function createCourts({
   function botView(s) {
     const v = view(s);
     v.participants = v.participants.map((p) => ({ ...p, discordUserId: discordIdOf(p.uid) }));
-    v.discord = { guildId: null, channelId: null, messageId: null, announced: [], appliedRoles: {}, ...(s.discord || {}) };
+    v.discord = { guildId: null, channelId: null, messageId: null, chatChannelId: '', announced: [], appliedRoles: {}, ...(s.discord || {}) };
     return v;
   }
 
@@ -382,6 +382,13 @@ function createCourts({
     s.updatedAt = now(); save();
     return botView(s);
   }
+  // A tárgyalás saját Discord-csevegőcsatornája (a bot hozza létre / törli; az azonosító itt él, hogy újraindítás után is törölhető legyen)
+  function setDiscordChat(id, channelId) {
+    const s = session(id);
+    s.discord = { announced: [], appliedRoles: {}, ...(s.discord || {}), chatChannelId: String(channelId || '') };
+    save();
+    return botView(s);
+  }
   function markAnnounced(id, key) {
     const s = session(id);
     s.discord = { announced: [], appliedRoles: {}, ...(s.discord || {}) };
@@ -455,7 +462,7 @@ function createCourts({
     .filter((s) => LIVE.includes(s.status) || hasPendingDiscordCleanup(s))
     .map(botView);
   const hasPendingDiscordCleanup = (s) => !LIVE.includes(s.status) && s.discord && (
-    Object.keys(s.discord.appliedRoles || {}).length > 0 || (s.discord.messageId && !(s.discord.announced || []).includes('closed:' + s.status)));
+    Object.keys(s.discord.appliedRoles || {}).length > 0 || !!s.discord.chatChannelId || (s.discord.messageId && !(s.discord.announced || []).includes('closed:' + s.status)));
   const mine = (userId) => Object.values(data.sessions)
     .filter((s) => LIVE.includes(s.status) && (s.hostUserId === userId || s.participants.some((p) => p.userId === userId))).map(view);
   const hostSessionOf = (userId) => Object.values(data.sessions).filter((s) => LIVE.includes(s.status) && s.hostUserId === userId).map(view);
@@ -474,7 +481,7 @@ function createCourts({
 
   return {
     STATUS, ROLES, EVENTS, events, view, create, join, leave, lock, unlock, draw, begin, finish, cancel, rebind,
-    roomStarted, roomFinished, roomGone, leaveFromRoom, setDiscordPanel, markAnnounced, setAppliedRoles,
+    roomStarted, roomFinished, roomGone, leaveFromRoom, setDiscordPanel, setDiscordChat, markAnnounced, setAppliedRoles,
     createLinkCode, consumeLinkCode, linkOfUser, unlink, purgeUser, userOfDiscord, canManage: (id, actor) => canManage(session(id), actor),
     get, getForBot, forRoom, listLive, listForBot, mine, hostSessionOf, expireStale, saveNow,
     _data: () => data

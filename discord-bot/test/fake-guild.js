@@ -47,6 +47,7 @@ function makeChannel(guild, opts) {
         }
         return ch;
       },
+      async delete(id) { ch.permissionOverwrites.cache.delete(String(id.id || id)); return ch; },
     },
     messages: {
       async fetch(arg) {
@@ -61,7 +62,11 @@ function makeChannel(guild, opts) {
     async send(payload) { return makeMessage(ch, guild.members.me.id, payload); },
     async setAvailableTags(tags) { ch.availableTags = tags.map((t) => ({ id: t.id || nextId(), ...t })); return ch; },
     async setParent(id) { ch.parentId = id; return ch; },
+    async delete() { guild.channels.cache.delete(ch.id); ch.deleted = true; },
   };
+  for (const o of opts.permissionOverwrites || []) {
+    ch.permissionOverwrites.cache.set(o.id, { id: o.id, type: o.type, allow: new PermissionsBitField(o.allow || []), deny: new PermissionsBitField(o.deny || []) });
+  }
   if (opts.type === ChannelType.GuildForum) {
     const threads = new Collection();
     ch.threadStore = threads;
