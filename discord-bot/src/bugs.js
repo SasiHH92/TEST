@@ -3,7 +3,7 @@
 // állapot-választóval (Új / Folyamatban / Jegelve / Megoldva / Elvetve / Nem reprodukálható), amit csak a stáb állíthat.
 // A backend a forrás: a bot a várakozó jelentéseket lekérdezi, kiposztolja, majd késznek jelöli (így újraindításkor sem vész el, és nem duplikál);
 // az állapot is a backendben tárolódik, a Discord-üzenet csak megjeleníti.
-const { EmbedBuilder, ChannelType, ActionRowBuilder, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
+const { EmbedBuilder, ChannelType, ActionRowBuilder, StringSelectMenuBuilder, AttachmentBuilder, MessageFlags } = require('discord.js');
 const { findChannel } = require('./setup');
 const { STRUCTURE } = require('./spec');
 
@@ -38,8 +38,10 @@ function reportEmbed(r) {
     .setFooter({ text: 'Kamu Bíróság • weboldali hibajelentés' + (r.statusBy ? ' • állapotot állította: ' + clip(r.statusBy, 40) : '') });
   if (r.room) e.addFields({ name: 'Szobakód', value: r.room, inline: true });
   if (r.userAgent) e.addFields({ name: 'Eszköz', value: clip(r.userAgent, 160) });
+  if (r.imageOk && r.image) e.setImage('attachment://' + imageName(r)); // a kép a Discord-üzenet csatolmánya (a szerver törli, miután feltöltöttük)
   return e;
 }
+const imageName = (r) => r.id + '.' + r.image;
 
 // A jelentés alatti állapot-választó (az aktuális állapot előre kijelölve).
 function statusRow(r) {
@@ -50,10 +52,12 @@ function statusRow(r) {
 }
 
 // Kiposztolás a hibajelentés csatornába (fórumbejegyzés vagy sima üzenet). Hibát dob, ha nincs csatorna vagy a Discord elutasítja.
-async function postOne(guild, r) {
+async function postOne(guild, r0, img) {
+  const r = { ...r0, imageOk: !!img };
   const ch = findChannel(guild, CHANNEL_NAME, [ChannelType.GuildForum], null) || findChannel(guild, CHANNEL_NAME, [ChannelType.GuildText], null);
   if (!ch) throw new Error('nincs "' + CHANNEL_NAME + '" csatorna (futtasd a /setup-repair parancsot)');
   const payload = { embeds: [reportEmbed(r)], components: [statusRow(r)], allowedMentions: { parse: [] } };
+  if (img) payload.files = [new AttachmentBuilder(img, { name: imageName(r) })];
   if (ch.type === ChannelType.GuildForum) {
     const wanted = KIND_TAG[r.kind];
     const tag = wanted && ch.availableTags ? ch.availableTags.find((t) => t.name === wanted) : null;
@@ -65,10 +69,11 @@ async function postOne(guild, r) {
 }
 
 // Tartalék: ha a hibajelentés csatornába nem sikerül, a jelentés a stáb naplócsatornájába kerül (a hiba okával), hogy ne vesszen el.
-async function postFallback(guild, r, reason) {
+async function postFallback(guild, r0, reason, img) {
+  const r = { ...r0, imageOk: !!img };
   const ch = findChannel(guild, STAFF_LOG, [ChannelType.GuildText], null);
   if (!ch) return null;
-  const m = await ch.send({ content: '⚠️ A hibajelentést nem sikerült a **' + CHANNEL_NAME + '** csatornába tenni, ezért itt van. Ok: `' + clip(reason, 300).replace(/`/g, "'") + '`', embeds: [reportEmbed(r)], components: [statusRow(r)], allowedMentions: { parse: [] } });
+  const m = await ch.send({ content: '⚠️ A hibajelentést nem sikerült a **' + CHANNEL_NAME + '** csatornába tenni, ezért itt van. Ok: `' + clip(reason, 300).replace(/`/g, "'") + '`', embeds: [reportEmbed(r)], components: [statusRow(r)], allowedMentions: { parse: [] }, ...(img ? { files: [new AttachmentBuilder(img, { name: imageName(r) })] } : {}) });
   return m.id;
 }
 
@@ -81,14 +86,15 @@ function createBugSync({ client, backend, onlyGuild = '', log = console, everyMs
     if (list.length && !guilds.length) log.error('[bot] hibajelentés vár, de a bot egy szerverben sem tag.');
     for (const r of list) {
       let ref = null, reason = '';
+      const img = r.image ? await backend.bugImage(r.id) : null;
       for (const g of guilds) {
-        try { ref = await postOne(g, r); } catch (e) { reason = e.message || String(e); log.error('[bot] hibajelentés (' + r.id + ') posztolása sikertelen:', reason); }
-        if (!ref) { try { ref = await postFallback(g, r, reason || 'ismeretlen'); } catch (e) { log.error('[bot] a tartalék posztolás is sikertelen:', e.message); } }
+        try { ref = await postOne(g, r, img); } catch (e) { reason = e.message || String(e); log.error('[bot] hibajelentés (' + r.id + ') posztolása sikertelen:', reason); }
+        if (!ref) { try { ref = await postFallback(g, r, reason || 'ismeretlen', img); } catch (e) { log.error('[bot] a tartalék posztolás is sikertelen:', e.message); } }
         if (ref) break;
       }
       if (!ref) continue; // semelyik csatorna nem működik: a következő körben újra próbáljuk
-      await backend.bugPosted(r.id, ref);
-      log.log('[bot] hibajelentés kiposztolva: ' + r.id + (reason ? ' (tartalék csatornába)' : ''));
+      await backend.bugPosted(r.id, ref, !!img);
+      log.log('[bot] hibajelentés kiposztolva: ' + r.id + (img ? ' (képpel)' : '') + (reason ? ' (tartalék csatornába)' : ''));
       done++;
     }
     return done;

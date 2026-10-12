@@ -147,3 +147,31 @@ test('állapot-választó: a jelentés alatt ott van; csak a stáb módosíthat;
   assert.match(bad.replies[0], /Ismeretlen/);
   assert.equal(await sync.handleSelect({ customId: 'kamu:court:join:KAMU-1' }), false);
 });
+
+test('kép: a bot a csatolt képet Discord-csatolmányként teszi az üzenetre, az állapotváltás után a kép-hivatkozás megmarad; kép nélkül nincs hivatkozás', async () => {
+  const guild = makeGuild();
+  await runSetup(guild);
+  const store = { 'BUG-30': report({ id: 'BUG-30', image: 'png' }), 'BUG-31': report({ id: 'BUG-31' }) };
+  const posted = [];
+  const backend = {
+    enabled: true,
+    pendingBugs: async () => Object.values(store).filter((r) => !posted.includes(r.id)),
+    bugImage: async (id) => (id === 'BUG-30' ? Buffer.from('PNGBYTES') : null),
+    bugPosted: async (id, ref, image) => { posted.push(id); store[id].imageOk = !!image; },
+    bugStatus: async (id, status) => { store[id] = { ...store[id], status }; return store[id]; }
+  };
+  const sync = createBugSync({ client: { guilds: { cache: new Map([[guild.id, guild]]) } }, backend, isStaff: () => true, log: { error() {}, log() {} } });
+  assert.equal(await sync.drain(), 2);
+  const msgs = [...text(guild, '🐛・hibajelentés').messageStore.values()].filter((m) => m.embeds.length && /BUG-3[01]/.test(JSON.stringify(m.embeds)));
+  const withImg = msgs.find((m) => /BUG-30/.test(JSON.stringify(m.embeds)));
+  const without = msgs.find((m) => /BUG-31/.test(JSON.stringify(m.embeds)));
+  assert.equal(withImg.files.length, 1);
+  assert.equal(withImg.files[0].name, 'BUG-30.png');
+  assert.equal(withImg.embeds[0].image.url, 'attachment://BUG-30.png');
+  assert.equal(without.files.length, 0);
+  assert.ok(!without.embeds[0].image, 'kép nélküli jelentésnél nincs kép-hivatkozás');
+  // állapotváltás után is megmarad a hivatkozás
+  let upd;
+  await sync.handleSelect({ customId: 'kamu:bug:status:BUG-30', values: ['done'], member: { displayName: 'Sanyi' }, user: {}, channel: null, reply: async () => {}, update: async (o) => { upd = o; } });
+  assert.equal(upd.embeds[0].toJSON().image.url, 'attachment://BUG-30.png');
+});

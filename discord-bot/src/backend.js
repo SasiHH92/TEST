@@ -43,7 +43,15 @@ function createBackend({ baseUrl, token, fetchImpl = fetch, log = console }) {
     pendingBugs: async () => (await request('GET', '/bugreports')).reports,
     bugGet: async (id) => (await request('GET', '/bugreports/' + encodeURIComponent(id))).report,
     bugStatus: async (id, status, by) => (await request('POST', '/bugreports/' + encodeURIComponent(id) + '/status', { status, by })).report,
-    bugPosted: (id, ref) => request('POST', '/bugreports/' + encodeURIComponent(id) + '/posted', { ref: String(ref) }),
+    bugPosted: (id, ref, image) => request('POST', '/bugreports/' + encodeURIComponent(id) + '/posted', { ref: String(ref), image: !!image }),
+    // A jelentéshez csatolt kép (Buffer) vagy null, ha nincs / már nincs meg.
+    bugImage: async (id) => {
+      try {
+        const res = await fetchImpl(root + '/api/bot/bugreports/' + encodeURIComponent(id) + '/image', { headers: { Authorization: 'Bearer ' + token }, signal: AbortSignal.timeout(20000) });
+        if (!res.ok) return null;
+        return Buffer.from(await res.arrayBuffer());
+      } catch (_) { return null; }
+    },
 
     // Eseményfolyam (SSE). Az esemény csak "kopogtat": a bot a friss állapotot kérdezi le, ezért az elveszett
     // esemény nem okoz eltérést (újracsatlakozáskor és időnként teljes egyeztetés is fut).

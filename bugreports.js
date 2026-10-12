@@ -18,7 +18,7 @@ const KINDS = { bug: 'Hiba', sound: 'Hang / Voice', ui: 'Kinézet / UI', room: '
 
 const clean = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(/\r\n?/g, '\n').trim().slice(0, max);
 
-function createBugReports({ file, persist = () => {}, now = () => Date.now() }) {
+function createBugReports({ file, imageDir = '', persist = () => {}, now = () => Date.now() }) {
   let data = { version: 1, seq: 0, items: [] };
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -62,11 +62,32 @@ function createBugReports({ file, persist = () => {}, now = () => Date.now() }) 
       return item;
     },
     pending() { return data.items.filter((i) => !i.posted); },
-    markPosted(id, ref) {
+    markPosted(id, ref, imageOk) {
       const it = data.items.find((i) => i.id === id);
       if (!it) return false;
-      if (!it.posted) { it.posted = { at: now(), ref: clean(ref, 60) || 'ok' }; save(); }
+      if (!it.posted) { it.posted = { at: now(), ref: clean(ref, 60) || 'ok' }; it.imageOk = !!imageOk; save(); }
+      this.dropImage(id); // a Discordon már ott a kép (vagy nem sikerült): a helyi másolat nem kell
       return true;
+    },
+    // A csatolt kép (ellenőrzött bájtok) ideiglenesen fájlban vár, amíg a bot fel nem tölti a Discordra; utána törlődik.
+    saveImage(id, buf, ext) {
+      const it = data.items.find((i) => i.id === id);
+      if (!it || !imageDir || !/^(jpg|png|webp)$/.test(ext)) return false;
+      fs.mkdirSync(imageDir, { recursive: true });
+      fs.writeFileSync(path.join(imageDir, id + '.' + ext), buf, { mode: 0o600 });
+      it.image = ext;
+      save();
+      return true;
+    },
+    imageFile(id) {
+      const it = data.items.find((i) => i.id === id);
+      if (!it || !it.image || !imageDir) return null;
+      const p = path.join(imageDir, id + '.' + it.image);
+      return fs.existsSync(p) ? { path: p, ext: it.image } : null;
+    },
+    dropImage(id) {
+      const f = this.imageFile(id);
+      if (f) { try { fs.unlinkSync(f.path); } catch (_) { /* már törölve */ } }
     },
     get(id) { return data.items.find((i) => i.id === id) || null; },
     // Állapot módosítása (a Discordon a stáb állítja). Ismeretlen azonosító / állapot: null.

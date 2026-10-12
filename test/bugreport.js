@@ -25,7 +25,7 @@ async function start(port) {
     cwd: root,
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', AUTH_BASE_URL: base, DISCORD_BOT_TOKEN: '', BOT_SERVICE_TOKEN: TOKEN,
       AUTH_STORE_PATH: f('a.json'), KB_AVATARS_FILE: f('av.json'), KB_STATS_FILE: f('st.json'), KB_COURTS_FILE: f('c.json'),
-      KB_DMS_FILE: f('d.json'), KB_MODERATION_FILE: f('m.json'), KB_ERRORS_FILE: f('e.json'), KB_BUGREPORTS_FILE: f('b.json'), KB_BUGREPORT_LIMIT: '10' },
+      KB_DMS_FILE: f('d.json'), KB_MODERATION_FILE: f('m.json'), KB_ERRORS_FILE: f('e.json'), KB_BUGREPORTS_FILE: f('b.json'), KB_BUGREPORT_LIMIT: '14', KB_BUGIMAGES_DIR: f('bugimg') },
     stdio: ['ignore', 'ignore', 'pipe']
   });
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base + '/health')).ok) return base; } catch (_) { await pause(100); } }
@@ -98,6 +98,30 @@ const bot = (base, p, opt = {}) => fetch(base + '/api/bot' + p, { ...opt, header
       assert.equal((await bot(BASE, '/bugreports/BUG-99999/status', { method: 'POST', body: JSON.stringify({ status: 'done' }) })).status, 400);
       assert.equal((await fetch(BASE + '/api/bot/bugreports/' + id + '/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"status":"done"}' })).status, 401);
     });
+    await test('kép csatolása: ellenőrzött képfájl, a bot lekérheti, a kiposztolás után törlődik; hamis/túl nagy kép elutasítva', async () => {
+      const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(200, 7)]);
+      const url = (mime, buf) => 'data:' + mime + ';base64,' + buf.toString('base64');
+      const r = await post(BASE, { text: 'képes jelentés teszt', image: url('image/png', png) });
+      assert.equal(r.status, 200);
+      const { id, image } = await r.json();
+      assert.equal(image, true);
+      const pend = (await (await bot(BASE, '/bugreports')).json()).reports.find((x) => x.id === id);
+      assert.equal(pend.image, 'png');
+      const got = await bot(BASE, '/bugreports/' + id + '/image');
+      assert.equal(got.status, 200);
+      assert.ok((got.headers.get('content-type') || '').includes('image/png'), 'tartalomtípus: image/png');
+      assert.ok(Buffer.from(await got.arrayBuffer()).equals(png), 'ugyanazok a bájtok');
+      assert.equal((await fetch(BASE + '/api/bot/bugreports/' + id + '/image')).status, 401, 'token nélkül nem érhető el');
+      assert.equal((await bot(BASE, '/bugreports/' + id + '/posted', { method: 'POST', body: JSON.stringify({ ref: '1', image: true }) })).status, 200);
+      assert.equal((await bot(BASE, '/bugreports/' + id + '/image')).status, 404, 'a kiposztolás után a helyi másolat törlődik');
+      assert.equal((await (await bot(BASE, '/bugreports/' + id)).json()).report.imageOk, true);
+      // hibás esetek: nem kép, hamis típus, túl nagy, nem base64
+      assert.equal((await post(BASE, { text: 'rossz kép teszt', image: url('text/html', Buffer.from('<script>alert(1)</script>'.repeat(10))) })).status, 400);
+      assert.equal((await post(BASE, { text: 'rossz kép teszt', image: url('image/png', Buffer.from('ez nem kép, csak szöveg'.repeat(10))) })).status, 400, 'a fájl első bájtjai számítanak, nem a megadott típus');
+      assert.equal((await post(BASE, { text: 'rossz kép teszt', image: 'data:image/png;base64,%%%' })).status, 400);
+      const big = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(1700 * 1024, 1)]);
+      assert.equal((await post(BASE, { text: 'nagy kép teszt', image: url('image/jpeg', big) })).status, 400);
+    });
     await test('túl rövid leírás és hibás típus kezelése; szobakód csak érvényes alakban', async () => {
       assert.equal((await post(BASE, { text: 'x' })).status, 400);
       const r = await post(BASE, { kind: '<script>', text: 'rendes hosszú leírás', room: '../../x' });
@@ -123,6 +147,17 @@ const bot = (base, p, opt = {}) => fetch(base + '/api/bot' + p, { ...opt, header
           await page.waitForSelector('#bugFab');
           await page.click('#bugFab');
           await page.waitForSelector('#bugDialog[open]');
+          const png1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+          await page.setInputFiles('#bugImage', { name: 'kep.png', mimeType: 'image/png', buffer: png1 });
+          await page.waitForSelector('#bugImgPrev:not([hidden])');
+          await page.click('#bugImgRemove');
+          assert.equal(await page.isHidden('#bugImgPrev'), true, 'eltávolítás után nincs előnézet');
+          await page.setInputFiles('#bugImage', { name: 'kep.png', mimeType: 'image/png', buffer: png1 });
+          await page.waitForSelector('#bugImgPrev:not([hidden])');
+          await page.setInputFiles('#bugImage', { name: 'x.txt', mimeType: 'text/plain', buffer: Buffer.from('nem kép') });
+          await page.waitForFunction(() => /Csak kép/.test(document.querySelector('#bugMsg').textContent));
+          await page.setInputFiles('#bugImage', { name: 'kep.png', mimeType: 'image/png', buffer: png1 });
+          await page.waitForSelector('#bugImgPrev:not([hidden])');
           await page.click('#bugSend');
           assert.match(await page.textContent('#bugMsg'), /pár szót/);
           await page.fill('#bugText', 'Teszt: a gomb nem csinál semmit');
@@ -130,6 +165,7 @@ const bot = (base, p, opt = {}) => fetch(base + '/api/bot' + p, { ...opt, header
           await page.click('#bugSend');
           await page.waitForFunction(() => /BUG-7/.test(document.querySelector('#bugMsg').textContent));
           assert.equal(seen.length, 1); assert.equal(seen[0].kind, 'sound'); assert.ok(seen[0].where);
+          assert.ok((seen[0].image || '').startsWith('data:image/jpeg;base64,'), 'a kép kicsinyítve, JPEG-ként megy el');
           const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
           assert.equal(overflow, false);
         } finally { await browser.close(); }

@@ -224,8 +224,13 @@ function createCourtsApi({ courts, auth, io, botToken = '', bugs = null, rooms, 
   // Hibajelentések: a bot a várakozókat lekérdezi, kiposztolja a Discordra, majd késznek jelöli.
   bot.get('/bugreports', wrap((req, res) => res.json({ reports: bugs ? bugs.pending().slice(0, 20) : [] })));
   bot.post('/bugreports/:id/posted', wrap((req, res) => {
-    if (!bugs || !bugs.markPosted(String(req.params.id), req.body && req.body.ref)) throw new CourtError('not_found', 'Ismeretlen hibajelentés.', 404);
+    if (!bugs || !bugs.markPosted(String(req.params.id), req.body && req.body.ref, req.body && req.body.image)) throw new CourtError('not_found', 'Ismeretlen hibajelentés.', 404);
     res.json({ ok: true });
+  }));
+  bot.get('/bugreports/:id/image', wrap((req, res) => {
+    const f = bugs && bugs.imageFile(String(req.params.id));
+    if (!f) throw new CourtError('not_found', 'Nincs kép.', 404);
+    res.type(f.ext === 'jpg' ? 'image/jpeg' : 'image/' + f.ext).sendFile(f.path);
   }));
   bot.get('/bugreports/:id', wrap((req, res) => {
     const r = bugs && bugs.get(String(req.params.id));
