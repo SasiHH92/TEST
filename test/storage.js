@@ -40,14 +40,14 @@ function memPool() {
   const A = tmpFiles();
 
   await check('első indítás: a meglévő helyi fájl bekerül az adatbázisba, a hiányzó üres marad', async () => {
-    fs.writeFileSync(A.files.stats, JSON.stringify({ Alexhh: { vadlott: 1, bunos: 1, artatlan: 0, dijak: 0 } }));
+    fs.writeFileSync(A.files.stats, JSON.stringify({ Dubble_Gii: { vadlott: 1, bunos: 1, artatlan: 0, dijak: 0 } }));
     const s = createStorage({ pool, files: A.files, log: quiet, delayMs: 10 });
     const out = await s.hydrate();
     assert.equal(out.enabled, true);
     assert.equal(out.result.stats, 'helyi fájl felvive');
     assert.equal(out.result.accounts, 'üres');
     const rows = (await pool.query("SELECT value FROM kb_store WHERE name = 'stats'")).rows;
-    assert.equal(rows[0].value.Alexhh.bunos, 1);
+    assert.equal(rows[0].value.Dubble_Gii.bunos, 1);
   });
 
   await check('mentés után a változás feltöltődik (push + flush)', async () => {
@@ -68,7 +68,7 @@ function memPool() {
     const s = createStorage({ pool, files: B.files, log: quiet });
     const out = await s.hydrate();
     assert.equal(out.result.stats, 'adatbázisból');
-    assert.equal(JSON.parse(fs.readFileSync(B.files.stats, 'utf8')).Alexhh.bunos, 1);
+    assert.equal(JSON.parse(fs.readFileSync(B.files.stats, 'utf8')).Dubble_Gii.bunos, 1);
     assert.equal(JSON.parse(fs.readFileSync(B.files.avatars, 'utf8')).Izsván, 'av07');
     assert.equal(JSON.parse(fs.readFileSync(B.files.accounts, 'utf8')).users[0].id, 'u1');
   });
@@ -78,7 +78,7 @@ function memPool() {
     fs.writeFileSync(C.files.stats, JSON.stringify({ regi: true }));
     const s = createStorage({ pool, files: C.files, log: quiet });
     await s.hydrate();
-    assert.ok(JSON.parse(fs.readFileSync(C.files.stats, 'utf8')).Alexhh);
+    assert.ok(JSON.parse(fs.readFileSync(C.files.stats, 'utf8')).Dubble_Gii);
   });
 
   await check('sérült helyi fájlt nem tölt fel az adatbázisba', async () => {
@@ -88,7 +88,7 @@ function memPool() {
     await s.flush();
     await wait(30);
     const v = (await pool.query("SELECT value FROM kb_store WHERE name = 'stats'")).rows[0].value;
-    assert.equal(v.Alexhh.bunos, 1);
+    assert.equal(v.Dubble_Gii.bunos, 1);
   });
 
   await check('adatbázis-hiba nem dönti le a folyamatot (push hibája naplózódik)', async () => {

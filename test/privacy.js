@@ -87,7 +87,7 @@ async function main() {
   fs.writeFileSync(FILES.stats, JSON.stringify({
     'Anna Torlo': { vadlott: 2, bunos: 1, artatlan: 1, dijak: 0 },
     'Bela Marad': { vadlott: 3, bunos: 3, artatlan: 0, dijak: 1 },
-    Alexhh: { vadlott: 5, bunos: 4, artatlan: 1, dijak: 2 }
+    Dubble_Gii: { vadlott: 5, bunos: 4, artatlan: 1, dijak: 2 }
   }));
   const child = spawn(process.execPath, ['server.js'], {
     cwd: root,
@@ -179,11 +179,11 @@ async function main() {
 
     await test('Legendás fiók törlése: a kártya statisztikája megmarad, a legenda újra igényelhető', async () => {
       const jar = new Map();
-      const claim = () => http('POST', '/api/auth/register', { username: 'x', legend: 'Alexhh', claim: legendCode(SECRET, 'Alexhh'), email: crypto.randomUUID() + '@example.invalid', password, confirmPassword: password }, jar);
+      const claim = () => http('POST', '/api/auth/register', { username: 'x', legend: 'Dubble_Gii', claim: legendCode(SECRET, 'Dubble_Gii'), email: crypto.randomUUID() + '@example.invalid', password, confirmPassword: password }, jar);
       assert.equal((await claim()).status, 201);
       assert.equal((await http('POST', '/api/auth/delete', { password }, jar)).status, 200);
       await pause(900);
-      assert.equal(readJson(FILES.stats).Alexhh.bunos, 4, 'a legenda nyilvántartása megmaradt');
+      assert.equal(readJson(FILES.stats).Dubble_Gii.bunos, 4, 'a legenda nyilvántartása megmaradt');
       assert.equal((await claim()).status, 201, 'a legenda újra igényelhető');
     });
 

@@ -241,23 +241,23 @@ async function main() {
     // ---------- avatár ----------
     const password = 'Egy hosszú titok 123!';
     await test('Avatár: igényelt legenda kártyáját csak a gazdája írhatja át (bejelentkezve); az igényeletlen szabad, de korlátozott', async () => {
-      // igénylés: Alexhh fiókot kap
+      // igénylés: Dubble_Gii fiókot kap
       const jar = new Map();
-      const claim = await http('POST', '/api/auth/register', { username: 'x', legend: 'Alexhh', claim: legendCode(SECRET, 'Alexhh'), email: 'alex@example.invalid', password, confirmPassword: password }, jar);
+      const claim = await http('POST', '/api/auth/register', { username: 'x', legend: 'Dubble_Gii', claim: legendCode(SECRET, 'Dubble_Gii'), email: 'alex@example.invalid', password, confirmPassword: password }, jar);
       assert.equal(claim.status, 201, 'a legenda igénylése sikerült');
 
       const stranger = await connect();
-      stranger.emit('set_avatar', { name: 'Alexhh', avatar: 'av33' });
+      stranger.emit('set_avatar', { name: 'Dubble_Gii', avatar: 'av33' });
       await pause(800);
-      assert.notEqual(savedAvatars().Alexhh, 'av33', 'idegen nem írhatja át az igényelt legenda avatárját');
+      assert.notEqual(savedAvatars().Dubble_Gii, 'av33', 'idegen nem írhatja át az igényelt legenda avatárját');
 
       const owner = await connect();
       const ticket = (await http('POST', '/api/friends/ticket', {}, jar)).data.ticket;
       const idr = await emit(owner, 'identify', { ticket });
       assert.equal(idr.account, true, 'a fiók azonosítva');
-      owner.emit('set_avatar', { name: 'Alexhh', avatar: 'av34' });
+      owner.emit('set_avatar', { name: 'Dubble_Gii', avatar: 'av34' });
       await pause(800);
-      assert.equal(savedAvatars().Alexhh, 'av34', 'a gazdája átírhatja');
+      assert.equal(savedAvatars().Dubble_Gii, 'av34', 'a gazdája átírhatja');
 
       // igényeletlen legenda: szabad, de egy kapcsolatról nem sűrűn
       const guest = await connect();

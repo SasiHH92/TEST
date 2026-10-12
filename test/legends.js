@@ -1,7 +1,7 @@
 'use strict';
 // ============================================================
 // KAMU BÍRÓSÁG – a legendás tesztelők egyedi kerete
-// - a 12 nyilvántartott játékos mindegyikének más a kerete, a stíluslapban mind definiálva van (mozgással),
+// - a 6 nyilvántartott játékos mindegyikének más a kerete, a stíluslapban mind definiálva van (mozgással),
 // - a keretek a boltban nem kaphatók, és fiókkal sem hamisíthatók,
 // - a szerver a nyilvántartási névre rárakja a keretet és a LEGENDA feliratot (lobbi, tárgyalás, ponttábla ugyanazt kapja),
 // - a kliens a ponttáblán is megjeleníti a keretet és a névhatást.
@@ -44,11 +44,11 @@ const css = fs.readFileSync(path.join(root, 'public', 'style.css'), 'utf8');
 const client = fs.readFileSync(path.join(root, 'public', 'client.js'), 'utf8');
 
 async function main() {
-  await test('12 legendás tesztelő van, mindegyiknek más a kerete', async () => {
-    assert.equal(players.length, 12);
+  await test('6 legendás tesztelő van, mindegyiknek más a kerete', async () => {
+    assert.equal(players.length, 6);
     const frames = players.map((p) => p.keret);
     assert.ok(frames.every((f) => /^frame_[a-z]+$/.test(f)), 'minden keret frame_<betűk> alakú: ' + frames.join(', '));
-    assert.equal(new Set(frames).size, 12, 'a keretek mind különbözőek');
+    assert.equal(new Set(frames).size, 6, 'a keretek mind különbözőek');
   });
 
   await test('A legenda-keretek és -hátterek nem vásárolhatók és nem hamisíthatók: csak FELOLDHATÓ tárgyak, kizárólag a legenda gazdájáé (szekrény), ingyenesek, nem ajándékozhatók', async () => {
@@ -68,10 +68,10 @@ async function main() {
     for (const i of shop.targyak) if (legendIds.has(i.id)) assert.equal(i.feloldas, 'legend', i.id + ': vásárolható tárgy nem lehet legenda-azonosítójú');
   });
 
-  await test('12 egyedi háttér van, mindegyiknek saját, mozgó stílusa a stíluslapban', async () => {
+  await test('6 egyedi háttér van, mindegyiknek saját, mozgó stílusa a stíluslapban', async () => {
     const bgs = players.map((p) => p.hatter);
     assert.ok(bgs.every((b) => /^bg_[a-z]+$/.test(b)), 'minden háttér bg_<betűk> alakú: ' + bgs.join(', '));
-    assert.equal(new Set(bgs).size, 12, 'a hátterek mind különbözőek');
+    assert.equal(new Set(bgs).size, 6, 'a hátterek mind különbözőek');
     const bodies = new Set();
     for (const p of players) {
       const cls = '.mug-card.cos-bg-' + p.hatter.replace(/^bg_/, '');
@@ -130,7 +130,7 @@ async function main() {
     await test('A nyilvántartás a keretet is elküldi a névválasztónak', async () => {
       const s = await connect();
       const res = await emit(s, 'get_registry', {});
-      assert.equal(res.registry.length, 12);
+      assert.equal(res.registry.length, 6);
       for (const p of players) {
         const r = res.registry.find((x) => x.nev === p.nev);
         assert.equal(r.keret, p.keret, p.nev); assert.equal(r.hatter, p.hatter, p.nev);
@@ -147,25 +147,22 @@ async function main() {
       assert.deepEqual(me.cosm, { frame: 'frame_founder', bg: 'bg_founder', labelText: 'LEGENDA' }, 'a kliens által küldött cosm nem számít');
       assert.ok(!me.acct, 'az acct jelzőt sem lehet hamisítani');
       // egy másik legenda, és egy nem legenda
-      const marci = await connect(), Marci = await connect(), other = await connect();
+      const szip = await connect(), izs = await connect(), other = await connect();
       const cosmIn = (st, name) => st.players.find((p) => p.name === name)?.profile?.cosm;
-      const a = await emit(marci, 'join_room', { code: created.code, name: 'marci', playerId: 'm1' });
+      const a = await emit(szip, 'join_room', { code: created.code, name: 'Szipuska', playerId: 'm1' });
       assert.ok(!a.error, a.error);
-      assert.equal(cosmIn(a.state, 'marci')?.frame, 'frame_lazy');
-      assert.equal(cosmIn(a.state, 'marci')?.labelText, 'LEGENDA');
-      assert.equal(cosmIn(a.state, 'marci')?.bg, 'bg_lazy');
-      // (a szobában a nevek kis/nagybetű nélkül egyediek: a másik Marci csak az első kilépése után jöhet)
-      assert.match((await emit(Marci, 'join_room', { code: created.code, name: 'Marci', playerId: 'm2' })).error, /ŐRIZETBEN/);
-      await emit(marci, 'leave_room');
-      const b = await emit(Marci, 'join_room', { code: created.code, name: 'Marci', playerId: 'm2' });
+      assert.equal(cosmIn(a.state, 'Szipuska')?.frame, 'frame_recruit');
+      assert.equal(cosmIn(a.state, 'Szipuska')?.labelText, 'LEGENDA');
+      assert.equal(cosmIn(a.state, 'Szipuska')?.bg, 'bg_recruit');
+      const b = await emit(izs, 'join_room', { code: created.code, name: 'Izsván', playerId: 'm2' });
       assert.ok(!b.error, b.error);
-      assert.equal(cosmIn(b.state, 'Marci')?.frame, 'frame_twin', 'a másik Marci másik legenda, más kerettel');
-      assert.notEqual(cosmIn(a.state, 'marci').frame, cosmIn(b.state, 'Marci').frame);
+      assert.equal(cosmIn(b.state, 'Izsván')?.frame, 'frame_pill', 'másik legenda, más kerettel');
+      assert.notEqual(cosmIn(a.state, 'Szipuska').frame, cosmIn(b.state, 'Izsván').frame);
       const c = await emit(other, 'join_room', { code: created.code, name: 'Valaki Mas', playerId: 'v1', profile: { cosm: { frame: 'frame_glitch' } } });
       assert.ok(!c.error, c.error);
       assert.ok(!cosmIn(c.state, 'Valaki Mas'), 'nem legenda: a kliens nem adhat magának keretet');
-      assert.equal(cosmIn(c.state, 'Marci')?.frame, 'frame_twin', 'a többiek is ugyanazt a keretet látják');
-      for (const s of [host, marci, Marci, other]) s.disconnect();
+      assert.equal(cosmIn(c.state, 'Izsván')?.frame, 'frame_pill', 'a többiek is ugyanazt a keretet látják');
+      for (const s of [host, szip, izs, other]) s.disconnect();
     });
 
     await test('Szerver-hibák nélkül lefutott', async () => {

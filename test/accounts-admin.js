@@ -86,7 +86,7 @@ async function main() {
       assert.ok(row.tempPasswordExpiresAt > Date.now() + 13 * 86400000, 'kb. 14 napig érvényes');
       assert.ok(!list.text.includes(annaPw), 'a jelszó nincs a listában');
       assert.ok(!/"hash"|"salt"|scrypt/.test(list.text), 'a kivonat nincs a listában');
-      assert.ok(list.data.legends.includes('Kyrashi'), 'a legendák neve a választóhoz');
+      assert.ok(list.data.legends.includes('Szipuska'), 'a legendák neve a választóhoz');
     });
 
     await test('Két fiók ideiglenes jelszava különbözik, és az e-mail kisbetűsítve tárolódik', async () => {
@@ -109,14 +109,14 @@ async function main() {
     });
 
     await test('Legendához kötött fiók: a név és a kártya a legendáé, egy legenda egyszer adható', async () => {
-      const r = await admin('POST', '/accounts', { email: 'kyrashi@example.invalid', legend: 'Kyrashi' });
+      const r = await admin('POST', '/accounts', { email: 'szipuska@example.invalid', legend: 'Szipuska' });
       assert.equal(r.status, 201, r.text);
-      assert.equal(r.data.username, 'Kyrashi'); assert.equal(r.data.legend, 'Kyrashi');
+      assert.equal(r.data.username, 'Szipuska'); assert.equal(r.data.legend, 'Szipuska');
       const jar = new Map();
-      const l = await login('kyrashi@example.invalid', r.data.temporaryPassword, jar);
+      const l = await login('szipuska@example.invalid', r.data.temporaryPassword, jar);
       assert.equal(l.status, 200, l.text);
-      assert.equal(l.data.user.legend, 'Kyrashi'); assert.equal(l.data.user.profile.titulus, 'A szörny'); assert.equal(l.data.user.mustChangePassword, true);
-      const again = await admin('POST', '/accounts', { email: 'masik@example.invalid', legend: 'Kyrashi' });
+      assert.equal(l.data.user.legend, 'Szipuska'); assert.equal(l.data.user.profile.titulus, 'A toborzó'); assert.equal(l.data.user.mustChangePassword, true);
+      const again = await admin('POST', '/accounts', { email: 'masik@example.invalid', legend: 'Szipuska' });
       assert.equal(again.status, 409); assert.match(again.data.error, /már igényelték/);
       // a legenda pontos neve beírva a név mezőbe is a legendához köti
       const typed = await admin('POST', '/accounts', { username: 'Izsván', email: 'izsvan@example.invalid' });
@@ -283,10 +283,10 @@ async function main() {
       assert.equal((await admin('POST', '/accounts/delete', { id: yId, confirmName: 'Barat Yvett' })).status, 200);
       assert.ok(!JSON.stringify((await http('GET', '/api/friends/state', undefined, jx)).data).includes('Barat Yvett'), 'a törölt fiók kikerült a barátlistából');
       // a legendás fiók törlése után a legenda újra odaadható
-      const kyr = (await admin('GET', '/accounts')).data.accounts.find((a) => a.legend === 'Kyrashi');
-      assert.equal((await admin('POST', '/accounts/delete', { id: kyr.id, confirmName: 'Kyrashi' })).status, 200);
-      const back = await admin('POST', '/accounts', { email: 'kyrashi2@example.invalid', legend: 'Kyrashi' });
-      assert.equal(back.status, 201, back.text); assert.equal(back.data.legend, 'Kyrashi');
+      const kyr = (await admin('GET', '/accounts')).data.accounts.find((a) => a.legend === 'Szipuska');
+      assert.equal((await admin('POST', '/accounts/delete', { id: kyr.id, confirmName: 'Szipuska' })).status, 200);
+      const back = await admin('POST', '/accounts', { email: 'szipuska2@example.invalid', legend: 'Szipuska' });
+      assert.equal(back.status, 201, back.text); assert.equal(back.data.legend, 'Szipuska');
     });
 
     // ---------- lejárt ideiglenes jelszó: a tárolt lejáratot átírjuk, és újraindítjuk a szervert ----------

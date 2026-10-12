@@ -124,9 +124,9 @@ async function startServer() {
       await ap.fill('#acctFilter', 'nincs-ilyen');
       assert.match(await ap.textContent('#acctList'), /Nincs találat/);
       await ap.fill('#acctFilter', '');
-      await ap.selectOption('#newLegend', 'Kyrashi'); await ap.fill('#newEmail', 'ui.kyrashi@example.invalid'); await ap.click('#newAcctBtn');
-      await ap.waitForFunction(() => /Kyrashi/.test(document.getElementById('acctResult').textContent) && /legenda/.test(document.getElementById('acctResult').textContent));
-      const kp = (await ap.textContent('#acctResult .pw')).trim(); assert.match(kp, TEMP_RE); created.Kyrashi = kp;
+      await ap.selectOption('#newLegend', 'Szipuska'); await ap.fill('#newEmail', 'ui.szipuska@example.invalid'); await ap.click('#newAcctBtn');
+      await ap.waitForFunction(() => /Szipuska/.test(document.getElementById('acctResult').textContent) && /legenda/.test(document.getElementById('acctResult').textContent));
+      const kp = (await ap.textContent('#acctResult .pw')).trim(); assert.match(kp, TEMP_RE); created.Szipuska = kp;
       await ap.waitForFunction(() => /5 regisztrált/.test(document.getElementById('acctSummary').textContent));
       assert.match(await ap.textContent('#acctList'), /legenda/);
     });
@@ -161,7 +161,7 @@ async function startServer() {
       await ap.waitForSelector('#acctChips .chip');
       await ap.click('#acctChips .chip:has-text("Legenda")');
       assert.equal(await ap.$$eval('#acctList .acct', (e) => e.length), 1);
-      assert.match(await ap.textContent('#acctList'), /Kyrashi/);
+      assert.match(await ap.textContent('#acctList'), /Szipuska/);
       assert.equal(await ap.getAttribute('#acctChips .chip:has-text("Legenda")', 'aria-pressed'), 'true');
       await ap.click('#acctChips .chip:has-text("Mind")');
       assert.equal(await ap.$$eval('#acctList .acct', (e) => e.length), 5);
@@ -171,7 +171,7 @@ async function startServer() {
       await ap.selectOption('#acctSort', 'oldest');
       assert.equal((await ap.$$eval('#acctList .acct-name b', (e) => e.map((x) => x.textContent)))[0], 'Ui Anna', 'a legrégebbi elöl');
       await ap.selectOption('#acctSort', 'newest');
-      assert.equal((await ap.$$eval('#acctList .acct-name b', (e) => e.map((x) => x.textContent)))[0], 'Kyrashi', 'a legújabb elöl');
+      assert.equal((await ap.$$eval('#acctList .acct-name b', (e) => e.map((x) => x.textContent)))[0], 'Szipuska', 'a legújabb elöl');
       await ap.click('#acctChips .chip:has-text("Google")');
       assert.match(await ap.textContent('#acctList'), /Nincs találat/);
       await ap.click('#acctChips .chip:has-text("Mind")');

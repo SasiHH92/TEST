@@ -192,7 +192,7 @@ async function testStatsRecorded() {
   for (let i = 0; i < 3; i++) clients.push(await connect());
   const created = await emit(clients[0], 'create_room', { name: '2CORE', avatar: 'paróka', playerId: 's0', profile: { titulus: 't', priusz: 'p', jelveny: '' } });
   const code = created.code;
-  const joinerName = (i) => (i === 1 ? 'Szipuska' : 'marci');
+  const joinerName = (i) => (i === 1 ? 'Szipuska' : 'H3roMarci');
   for (let i = 1; i < 3; i++) {
     const prof = PLAYERS.players.find((p) => p.nev === joinerName(i));
     const joined = await emit(clients[i], 'join_room', { code, name: joinerName(i), avatar: 'paróka', playerId: 's' + i, profile: { titulus: prof.titulus, priusz: prof.priusz, jelveny: prof.jelveny } });
@@ -205,7 +205,7 @@ async function testStatsRecorded() {
   const acc = await waitState(clients[0], (s) => s.phase === 'accusation');
   const defId = acc.defendantId;
   const defName = acc.players.find((p) => p.id === defId).name;
-  check('a vádlott előre megadott játékos (2CORE, Szipuska vagy marci)', ['2CORE', 'Szipuska', 'marci'].includes(defName));
+  check('a vádlott előre megadott játékos (2CORE, Szipuska vagy H3roMarci)', ['2CORE', 'Szipuska', 'H3roMarci'].includes(defName));
 
   await fire(clients[0], 'accusation_read');
   await waitState(clients[0], (s) => s.phase === 'prosecution', 20000);

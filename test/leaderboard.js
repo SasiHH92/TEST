@@ -94,7 +94,7 @@ async function main() {
   // ---------------- valódi szerver ----------------
   const today = budapestDate();
   const seeded = {
-    'Kyrashi': { pont: 500, gyozelem: 10, jatek: 20, weekly: { week: weekStart(today), counts: { pont: 40, jatek: 3 } } },
+    'Szipuska': { pont: 500, gyozelem: 10, jatek: 20, weekly: { week: weekStart(today), counts: { pont: 40, jatek: 3 } } },
     'Vendeg Egy': { pont: 200, gyozelem: 3, jatek: 8, weekly: { week: weekStart(today), counts: { pont: 90, jatek: 4 } } },
     'Regi Hetes': { pont: 900, gyozelem: 9, jatek: 9, weekly: { week: '2020-01-06', counts: { pont: 900, jatek: 9 } } }
   };
@@ -116,11 +116,11 @@ async function main() {
     await test('A végpont nyilvános, a heti és összesített listát adja, a legendát megjelöli, a régi hét nem számít', async () => {
       const all = await get('?period=osszes&metric=pont');
       assert.equal(all.status, 200);
-      assert.deepEqual(all.data.rows.map((r) => r.name), ['Regi Hetes', 'Kyrashi', 'Vendeg Egy']);
-      assert.equal(all.data.rows.find((r) => r.name === 'Kyrashi').legend, true, 'legenda-jelző');
+      assert.deepEqual(all.data.rows.map((r) => r.name), ['Regi Hetes', 'Szipuska', 'Vendeg Egy']);
+      assert.equal(all.data.rows.find((r) => r.name === 'Szipuska').legend, true, 'legenda-jelző');
       assert.equal(all.data.rows.find((r) => r.name === 'Vendeg Egy').legend, false);
       const heti = await get('?period=heti&metric=pont');
-      assert.deepEqual(heti.data.rows.map((r) => r.name + ':' + r.value), ['Vendeg Egy:90', 'Kyrashi:40']);
+      assert.deepEqual(heti.data.rows.map((r) => r.name + ':' + r.value), ['Vendeg Egy:90', 'Szipuska:40']);
       assert.equal(heti.data.weekStart, weekStart(today));
       assert.ok(heti.data.resetsInMs > 0 && heti.data.resetsInMs <= 7 * 86400000 + 3600000);
       assert.ok(heti.data.metrics.pont && heti.data.metrics.gyozelem);

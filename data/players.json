@@ -33,14 +33,6 @@
       "hatter": "bg_hero"
     },
     {
-      "nev": "Kyrashi",
-      "jelveny": "Rogue",
-      "titulus": "A szörny",
-      "priusz": "Saját bevallása szerint ő a szörny. RAWR. A bíróság ezt beismerő vallomásnak tekinti.",
-      "keret": "frame_monster",
-      "hatter": "bg_monster"
-    },
-    {
       "nev": "Sanyi/Sasi",
       "jelveny": "",
       "titulus": "A Bíróság alapítója",
@@ -49,52 +41,12 @@
       "hatter": "bg_founder"
     },
     {
-      "nev": "Alexhh",
-      "jelveny": "WOW",
-      "titulus": "A csaló álszerény",
-      "priusz": "'Jelzem nem vagyok jó benne' — mondta, mielőtt mindenkit lealázott.",
-      "keret": "frame_wow",
-      "hatter": "bg_wow"
-    },
-    {
-      "nev": "Collie",
-      "jelveny": "ABOO",
-      "titulus": "Az ismeretlen tényező",
-      "priusz": "Ritkán látják. Talán ezért gyanús.",
-      "keret": "frame_ghost",
-      "hatter": "bg_ghost"
-    },
-    {
-      "nev": "marci",
-      "jelveny": "",
-      "titulus": "Az örök 'majd'",
-      "priusz": "Belép a hívásba, aztán magában játszik. Kétszer is regisztrált, hogy duplán ne jöjjön.",
-      "keret": "frame_lazy",
-      "hatter": "bg_lazy"
-    },
-    {
-      "nev": "Marci",
-      "jelveny": "",
-      "titulus": "A másik Marci",
-      "priusz": "A nyomozók máig nem tudják, melyik Marci melyik.",
-      "keret": "frame_twin",
-      "hatter": "bg_twin"
-    },
-    {
       "nev": "Szipuska",
       "jelveny": "",
       "titulus": "A toborzó",
       "priusz": "'Akinek van kedve, az jöjjön.' Senkinek nincs, de ő jön.",
       "keret": "frame_recruit",
       "hatter": "bg_recruit"
-    },
-    {
-      "nev": "UltraGoku996",
-      "jelveny": "ICE",
-      "titulus": "A jéghideg",
-      "priusz": "996-os szintű Goku. Az előző 999 eltűnt.",
-      "keret": "frame_ultra",
-      "hatter": "bg_ultra"
     }
   ],
   "vendeg_priuszok": [

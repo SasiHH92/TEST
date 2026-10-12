@@ -132,7 +132,7 @@ Minden legendás tesztelő a saját kártyájához kapcsolt fiókot kaphat: egy 
    ```powershell
    $env:LEGEND_SECRET = '<a titok>'; node scripts/legend-links.js https://test-1-ndkt.onrender.com
    ```
-   A szkript mind a 12 legendának kiír egy linket (`/?legend=<név>&claim=<kód>`). A kód a titokból és a névből számolt HMAC, a szerver újraszámolja, nincs tárolt kód.
+   A szkript mind a 6 legendának kiír egy linket (`/?legend=<név>&claim=<kód>`). A kód a titokból és a névből számolt HMAC, a szerver újraszámolja, nincs tárolt kód.
 3. **A tesztelő** megnyitja a linkjét → a regisztrációs űrlapon a neve zárolva van, megadja az e-mailjét és jelszavát → kész. Egy legendát egyszer lehet igényelni. Az igényelt kártyát attól kezdve csak a gazdája használhatja (bejelentkezve); a névválasztón mások számára „A GAZDÁJÁÉ” felirattal zárolt. A neve nem módosítható, a vicces szövegei igen. Később Google/Discord is összekapcsolható a fiókhoz.
 4. **Tesztek:** `npm run test:claims`.
 

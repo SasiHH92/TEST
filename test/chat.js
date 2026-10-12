@@ -90,10 +90,10 @@ async function main() {
 
     await test('Nyilvántartott (legendás) név csak pontosan, a kártyájával; a kis/nagybetűs másolat tilos', async () => {
       const guest = await connect();
-      for (const name of ['kyrashi', 'KYRASHI', 'sanyi/sasi', 'ULTRAGOKU996', 'h3romarci']) {
+      for (const name of ['szipuska', 'SZIPUSKA', 'sanyi/sasi', 'IZSVÁN', 'h3romarci']) {
         assert.match((await emit(guest, 'check_name', { name })).error, /nyilvántartott/, name);
       }
-      for (const name of ['Kyrashi', 'marci', 'Marci', 'Sanyi/Sasi']) {
+      for (const name of ['Szipuska', 'H3roMarci', 'Izsván', 'Sanyi/Sasi']) {
         assert.ok((await emit(guest, 'check_name', { name })).ok, 'pontos név a kártyával: ' + name);
         assert.match((await emit(guest, 'check_name', { name, guest: true })).error, /nyilvántartott játékos neve/, 'a vendég-névmezőbe nem írható: ' + name);
       }
@@ -247,8 +247,8 @@ async function main() {
 
     await test('Közös tér: legenda neve vendégként tilos, a sebesség- és ismétlés-szűrés működik', async () => {
       const g = await connect(); await sub(g);
-      assert.match((await emit(g, 'board_send', { text: 'én vagyok', name: 'Kyrashi' })).error, /nyilvántartott/);
-      assert.match((await emit(g, 'board_send', { text: 'én vagyok', name: 'kyrashi' })).error, /nyilvántartott/);
+      assert.match((await emit(g, 'board_send', { text: 'én vagyok', name: 'Szipuska' })).error, /nyilvántartott/);
+      assert.match((await emit(g, 'board_send', { text: 'én vagyok', name: 'szipuska' })).error, /nyilvántartott/);
       assert.match((await emit(g, 'board_send', { text: 'én vagyok', name: 'Anna Teszt' })).error, /regisztrált/, 'regisztrált név vendégnek nem');
       assert.ok((await emit(g, 'board_send', { text: 'egy', name: 'Gyors Vendeg' })).ok);
       assert.match((await emit(g, 'board_send', { text: 'kettő', name: 'Gyors Vendeg' })).error, /Lassabban/, 'túl gyors');

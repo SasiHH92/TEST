@@ -395,26 +395,6 @@
       "legenda": "H3roMarci"
     },
     {
-      "id": "frame_monster",
-      "slot": "frame",
-      "nev": "Kyrashi – egyedi keret",
-      "leiras": "A legendás kártyád egyedi kerete. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "Kyrashi"
-    },
-    {
-      "id": "bg_monster",
-      "slot": "bg",
-      "nev": "Kyrashi – egyedi kártyahát",
-      "leiras": "A legendás kártyád egyedi háttere. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "Kyrashi"
-    },
-    {
       "id": "frame_founder",
       "slot": "frame",
       "nev": "Sanyi/Sasi – egyedi keret",
@@ -435,86 +415,6 @@
       "legenda": "Sanyi/Sasi"
     },
     {
-      "id": "frame_wow",
-      "slot": "frame",
-      "nev": "Alexhh – egyedi keret",
-      "leiras": "A legendás kártyád egyedi kerete. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "Alexhh"
-    },
-    {
-      "id": "bg_wow",
-      "slot": "bg",
-      "nev": "Alexhh – egyedi kártyahát",
-      "leiras": "A legendás kártyád egyedi háttere. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "Alexhh"
-    },
-    {
-      "id": "frame_ghost",
-      "slot": "frame",
-      "nev": "Collie – egyedi keret",
-      "leiras": "A legendás kártyád egyedi kerete. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "Collie"
-    },
-    {
-      "id": "bg_ghost",
-      "slot": "bg",
-      "nev": "Collie – egyedi kártyahát",
-      "leiras": "A legendás kártyád egyedi háttere. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "Collie"
-    },
-    {
-      "id": "frame_lazy",
-      "slot": "frame",
-      "nev": "marci – egyedi keret",
-      "leiras": "A legendás kártyád egyedi kerete. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "marci"
-    },
-    {
-      "id": "bg_lazy",
-      "slot": "bg",
-      "nev": "marci – egyedi kártyahát",
-      "leiras": "A legendás kártyád egyedi háttere. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "marci"
-    },
-    {
-      "id": "frame_twin",
-      "slot": "frame",
-      "nev": "Marci – egyedi keret",
-      "leiras": "A legendás kártyád egyedi kerete. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "Marci"
-    },
-    {
-      "id": "bg_twin",
-      "slot": "bg",
-      "nev": "Marci – egyedi kártyahát",
-      "leiras": "A legendás kártyád egyedi háttere. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "Marci"
-    },
-    {
       "id": "frame_recruit",
       "slot": "frame",
       "nev": "Szipuska – egyedi keret",
@@ -533,26 +433,6 @@
       "ritkasag": "legendás",
       "feloldas": "legend",
       "legenda": "Szipuska"
-    },
-    {
-      "id": "frame_ultra",
-      "slot": "frame",
-      "nev": "UltraGoku996 – egyedi keret",
-      "leiras": "A legendás kártyád egyedi kerete. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "UltraGoku996"
-    },
-    {
-      "id": "bg_ultra",
-      "slot": "bg",
-      "nev": "UltraGoku996 – egyedi kártyahát",
-      "leiras": "A legendás kártyád egyedi háttere. Nem vásárolható és nem ajándékozható: a legendás kártyáddal jár, bármikor visszaveheted.",
-      "ar": 0,
-      "ritkasag": "legendás",
-      "feloldas": "legend",
-      "legenda": "UltraGoku996"
     }
   ]
 }

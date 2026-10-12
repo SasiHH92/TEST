@@ -84,25 +84,25 @@ async function main() {
     });
 
     await test('Érvénytelen vagy hiányzó kóddal nincs igénylés; igénylés nélkül a legenda neve foglalt', async () => {
-      assert.equal((await claim(new Map(), 'Kyrashi', 'x'.repeat(22), 'a@example.invalid')).status, 403, 'hamis kód');
-      assert.equal((await claim(new Map(), 'Kyrashi', legendCode('masik-titok-0123456789abcdef', 'Kyrashi'), 'a@example.invalid')).status, 403, 'másik titokból számolt kód');
-      assert.equal((await claim(new Map(), 'Kyrashi', legendCode(SECRET, 'Izsván'), 'a@example.invalid')).status, 403, 'másik legenda kódja');
-      assert.equal((await claim(new Map(), 'Kyrashi', undefined, 'a@example.invalid')).status, 403, 'kód nélkül');
+      assert.equal((await claim(new Map(), 'Dubble_Gii', 'x'.repeat(22), 'a@example.invalid')).status, 403, 'hamis kód');
+      assert.equal((await claim(new Map(), 'Dubble_Gii', legendCode('masik-titok-0123456789abcdef', 'Dubble_Gii'), 'a@example.invalid')).status, 403, 'másik titokból számolt kód');
+      assert.equal((await claim(new Map(), 'Dubble_Gii', legendCode(SECRET, 'Izsván'), 'a@example.invalid')).status, 403, 'másik legenda kódja');
+      assert.equal((await claim(new Map(), 'Dubble_Gii', undefined, 'a@example.invalid')).status, 403, 'kód nélkül');
       assert.equal((await claim(new Map(), 'Nincs Ilyen', legendCode(SECRET, 'Nincs Ilyen'), 'a@example.invalid')).status, 403, 'nem legenda');
-      const plain = await http('POST', '/api/auth/register', { username: 'Kyrashi', email: 'p@example.invalid', password, confirmPassword: password }, new Map());
+      const plain = await http('POST', '/api/auth/register', { username: 'Dubble_Gii', email: 'p@example.invalid', password, confirmPassword: password }, new Map());
       assert.equal(plain.status, 409, 'kód nélkül a legenda neve továbbra is foglalt');
     });
 
-    const kyrashiJar = new Map();
+    const dubble_giiJar = new Map();
     await test('Érvényes kóddal a fiók a legenda pontos nevén jön létre, a legenda adataival', async () => {
-      const r = await claim(kyrashiJar, 'Kyrashi', legendCode(SECRET, 'Kyrashi'), 'kyrashi@example.invalid');
+      const r = await claim(dubble_giiJar, 'Dubble_Gii', legendCode(SECRET, 'Dubble_Gii'), 'dubble_gii@example.invalid');
       assert.equal(r.status, 201, JSON.stringify(r.data));
-      assert.equal(r.data.user.username, 'Kyrashi', 'a kliens által küldött név nem számít');
-      assert.equal(r.data.user.legend, 'Kyrashi');
-      assert.equal(r.data.user.profile.titulus, 'A szörny');
-      assert.equal(r.data.user.profile.jelveny, 'ROGUE');
-      const status = await http('GET', '/api/auth/status', undefined, kyrashiJar);
-      assert.equal(status.data.user.legend, 'Kyrashi', 'be is van jelentkezve');
+      assert.equal(r.data.user.username, 'Dubble_Gii', 'a kliens által küldött név nem számít');
+      assert.equal(r.data.user.legend, 'Dubble_Gii');
+      assert.equal(r.data.user.profile.titulus, 'A titokzatos');
+      assert.equal(r.data.user.profile.jelveny, 'FS');
+      const status = await http('GET', '/api/auth/status', undefined, dubble_giiJar);
+      assert.equal(status.data.user.legend, 'Dubble_Gii', 'be is van jelentkezve');
     });
 
     await test('A "/" jeles nevű legenda (Sanyi/Sasi) is igényelhető', async () => {
@@ -112,15 +112,15 @@ async function main() {
     });
 
     await test('Egy legendát egyszer lehet igényelni', async () => {
-      const again = await claim(new Map(), 'Kyrashi', legendCode(SECRET, 'Kyrashi'), 'masik@example.invalid');
+      const again = await claim(new Map(), 'Dubble_Gii', legendCode(SECRET, 'Dubble_Gii'), 'masik@example.invalid');
       assert.equal(again.status, 409);
       assert.match(again.data.error, /már igényelték/);
     });
 
     await test('A név nem módosítható, a szövegek igen', async () => {
-      const rename = await http('POST', '/api/auth/profile', { username: 'Valami Mas', titulus: 'x', priusz: 'y', jelveny: '', avatar: '' }, kyrashiJar);
+      const rename = await http('POST', '/api/auth/profile', { username: 'Valami Mas', titulus: 'x', priusz: 'y', jelveny: '', avatar: '' }, dubble_giiJar);
       assert.equal(rename.status, 400); assert.match(rename.data.error, /nem módosítható/);
-      const edit = await http('POST', '/api/auth/profile', { username: 'Kyrashi', titulus: 'A szörny, aki fiókot kapott', priusz: 'Most már hivatalosan is itt van.', jelveny: 'ROGUE', avatar: 'av07' }, kyrashiJar);
+      const edit = await http('POST', '/api/auth/profile', { username: 'Dubble_Gii', titulus: 'A szörny, aki fiókot kapott', priusz: 'Most már hivatalosan is itt van.', jelveny: 'ROGUE', avatar: 'av07' }, dubble_giiJar);
       assert.equal(edit.status, 200, JSON.stringify(edit.data));
       assert.equal(edit.data.user.profile.titulus, 'A szörny, aki fiókot kapott');
     });
@@ -128,20 +128,20 @@ async function main() {
     await test('Az igényelt kártyát csak a gazdája használhatja; a névválasztó jelzi a zárolást', async () => {
       const guest = await connect();
       const reg = await emit(guest, 'get_registry', {});
-      assert.equal(reg.registry.find((r) => r.nev === 'Kyrashi').claimed, true);
+      assert.equal(reg.registry.find((r) => r.nev === 'Dubble_Gii').claimed, true);
       assert.equal(reg.registry.find((r) => r.nev === 'Izsván').claimed, false, 'a nem igényelt szabad');
-      assert.match((await emit(guest, 'create_room', { name: 'Kyrashi', playerId: 'g1' })).error, /regisztrált/, 'vendég nem használhatja');
+      assert.match((await emit(guest, 'create_room', { name: 'Dubble_Gii', playerId: 'g1' })).error, /regisztrált/, 'vendég nem használhatja');
       assert.ok((await emit(guest, 'create_room', { name: 'Izsván', playerId: 'g2' })).code, 'a nem igényelt legenda továbbra is szabad');
       guest.disconnect();
       // a gazda: jegy + azonosítás után használhatja, rajta a legenda keret/háttér/felirat
       const owner = await connect();
-      const ticket = (await http('POST', '/api/friends/ticket', {}, kyrashiJar)).data.ticket;
+      const ticket = (await http('POST', '/api/friends/ticket', {}, dubble_giiJar)).data.ticket;
       assert.equal((await emit(owner, 'identify', { ticket })).account, true);
-      const created = await emit(owner, 'create_room', { name: 'Kyrashi', playerId: 'k1' });
+      const created = await emit(owner, 'create_room', { name: 'Dubble_Gii', playerId: 'k1' });
       assert.ok(created.code, JSON.stringify(created));
-      const me = created.state.players.find((p) => p.name === 'Kyrashi').profile;
+      const me = created.state.players.find((p) => p.name === 'Dubble_Gii').profile;
       assert.equal(me.acct, true);
-      assert.equal(me.cosm.frame, 'frame_monster'); assert.equal(me.cosm.bg, 'bg_monster'); assert.equal(me.cosm.labelText, 'LEGENDA');
+      assert.equal(me.cosm.frame, 'frame_mystic'); assert.equal(me.cosm.bg, 'bg_mystic'); assert.equal(me.cosm.labelText, 'LEGENDA');
       owner.disconnect();
     });
 
