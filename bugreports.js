@@ -12,6 +12,8 @@ const path = require('path');
 const crypto = require('crypto');
 
 const KEEP = 200;
+// A fejlesztők által állítható állapotok (a Discordon a jelentés alatti választóból).
+const STATUSES = ['new', 'progress', 'ice', 'done', 'wontfix', 'cantrepro'];
 const KINDS = { bug: 'Hiba', sound: 'Hang / Voice', ui: 'Kinézet / UI', room: 'Szoba / Lobby', other: 'Egyéb' };
 
 const clean = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(/\r\n?/g, '\n').trim().slice(0, max);
@@ -51,6 +53,7 @@ function createBugReports({ file, persist = () => {}, now = () => Date.now() }) 
         where: clean(where, 30),
         room: /^[A-Za-z0-9]{3,12}$/.test(String(room || '')) ? String(room) : '',
         userAgent: clean(userAgent, 160),
+        status: 'new',
         posted: null
       };
       data.items.push(item);
@@ -65,8 +68,19 @@ function createBugReports({ file, persist = () => {}, now = () => Date.now() }) 
       if (!it.posted) { it.posted = { at: now(), ref: clean(ref, 60) || 'ok' }; save(); }
       return true;
     },
+    get(id) { return data.items.find((i) => i.id === id) || null; },
+    // Állapot módosítása (a Discordon a stáb állítja). Ismeretlen azonosító / állapot: null.
+    setStatus(id, status, by) {
+      const it = data.items.find((i) => i.id === id);
+      if (!it || !STATUSES.includes(status)) return null;
+      it.status = status;
+      it.statusBy = clean(by, 60);
+      it.statusAt = now();
+      save();
+      return it;
+    },
     all() { return data.items.slice(); }
   };
 }
 
-module.exports = { createBugReports, KINDS };
+module.exports = { createBugReports, KINDS, STATUSES };

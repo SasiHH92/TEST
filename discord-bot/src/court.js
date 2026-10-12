@@ -108,7 +108,7 @@ const VOICE_ALLOW = [P.ViewChannel, P.Connect, P.Speak];
 const chatName = (s) => '⚖️・targyalas-' + String(s.id).replace(/^KAMU-/, '');
 const voiceName = (s) => '🔊 Tárgyalás #' + String(s.id).replace(/^KAMU-/, '');
 
-function createCourtSync({ client, backend, gameUrl = '', log = console, reconcileEveryMs = 60000, chatGraceMs = 10 * 60 * 1000, now = () => Date.now() }) {
+function createCourtSync({ client, backend, gameUrl = '', log = console, onBug = () => {}, reconcileEveryMs = 60000, chatGraceMs = 10 * 60 * 1000, now = () => Date.now() }) {
   const lastRender = new Map(); // id -> JSON (felesleges szerkesztés elkerülése)
   const cache = new Map();      // id -> legutóbbi backend-állapot (role-ütközések elkerülése)
   const chains = new Map();     // id -> Promise (egy tárgyalás egyeztetései sorban futnak)
@@ -378,6 +378,7 @@ A jelentkezési panel pár másodpercen belül megjelenik a 🎮・játék-keres
     if (!backend.enabled) { log.log('[bot] BACKEND_URL / BOT_SERVICE_TOKEN hiányzik: a tárgyalás-integráció ki van kapcsolva (a /setup működik).'); return; }
     let pending = new Map();
     stopStream = backend.subscribe((evt) => {
+      if (evt && evt.type === 'bug') { onBug(); return; } // új hibajelentés: a bug-szinkron rögtön kiposztolja
       clearTimeout(pending.get(evt.sessionId));
       pending.set(evt.sessionId, setTimeout(() => { pending.delete(evt.sessionId); reconcile(evt.sessionId); }, 150));
     }, { onOpen: () => { log.log('[bot] kapcsolódva a Kamu Bíróság szerverhez.'); reconcileAll(); } });

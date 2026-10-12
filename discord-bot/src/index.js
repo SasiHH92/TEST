@@ -7,7 +7,7 @@ const { Client, GatewayIntentBits, Events, MessageFlags } = require('discord.js'
 const { DEFINITIONS, handleCommand, handleButton, isAuthorized, supportPayload } = require('./commands');
 const announcer = require('./announcer');
 const { createBackend } = require('./backend');
-const { createCourtSync } = require('./court');
+const { createCourtSync, isStaff } = require('./court');
 const { createBugSync } = require('./bugs');
 const { createModerator, loadConfig } = require('./moderation');
 
@@ -32,8 +32,8 @@ function startBot(o) {
     if (withModeration) intents.push(GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent);
     const client = new Client({ intents });
     announcer.attach(client);
-    const court = createCourtSync({ client, backend, gameUrl: String(o.gameUrl || o.backendUrl || '').trim().replace(/\/+$/, ''), log });
-    const bugs = createBugSync({ client, backend, onlyGuild, log });
+    const bugs = createBugSync({ client, backend, onlyGuild, log, isStaff });
+    const court = createCourtSync({ client, backend, gameUrl: String(o.gameUrl || o.backendUrl || '').trim().replace(/\/+$/, ''), log, onBug: () => bugs.drain() });
     const modConfig = loadConfig(env);
     const moderator = createModerator({ client, log, config: { ...modConfig, enabled: withModeration } });
 
@@ -79,6 +79,8 @@ function startBot(o) {
             if (!isAuthorized(interaction)) await interaction.reply({ content: '⛔ Ezt csak admin használhatja.', ephemeral: true });
             else await moderator.handleCommand(interaction);
           } else await handleCommand(interaction);
+        } else if (interaction.isStringSelectMenu()) {
+          if (interaction.customId.startsWith('kamu:bug:')) await bugs.handleSelect(interaction);
         } else if (interaction.isButton()) {
           if (interaction.customId.startsWith('kamu:court:')) await court.handleButton(interaction);
           else if (interaction.customId.startsWith('kamu:mod:')) await moderator.handleButton(interaction);

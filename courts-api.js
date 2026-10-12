@@ -227,6 +227,16 @@ function createCourtsApi({ courts, auth, io, botToken = '', bugs = null, rooms, 
     if (!bugs || !bugs.markPosted(String(req.params.id), req.body && req.body.ref)) throw new CourtError('not_found', 'Ismeretlen hibajelentés.', 404);
     res.json({ ok: true });
   }));
+  bot.get('/bugreports/:id', wrap((req, res) => {
+    const r = bugs && bugs.get(String(req.params.id));
+    if (!r) throw new CourtError('not_found', 'Ismeretlen hibajelentés.', 404);
+    res.json({ report: r });
+  }));
+  bot.post('/bugreports/:id/status', wrap((req, res) => {
+    const r = bugs && bugs.setStatus(String(req.params.id), String((req.body && req.body.status) || ''), req.body && req.body.by);
+    if (!r) throw new CourtError('bad_status', 'Ismeretlen hibajelentés vagy állapot.', 400);
+    res.json({ report: r });
+  }));
   bot.get('/sessions', wrap((req, res) => res.json({ sessions: courts.listForBot() })));
   bot.get('/sessions/:id', wrap((req, res) => res.json({ session: courts.getForBot(req.params.id) })));
 
@@ -288,7 +298,12 @@ function createCourtsApi({ courts, auth, io, botToken = '', bugs = null, rooms, 
     res.json({ ...r, session: decorate(r.session), kamuUsername: user.username });
   }));
 
-  return { web, bot, decorate, botOnline, perform, startPrereq, _streams: streams };
+  // Egyszeri jelzés a botnak (pl. új hibajelentés érkezett): a bot ilyenkor rögtön lekérdezi a várakozókat, nem várja meg az időzítőt.
+  function notifyBot(obj) {
+    const line = 'event: notify\ndata: ' + JSON.stringify(obj) + '\n\n';
+    for (const res of streams) { try { res.write(line); } catch (e) { onError('bot-notify', e); } }
+  }
+  return { web, bot, decorate, botOnline, notifyBot, perform, startPrereq, _streams: streams };
 }
 
 module.exports = { createCourtsApi };

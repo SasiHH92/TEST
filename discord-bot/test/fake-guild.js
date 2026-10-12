@@ -14,6 +14,7 @@ function makeMessage(channel, authorId, payload) {
   const msg = {
     id: nextId(),
     author: { id: authorId },
+    content: payload.content || null,
     embeds: (payload.embeds || []).map(toEmbedJson),
     components: payload.components || [],
     async edit(p) { msg.embeds = (p.embeds || []).map(toEmbedJson); if (p.components) msg.components = p.components; msg.edited = (msg.edited || 0) + 1; return msg; },

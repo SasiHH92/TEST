@@ -80,6 +80,8 @@ const BUG_TAGS = [
   { name: 'Szoba / Lobby', emoji: '🚪' },
   { name: 'Kinézet / UI', emoji: '🎨' },
   { name: 'Mobil', emoji: '📱' },
+  { name: 'Folyamatban', emoji: '🔧' },
+  { name: 'Jegelve', emoji: '🧊' },
   { name: 'Megoldva', emoji: '✅' },
   { name: 'Nem reprodukálható', emoji: '❓' },
 ];

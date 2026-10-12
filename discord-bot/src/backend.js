@@ -41,6 +41,8 @@ function createBackend({ baseUrl, token, fetchImpl = fetch, log = console }) {
     act: (id, action, payload) => request('POST', '/sessions/' + encodeURIComponent(id) + '/' + action, payload),
     link: (payload) => request('POST', '/link', payload),
     pendingBugs: async () => (await request('GET', '/bugreports')).reports,
+    bugGet: async (id) => (await request('GET', '/bugreports/' + encodeURIComponent(id))).report,
+    bugStatus: async (id, status, by) => (await request('POST', '/bugreports/' + encodeURIComponent(id) + '/status', { status, by })).report,
     bugPosted: (id, ref) => request('POST', '/bugreports/' + encodeURIComponent(id) + '/posted', { ref: String(ref) }),
 
     // Eseményfolyam (SSE). Az esemény csak "kopogtat": a bot a friss állapotot kérdezi le, ezért az elveszett

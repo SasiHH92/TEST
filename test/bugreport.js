@@ -25,7 +25,7 @@ async function start(port) {
     cwd: root,
     env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', AUTH_BASE_URL: base, DISCORD_BOT_TOKEN: '', BOT_SERVICE_TOKEN: TOKEN,
       AUTH_STORE_PATH: f('a.json'), KB_AVATARS_FILE: f('av.json'), KB_STATS_FILE: f('st.json'), KB_COURTS_FILE: f('c.json'),
-      KB_DMS_FILE: f('d.json'), KB_MODERATION_FILE: f('m.json'), KB_ERRORS_FILE: f('e.json'), KB_BUGREPORTS_FILE: f('b.json') },
+      KB_DMS_FILE: f('d.json'), KB_MODERATION_FILE: f('m.json'), KB_ERRORS_FILE: f('e.json'), KB_BUGREPORTS_FILE: f('b.json'), KB_BUGREPORT_LIMIT: '10' },
     stdio: ['ignore', 'ignore', 'pipe']
   });
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base + '/health')).ok) return base; } catch (_) { await pause(100); } }
@@ -50,6 +50,53 @@ const bot = (base, p, opt = {}) => fetch(base + '/api/bot' + p, { ...opt, header
       const after = await (await bot(BASE, '/bugreports')).json();
       assert.ok(!after.reports.some((x) => x.id === id), 'kiposztolás után nem várakozik');
       assert.equal((await bot(BASE, '/bugreports/BUG-99999/posted', { method: 'POST', body: '{}' })).status, 404);
+    });
+    await test('új jelentésnél a bot eseményfolyama azonnal kap jelzést (nem kell az időzítőt kivárni)', async () => {
+      const ac = new AbortController();
+      const res = await fetch(BASE + '/api/bot/stream', { headers: { Authorization: 'Bearer ' + TOKEN }, signal: ac.signal });
+      assert.equal(res.status, 200);
+      const reader = res.body.getReader();
+      const got = (async () => { let buf = ''; const dec = new TextDecoder(); for (;;) { const { value, done } = await reader.read(); if (done) return ''; buf += dec.decode(value); if (/"type":"bug"/.test(buf)) return buf; } })();
+      await pause(150);
+      assert.equal((await post(BASE, { text: 'azonnali jelzés teszt' })).status, 200);
+      const out = await Promise.race([got, pause(3000).then(() => 'IDŐTÚLLÉPÉS')]);
+      ac.abort();
+      assert.match(out, /"type":"bug"/);
+    });
+    await test('teljes út: weboldali jelentés -> szerver -> bot (valódi kliens + SSE) -> Discord-csatorna, másodpercen belül', async () => {
+      const { ChannelType } = require('discord.js');
+      const { makeGuild } = require('../discord-bot/test/fake-guild');
+      const { runSetup, findChannel } = require('../discord-bot/src/setup');
+      const { createBackend } = require('../discord-bot/src/backend');
+      const { createBugSync } = require('../discord-bot/src/bugs');
+      const guild = makeGuild();
+      await runSetup(guild);
+      const backend = createBackend({ baseUrl: BASE, token: TOKEN, log: { error() {}, log() {} } });
+      const sync = createBugSync({ client: { guilds: { cache: new Map([[guild.id, guild]]) } }, backend, everyMs: 600000, log: { error() {}, log() {} } });
+      await sync.drain(); // az eddigi (előző tesztekből maradt) jelentések kiürítése
+      const stop = backend.subscribe((evt) => { if (evt && evt.type === 'bug') sync.drain(); });
+      try {
+        await pause(400);
+        const ch = findChannel(guild, '🐛・hibajelentés', [ChannelType.GuildText], null);
+        const before = ch.messageStore.size;
+        assert.equal((await post(BASE, { kind: 'room', text: 'teljes út teszt: a szoba nem nyílik meg', name: 'Út Teszt', where: 'lobby', room: 'WXYZ' })).status, 200);
+        for (let i = 0; i < 30 && ch.messageStore.size === before; i++) await pause(100);
+        assert.equal(ch.messageStore.size, before + 1, 'a jelentés megjelent a Discord-csatornában');
+        assert.match(JSON.stringify([...ch.messageStore.values()].pop().embeds), /teljes út teszt/);
+        assert.equal((await (await bot(BASE, '/bugreports')).json()).reports.filter((r) => /teljes út/.test(r.text)).length, 0, 'késznek jelölve');
+      } finally { stop(); }
+    });
+    await test('állapot: alapból új; a bot módosíthatja; ismeretlen állapot / azonosító elutasítva', async () => {
+      const id = (await (await post(BASE, { text: 'állapot teszt jelentés' })).json()).id;
+      assert.equal((await (await bot(BASE, '/bugreports/' + id)).json()).report.status, 'new');
+      const ok = await bot(BASE, '/bugreports/' + id + '/status', { method: 'POST', body: JSON.stringify({ status: 'ice', by: 'Sanyi' }) });
+      assert.equal(ok.status, 200);
+      const rep = (await ok.json()).report;
+      assert.equal(rep.status, 'ice'); assert.equal(rep.statusBy, 'Sanyi');
+      assert.equal((await (await bot(BASE, '/bugreports/' + id)).json()).report.status, 'ice', 'tartósan tárolva');
+      assert.equal((await bot(BASE, '/bugreports/' + id + '/status', { method: 'POST', body: JSON.stringify({ status: 'valami' }) })).status, 400);
+      assert.equal((await bot(BASE, '/bugreports/BUG-99999/status', { method: 'POST', body: JSON.stringify({ status: 'done' }) })).status, 400);
+      assert.equal((await fetch(BASE + '/api/bot/bugreports/' + id + '/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"status":"done"}' })).status, 401);
     });
     await test('túl rövid leírás és hibás típus kezelése; szobakód csak érvényes alakban', async () => {
       assert.equal((await post(BASE, { text: 'x' })).status, 400);

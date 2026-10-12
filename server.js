@@ -559,7 +559,7 @@ function courtLeft(game, playerId) {
 }
 // Hibajelentések a weboldalról: tárolás itt, a Discordra a bot posztolja ki (a /api/bot/bugreports végponton át).
 const bugs = createBugReports({ file: path.resolve(__dirname, process.env.KB_BUGREPORTS_FILE || 'data/bugreports.json'), persist: () => storage.push('bugreports') });
-const allowBugReport = makeLimiter(4, 10 * 60 * 1000);
+const allowBugReport = makeLimiter(parseInt(process.env.KB_BUGREPORT_LIMIT, 10) || 4, 10 * 60 * 1000); // jelentés / 10 perc / játékos (a KB_BUGREPORT_LIMIT csak a teszteknek kell)
 app.post('/api/bugreport', express.json({ limit: '8kb' }), (req, res) => {
   res.set('Cache-Control', 'no-store');
   const user = authApi.session(req);
@@ -568,6 +568,7 @@ app.post('/api/bugreport', express.json({ limit: '8kb' }), (req, res) => {
   try {
     const item = bugs.add({ name: user ? user.username : b.name, account: !!user, kind: b.kind, text: b.text, where: b.where, room: b.room, userAgent: req.get('user-agent') });
     res.json({ ok: true, id: item.id });
+    try { courtsApi.notifyBot({ type: 'bug' }); } catch (_) { /* a bot 15 mp-en belül időzítővel is megkapja */ }
   } catch (e) {
     if (e.status === 400) return res.status(400).json({ error: e.message });
     reportError('bugreport', e);
