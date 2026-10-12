@@ -123,6 +123,23 @@ async function main() {
     clock+=30*24*60*60*1000;
     assert.equal((await api.req('GET','/status',undefined,{jar:remembered})).data.user,null);
   });
+  await test('Csúszó lejárat: a használt rövid munkamenet nem járhat le játék közben; használat nélkül 8 óra után lejár; a megjegyzett nem változik',async()=>{
+    const active=api.jar(),idle=api.jar(),keep=api.jar();
+    await api.req('POST','/login',{email:'anna@example.invalid',password},{jar:active});
+    await api.req('POST','/login',{email:'anna@example.invalid',password},{jar:idle});
+    await api.req('POST','/login',{email:'anna@example.invalid',password,remember:true},{jar:keep});
+    const entries=()=>JSON.parse(fs.readFileSync(api.file)).sessions;
+    for(let hour=0;hour<24;hour+=3) { // 24 óra alatt háromóránként használja
+      clock+=3*60*60*1000;
+      assert.equal((await api.req('GET','/status',undefined,{jar:active})).data.user.id,userId,hour+'. óra: még be van lépve');
+    }
+    assert.equal((await api.req('GET','/status',undefined,{jar:idle})).data.user,null,'használat nélkül lejárt');
+    assert.equal((await api.req('GET','/status',undefined,{jar:keep})).data.user.id,userId,'a megjegyzett él (30 nap)');
+    const keepEntry=entries().find(e=>e.persistent===true);
+    assert.ok(keepEntry.expiresAt-clock>20*24*60*60*1000,'a megjegyzett munkamenet lejárata nem rövidült');
+    clock+=8*60*60*1000+1;
+    assert.equal((await api.req('GET','/status',undefined,{jar:active})).data.user,null,'8 óra használat nélkül ez is lejár');
+  });
   await test('Eltérő Origin, nem JSON, hibás/túl nagy JSON elutasítása',async()=>{
     assert.equal((await api.req('POST','/login',{}, {headers:{Origin:'https://other.invalid'}})).status,403);
     assert.equal((await api.req('POST','/login',{}, {headers:{'Content-Type':'text/plain'}})).status,415);

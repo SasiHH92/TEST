@@ -178,7 +178,14 @@ function createAuth(options={}) {
     const token=cookies(req)[COOKIE];
     if(!token || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
     const entry=store.state.sessions.find(s=>s.hash===digest(token) && s.expiresAt>now());
-    return entry?store.state.users.find(user=>user.id===entry.userId)||null:null;
+    if(!entry) return null;
+    const user=store.state.users.find(user=>user.id===entry.userId)||null;
+    // Csúszó lejárat: a rövid (nem "emlékezz rám") munkamenet addig él, amíg használod; aki játszik, mérkőzés közben sem lép ki.
+    // Csak akkor írunk, ha a hátralévő idő a felére fogyott (kb. 4 óránként egyszer); a megjegyzett (30 napos) munkamenet nem változik.
+    if(user && entry.persistent!==true && entry.expiresAt-now()<SESSION_MS/2 && entry.expiresAt-now()<=SESSION_MS) {
+      try {store.commit(data=>{const e=data.sessions.find(x=>x.hash===entry.hash);if(e) e.expiresAt=now()+SESSION_MS;});} catch(_) { /* a megújítás hibája nem szakíthatja meg a munkamenetet */ }
+    }
+    return user;
   };
   // A bejelentkezett fiók, DE: amíg az ideiglenes jelszót nem cserélte le (mustChangePassword), a fiók-funkciók (profil, barátok, bolt, socket-azonosítás,
   // törlés) nem érhetők el: a többi modul vendégként látja. A státusz és a jelszócsere a rawSession-t használja.
@@ -195,7 +202,7 @@ function createAuth(options={}) {
       data.sessions=data.sessions.filter(s=>s.expiresAt>now() && (!old || s.hash!==digest(old)));
       data.resets=data.resets.filter(r=>r.expiresAt>now());
       if(data.verifications) data.verifications=data.verifications.filter(v=>v.expiresAt>now());
-      data.sessions.push({hash:digest(token),userId:user.id,expiresAt:now()+duration});
+      data.sessions.push({hash:digest(token),userId:user.id,expiresAt:now()+duration,persistent:!!persistent});
       const account=data.users.find(u=>u.id===user.id);
       if(account) account.lastLoginAt=now();
       const mine=data.sessions.filter(s=>s.userId===user.id);
