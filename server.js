@@ -558,21 +558,73 @@ function courtLeft(game, playerId) {
   } catch (e) { reportError('court-leave', e); }
 }
 // Hibajelentések a weboldalról: tárolás itt, a Discordra a bot posztolja ki (a /api/bot/bugreports végponton át).
-const bugs = createBugReports({ file: path.resolve(__dirname, process.env.KB_BUGREPORTS_FILE || 'data/bugreports.json'), persist: () => storage.push('bugreports') });
+const bugs = createBugReports({ file: path.resolve(__dirname, process.env.KB_BUGREPORTS_FILE || 'data/bugreports.json'), imageDir: path.resolve(__dirname, process.env.KB_BUGIMAGES_DIR || 'data/bugimages'), persist: () => storage.push('bugreports') });
 const allowBugReport = makeLimiter(parseInt(process.env.KB_BUGREPORT_LIMIT, 10) || 4, 10 * 60 * 1000); // jelentés / 10 perc / játékos (a KB_BUGREPORT_LIMIT csak a teszteknek kell)
-app.post('/api/bugreport', express.json({ limit: '8kb' }), (req, res) => {
-  res.set('Cache-Control', 'no-store');
+// A csatolt kép: a kliens kicsinyítve JPEG-ként küldi (data URL); itt a típust, a méretet és a fájl első bájtjait is ellenőrizzük.
+const BUG_IMAGE_MAX = 1.6 * 1024 * 1024;
+function parseBugImage(v) {
+  if (v == null || v === '') return null;
+  const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(String(v));
+  const bad = (msg) => { const e = new Error(msg); e.status = 400; return e; };
+  if (!m) throw bad('A kép formátuma nem megfelelő (JPEG, PNG vagy WebP lehet).');
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length < 64) throw bad('A kép sérült.');
+  if (buf.length > BUG_IMAGE_MAX) throw bad('A kép túl nagy (legfeljebb 1,5 MB).');
+  const isJpg = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  const isPng = buf.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  const isWebp = buf.slice(0, 4).toString('latin1') === 'RIFF' && buf.slice(8, 12).toString('latin1') === 'WEBP';
+  const ext = isJpg ? 'jpg' : isPng ? 'png' : isWebp ? 'webp' : null;
+  if (!ext) throw bad('A fájl nem valódi kép.');
+  return { buf, ext };
+}
+app.post('/api/bugreport', (req, res, next) => {
+  // a korlát a (nagy) törzs beolvasása ELŐTT dönt
   const user = authApi.session(req);
   if (!allowBugReport(user ? 'u:' + user.id : 'ip:' + req.ip)) return res.status(429).json({ error: 'Sok jelentést küldtél egymás után. Próbáld újra pár perc múlva.' });
+  req.bugUser = user;
+  next();
+}, express.json({ limit: '2.4mb' }), (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const user = req.bugUser;
   const b = req.body || {};
   try {
+    const image = parseBugImage(b.image);
     const item = bugs.add({ name: user ? user.username : b.name, account: !!user, kind: b.kind, text: b.text, where: b.where, room: b.room, userAgent: req.get('user-agent') });
-    res.json({ ok: true, id: item.id });
+    if (image) bugs.saveImage(item.id, image.buf, image.ext);
+    res.json({ ok: true, id: item.id, image: !!image });
     try { courtsApi.notifyBot({ type: 'bug' }); } catch (_) { /* a bot 15 mp-en belül időzítővel is megkapja */ }
   } catch (e) {
     if (e.status === 400) return res.status(400).json({ error: e.message });
     reportError('bugreport', e);
     res.status(500).json({ error: 'A jelentést most nem sikerült elmenteni.' });
+  }
+});
+// Játékmeghívó e-mailben: csak bejelentkezett fiók, a saját (lobbi-fázisú) szobájához; a szobakódot és a tagságot a szerver ellenőrzi.
+// Visszaélés ellen: óránként 3, naponta 10 meghívó fiókonként, ugyanarra a címre ugyanabból a szobából óránként 1.
+const allowInviteHour = makeLimiter(3, 60 * 60 * 1000), allowInviteDay = makeLimiter(10, 24 * 60 * 60 * 1000), allowInviteTo = makeLimiter(1, 60 * 60 * 1000);
+app.post('/api/invite-email', express.json({ limit: '2kb' }), async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const user = authApi.session(req);
+  if (!user) return res.status(401).json({ error: 'Meghívót csak bejelentkezett fiókkal küldhetsz.' });
+  const o = req.get('origin');
+  if (o && o !== authApi.expectedOrigin(req)) return res.status(403).json({ error: 'A kérés másik oldalról érkezett.' });
+  if (!authApi.mailer.enabled) return res.status(503).json({ error: 'A levélküldés jelenleg nem elérhető.' });
+  const b = req.body || {};
+  const code = String(b.code || '').toUpperCase();
+  const address = String(b.email || '').trim().toLowerCase();
+  if (address.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) return res.status(400).json({ error: 'Adj meg egy érvényes e-mail címet.' });
+  if (address === String(user.email || '').toLowerCase()) return res.status(400).json({ error: 'A saját címedre nem kell meghívót küldeni.' });
+  const room = /^[A-Z0-9]{4}$/.test(code) ? courtRooms.info(code) : null;
+  if (!room || room.phase !== 'lobby') return res.status(404).json({ error: 'A szoba nem létezik, vagy már folyik benne a játék.' });
+  if (!room.players.some((p) => p.userId === user.id && p.connected)) return res.status(403).json({ error: 'Csak a szobában lévő játékos hívhat meg.' });
+  if (!allowInviteHour('h:' + user.id) || !allowInviteDay('d:' + user.id)) return res.status(429).json({ error: 'Sok meghívót küldtél. Próbáld újra később.' });
+  if (!allowInviteTo('t:' + code + ':' + address)) return res.status(429).json({ error: 'Erre a címre már küldtél meghívót ebbe a szobába.' });
+  try {
+    await authApi.mailer.sendTemplate('gameInvite', address, { inviter: user.username, code, url: authApi.mailer.origin + '/?room=' + code });
+    res.json({ ok: true });
+  } catch (e) {
+    reportError('mail', e);
+    res.status(502).json({ error: 'A meghívót most nem sikerült elküldeni.' });
   }
 });
 const courtsApi = createCourtsApi({ courts, auth: authApi, io, bugs, rooms: courtRooms, botToken: process.env.BOT_SERVICE_TOKEN || '', onError: reportError });

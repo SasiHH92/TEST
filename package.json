@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node server.js",
     "test": "node test/e2e.js",
+    "test:email": "node test/email.js",
+    "email:preview": "node scripts/preview-emails.js",
+    "email:test": "node scripts/send-test-email.js",
     "test:rules": "node test/rules.js",
     "test:rooms": "node test/room-sockets.js",
     "test:bots": "node test/e2e-bots.js",
@@ -55,6 +58,7 @@
     "express": "^4.19.2",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",
+    "resend": "^6.32.1",
     "socket.io": "^4.7.5"
   },
   "devDependencies": {

@@ -19,6 +19,9 @@ data/errors.json
 data/errors.json.*.tmp
 data/moderation.json
 data/moderation.json.*.tmp
+data/bugreports.json
+data/bugreports.json.*.tmp
+data/bugimages/
 
 # helyi adatbázis-másolatok (scripts/db-backup.js): jelszó-hash-eket tartalmaznak
 backups/
@@ -31,3 +34,7 @@ test/*.tmp
 # operációs rendszer felesleg
 .DS_Store
 Thumbs.db
+
+# e-mail sablon-előnézet (scripts/preview-emails.js)
+email-preview/
+data/outbox.jsonl

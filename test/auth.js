@@ -20,7 +20,8 @@ async function boot(options={}) {
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));servers.push(server);
   const base='http://127.0.0.1:'+server.address().port;
   const file=options.file||path.join(root,crypto.randomUUID()+'.json');
-  const env={AUTH_BASE_URL:base,...options.env};
+  // A régi folyamatok e-mail-megerősítés nélkül futnak (az új tesztek külön kapcsolják be: AUTH_REQUIRE_EMAIL_VERIFICATION=1)
+  const env={AUTH_BASE_URL:base,AUTH_REQUIRE_EMAIL_VERIFICATION:'0',...options.env};
   const auth=createAuth({...options,file,env});
   app.use('/api/auth',auth.router);
   app.get('/health',(req,res)=>res.send('ok'));
@@ -48,6 +49,7 @@ const sha=value=>crypto.createHash('sha256').update(value).digest('hex');
 async function main() {
   let clock=Date.now();
   const mail=[];
+  const resets=()=>mail.filter(m=>/jelszó beállítása/.test(m.subject)); // csak a visszaállító levelek (az üdvözlő / értesítő levelek nem)
   const api=await boot({now:()=>clock,maxAttempts:100,sendMail:async message=>{mail.push(message);}});
   const first=api.jar(),remembered=api.jar(),other=api.jar();
   let userId,resetToken;
@@ -131,8 +133,8 @@ async function main() {
   await test('Ismeretlen és létező e-mailre azonos visszaállítási válasz',async()=>{
     const known=await api.req('POST','/forgot',{email:'anna@example.invalid'});
     const unknown=await api.req('POST','/forgot',{email:'unknown@example.invalid'});
-    assert.equal(known.status,200);assert.deepEqual(known.data,unknown.data);assert.equal(mail.length,1);
-    const link=mail[0].text.match(/http[^\s]+/)[0],url=new URL(link);
+    assert.equal(known.status,200);assert.deepEqual(known.data,unknown.data);assert.equal(resets().length,1);
+    const link=resets()[0].text.match(/http[^\s]+/)[0],url=new URL(link);
     assert.equal(url.origin,api.base);assert.equal(url.search,'');assert.match(url.hash,/^#reset=/);
     resetToken=url.hash.slice(7);
     const store=JSON.parse(fs.readFileSync(api.file));
@@ -153,7 +155,7 @@ async function main() {
   });
   await test('Lejárt és hamis visszaállító token nem módosít jelszót',async()=>{
     await api.req('POST','/forgot',{email:'anna@example.invalid'});
-    const token=new URL(mail[1].text.match(/http[^\s]+/)[0]).hash.slice(7);clock+=60*60*1000+1;
+    const token=new URL(resets()[1].text.match(/http[^\s]+/)[0]).hash.slice(7);clock+=60*60*1000+1;
     const body={token,password,confirmPassword:password};
     assert.equal((await api.req('POST','/reset',body)).status,400);
     assert.equal((await api.req('POST','/reset',{...body,token:'hamis'})).status,400);
@@ -316,15 +318,20 @@ async function main() {
     assert.ok(!stored.users.some(u=>u.id===googleId));
     assert.ok(!stored.sessions.some(entry=>entry.userId===googleId));
   });
-  await test('Resend transport: címzett, feladó és Bearer fejléc',async()=>{
-    let sent;
-    const resend=await boot({env:{AUTH_MAIL_API_KEY:'test-mail-key',AUTH_MAIL_FROM:'Kamu <sender@example.invalid>'},
-      fetch:async(url,settings)=>{sent={url,settings};return Response.json({id:'test-mail'});}});
+  await test('Resend (SDK) transport: címzett, feladó, tárgy, HTML és szöveges változat',async()=>{
+    const calls=[];
+    const resend=await boot({env:{RESEND_API_KEY:'test-mail-key',EMAIL_FROM:'Kamu <sender@example.invalid>'},
+      resendClient:{emails:{send:async payload=>{calls.push(payload);return {data:{id:'test-mail'},error:null};}}}});
     await resend.req('POST','/register',registration());
     assert.equal((await resend.req('POST','/forgot',{email:'anna@example.invalid'})).status,200);
-    assert.equal(sent.url,'https://api.resend.com/emails');assert.equal(sent.settings.headers.Authorization,'Bearer test-mail-key');
-    const body=JSON.parse(sent.settings.body);assert.deepEqual(body.to,['anna@example.invalid']);
-    assert.equal(body.from,'Kamu <sender@example.invalid>');assert.match(body.text,/#reset=/);
+    await new Promise(resolve=>setTimeout(resolve,25));
+    const reset=calls.find(c=>/jelszó beállítása/.test(c.subject));
+    assert.ok(reset,'a visszaállító levél elment');
+    assert.deepEqual(reset.to,['anna@example.invalid']);assert.equal(reset.from,'Kamu <sender@example.invalid>');
+    assert.match(reset.html,/<table/);assert.match(reset.html,/#reset=/);assert.match(reset.text,/#reset=/);
+    assert.ok(!JSON.stringify(calls).includes('test-mail-key'),'a kulcs nincs a levélben');
+    const old=await boot({env:{AUTH_MAIL_API_KEY:'regi-kulcs',AUTH_MAIL_FROM:'Kamu <regi@example.invalid>'},resendClient:{emails:{send:async()=>({data:{id:'x'},error:null})}}});
+    assert.equal(old.auth.admin.mailStatus().configured,true,'a régi AUTH_MAIL_* nevek továbbra is jók');
   });
   await test('Sikertelen levélküldés visszavonja a kiadott reset-linket',async()=>{
     const failure=await boot({sendMail:async()=>{throw new Error('Mock delivery failure');}});
@@ -337,14 +344,14 @@ async function main() {
     const seen=[],logged=[],original=console.error;
     console.error=(...args)=>logged.push(args.join(' '));
     try {
-      const refused=await boot({env:{AUTH_MAIL_API_KEY:'titkos-resend-kulcs',AUTH_MAIL_FROM:'Kamu <sender@example.invalid>'},
-        fetch:async()=>Response.json({statusCode:403,name:'validation_error',message:'You can only send testing emails to your own email address (owner@example.invalid).'},{status:403}),
+      const refused=await boot({env:{RESEND_API_KEY:'titkos-resend-kulcs',EMAIL_FROM:'Kamu <sender@example.invalid>'},
+        resendClient:{emails:{send:async()=>({data:null,error:{statusCode:403,name:'validation_error',message:'You can only send testing emails to your own email address (owner@example.invalid).'}})}},
         onError:(kind,error)=>seen.push([kind,error.message])});
       await refused.req('POST','/register',registration());
       assert.equal((await refused.req('POST','/forgot',{email:'anna@example.invalid'})).status,200,'a válasz egységes marad');
       await new Promise(resolve=>setTimeout(resolve,40));
-      assert.equal(seen.length,1);assert.equal(seen[0][0],'mail');
-      assert.match(seen[0][1],/403/);assert.match(seen[0][1],/testing emails/);
+      const forgotErrors=seen.filter(x=>x[0]==='mail'&&/403/.test(x[1]));
+      assert.ok(forgotErrors.length>=1);assert.match(forgotErrors[0][1],/testing emails/);
       assert.ok(logged.some(line=>/403/.test(line)&&/testing emails/.test(line)),'a konzolon is látszik az ok');
       assert.ok(!logged.join('\n').includes('titkos-resend-kulcs'),'a kulcs nem kerül a naplóba');
       assert.ok(!logged.join('\n').includes('owner@example.invalid'),'az e-mail cím kimarad a naplóból');
@@ -354,7 +361,7 @@ async function main() {
   });
   await test('Üzemeltetői műveletek: levél-állapot, próbalevél, kézi visszaállító link',async()=>{
     const off=await boot();
-    assert.deepEqual(off.auth.admin.mailStatus(),{configured:false,baseUrl:true,sender:false,key:false});
+    assert.deepEqual(off.auth.admin.mailStatus(),{configured:false,baseUrl:true,sender:false,key:false,headerImage:false,verification:false});
     await assert.rejects(()=>off.auth.admin.sendTestMail('x@example.invalid'),error=>error.status===503);
     const sent=[];
     const on=await boot({sendMail:async message=>{sent.push(message);}});
@@ -366,7 +373,7 @@ async function main() {
     const made=on.auth.admin.resetLinkFor('Lajos@Example.invalid');
     assert.equal(made.username,'Link Lajos');assert.ok(made.link.startsWith(on.base+'/#reset='),made.link);
     assert.match(made.link.split('#reset=')[1],/^[A-Za-z0-9_-]{43}$/);
-    assert.equal(sent.length,1,'a kézi link nem küld levelet');
+    assert.equal(sent.filter(m=>/jelszó beállítása/.test(m.subject)).length,0,'a kézi link nem küld visszaállító levelet');
     assert.throws(()=>on.auth.admin.resetLinkFor('nincs@example.invalid'),error=>error.status===404);
   });
   await test('Profil (saját kártya): szerkesztés, validáció, foglalt és fix kártya-nevek',async()=>{

@@ -57,6 +57,8 @@ Az azonos e-mail cím önmagában nem kapcsol össze fiókokat. Ha e-mail/jelsza
 
 ## Elfelejtett jelszó
 
+> **Új:** a teljes e-mail rendszer (megerősítő levél, üdvözlő, jelszóváltozás-értesítő, játékmeghívó, biztonsági értesítő, egységes arculat) leírása az **[EMAIL_BEALLITAS.md](EMAIL_BEALLITAS.md)**-ben van; a változók neve is megváltozott (`RESEND_API_KEY`, `EMAIL_FROM`), a régi `AUTH_MAIL_*` nevek továbbra is működnek.
+
 A beépített küldő a [Resend Email API](https://resend.com/docs/api-reference/emails/send-email). Állíts be:
 
 ```dotenv
@@ -84,7 +86,7 @@ AUTH_MAIL_FROM=Kamu Bíróság <belepes@SAJAT-HITELESITETT-DOMAIN>
 
 Ha egy játékos elfelejtette a jelszavát, de a levélküldés nincs beállítva: az `/admin` oldal **Kézi jelszó-visszaállító link** részében add meg a játékos e-mail címét, a kapott linket pedig küldd el neki (például Discordon). A link 1 óráig érvényes, egyszer használható, és belépés után azonnal új jelszót kér. Ezt csak az `ADMIN_TOKEN` birtokosa teheti meg.
 
-A feladó legyen a Resendnél hitelesített cím/domain. Az `AUTH_BASE_URL` itt is a böngészőben elérhető címed. A levélben egy óráig, egyszer használható link van; a titkos token csak a link töredékében (`#reset=…`) szerepel. Új jelszó mentése az összes korábbi fiók-munkamenetet visszavonja. A válasz nem árulja el, hogy egy megadott címhez van-e fiók. A regisztráció nem küld külön e-mailes megerősítő levelet.
+A feladó legyen a Resendnél hitelesített cím/domain. Az `AUTH_BASE_URL` itt is a böngészőben elérhető címed. A levélben egy óráig, egyszer használható link van; a titkos token csak a link töredékében (`#reset=…`) szerepel. Új jelszó mentése az összes korábbi fiók-munkamenetet visszavonja. A válasz nem árulja el, hogy egy megadott címhez van-e fiók. Ha a levélküldés működik, az új regisztrációt e-mailes megerősítés zárja (lásd EMAIL_BEALLITAS.md); a régi fiókok megerősítettnek számítanak.
 
 ## Fióktár és üzemeltetés
 

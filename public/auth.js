@@ -19,7 +19,7 @@
         body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(12000)});
     } catch(_) {throw new Error('Nem érhető el a szerver. Próbáld újra kicsit később.');}
     const data=await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(data.error||'Nem sikerült a kérés. Próbáld újra.');
+    if(!response.ok) {const error=new Error(data.error||'Nem sikerült a kérés. Próbáld újra.');error.code=data.code;throw error;}
     return data;
   }
   function updateAvailability() {
@@ -314,7 +314,14 @@
   $('#authLoginForm').addEventListener('submit',event=>{
     event.preventDefault();
     const body={email:$('#authLoginEmail').value,password:$('#authLoginPassword').value,remember:$('#authRemember').checked};
-    submit(event.currentTarget,'#authLoginMessage',async()=>enter((await api('login',body)).user,true));
+    $('#authResendVerify').classList.add('hidden');
+    submit(event.currentTarget,'#authLoginMessage',async()=>{
+      try {enter((await api('login',body)).user,true);}
+      catch(error) {
+        if(error.code==='email_unverified') $('#authResendVerify').classList.remove('hidden'); // a levél újraküldése
+        throw error;
+      }
+    });
   });
   $('#authRegisterForm').addEventListener('submit',event=>{
     event.preventDefault();
@@ -325,9 +332,17 @@
     }
     if(legendClaim) {body.legend=legendClaim.name;body.claim=legendClaim.code;} // a szerver ellenőrzi a kódot
     submit(event.currentTarget,'#authRegisterMessage',async()=>{
-      const user=(await api('register',body)).user;
+      const result=await api('register',body);
+      if(result.pending) {
+        // E-mail-megerősítés kell: a fiók a levélben lévő gombbal válik használhatóvá, belépés addig nincs.
+        $('#authRegisterPassword').value='';$('#authRegisterConfirm').value='';
+        $('#authLoginEmail').value=body.email;
+        message('#authRegisterMessage',result.message||'Elküldtük a megerősítő levelet.',result.mailSent!==false);
+        if(result.mailSent===false) $('#authResendVerify').classList.remove('hidden');
+        return;
+      }
       if(legendClaim) finishLegendClaim();
-      enter(user,true);
+      enter(result.user,true);
     });
   });
   async function oauth(provider,link=false) {
@@ -393,6 +408,12 @@
     provider_used:'Ez a szolgáltatói fiók már másik játékoshoz tartozik.'};
   const query=new URLSearchParams(location.search),error=query.get('auth_error');
   const hash=location.hash;
+  let verifyToken='';
+  if(hash.startsWith('#verify=')) {
+    const token=hash.slice(8);
+    verifyToken=/^[A-Za-z0-9_-]{43}$/.test(token)?token:'invalid';
+    history.replaceState(history.state,'',location.pathname+location.search); // a token ne maradjon a címsorban
+  }
   if(hash.startsWith('#reset=')) {
     const token=hash.slice(7);
     if(/^[A-Za-z0-9_-]{43}$/.test(token)) resetToken=token;
@@ -444,6 +465,17 @@
       availability=await api('status');updateAvailability();
       $('#authRetry').classList.toggle('hidden',availability.available);
       message('#authStatus',error?(errors[error]||errors.provider):availability.available?'':'A fiókkezelés jelenleg nem elérhető.');
+      if(verifyToken) {
+        show('auth');
+        if(verifyToken==='invalid') message('#authStatus','A megerősítő link érvénytelen. Kérj új levelet a belépésnél.');
+        else {
+          try {
+            const result=await api('verify',{token:verifyToken});
+            availability=await api('status');updateAvailability();
+            enter(result.user,true);return;
+          } catch(error) {message('#authStatus',error.message);}
+        }
+      }
       if(resetToken) {show('auth');openRecovery(true);}
       else if(legendClaim) applyLegendClaim(); // az igénylő-link a regisztrációs űrlapot nyitja
       if(resetToken||legendClaim) { /* a belépett fiók gombja ilyenkor nem zavarja a folyamatot */ }
@@ -461,6 +493,14 @@
       resumeAfterReload(null); // a fiók-állapot nem elérhető, de a vendég-munkamenet a szobába visszatérhet
     } finally {initializing=false;}
   }
+  $('#authResendVerify').addEventListener('click',async()=>{
+    const address=$('#authLoginEmail').value.trim()||$('#authRegisterEmail').value.trim();
+    if(!address) {message('#authLoginMessage','Add meg az e-mail címedet.');return;}
+    const button=$('#authResendVerify');button.disabled=true;
+    try {message('#authLoginMessage',(await api('resend-verification',{email:address})).message,true);}
+    catch(error) {message('#authLoginMessage',error.message);}
+    finally {setTimeout(()=>{button.disabled=false;},5000);}
+  });
   $('#authRetry').addEventListener('click',initialize);
   initialize();
 })();

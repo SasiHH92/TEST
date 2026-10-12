@@ -31,10 +31,12 @@ services:
       # - key: BOT_SERVICE_TOKEN   # legalább 32 véletlen karakter – TITKOS; nélküle a Discord-integráció ki van kapcsolva
       #   sync: false
       # Támogatási oldal (/tamogatas): statikus, a Ko-fi oldalra mutat; nincs hozzá környezeti változó.
-      # Jelszó-visszaállító levél (Resend): lásd AUTH_BEALLITAS.md
-      # - key: AUTH_MAIL_API_KEY
+      # E-mailek (Resend): lásd EMAIL_BEALLITAS.md. Kulcs + feladó + AUTH_BASE_URL együtt kapcsolja be a levélküldést.
+      # - key: RESEND_API_KEY     # a Resend API-kulcsa – TITKOS
       #   sync: false
-      # - key: AUTH_MAIL_FROM
+      # - key: EMAIL_FROM         # pl. Kamu Bíróság <noreply@kamubirosag.com> (a Resendben hitelesített domainről)
+      #   sync: false
+      # - key: EMAIL_HEADER_IMAGE_URL   # (nem kötelező) a levelek fejléc-képe, https cím
       #   sync: false
       # Discord-belépés (opcionális): lásd AUTH_BEALLITAS.md
       # - key: AUTH_DISCORD_CLIENT_ID

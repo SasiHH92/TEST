@@ -97,7 +97,7 @@ function createAdmin({ token = '', errors, storage, auth, moderation, hideBoardM
   router.post('/mail-test', wrap(async (req, res) => {
     const to = req.body && req.body.to;
     try {
-      await auth.admin.sendTestMail(to);
+      await auth.admin.sendTestMail(to, req.body && req.body.template);
     } catch (e) {
       if (!(e && e.mail)) throw e; // hibás cím / nincs beállítva: a saját üzenetével megy vissza
       // A levélszolgáltató elutasítása (pl. nem hitelesített feladó) pontosan ide tartozik: az üzemeltető lássa az okát.

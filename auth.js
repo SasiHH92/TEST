@@ -6,12 +6,15 @@ const path = require('path');
 const {promisify} = require('util');
 const express = require('express');
 const {scrub} = require('./errorlog');
+const {createMailer} = require('./mailer');
 const derive = promisify(crypto.scrypt);
 const SCRYPT = {N:32768,r:8,p:3,maxmem:64*1024*1024};
 const COOKIE = 'kb_account';
 const SESSION_MS = 8*60*60*1000;
 const REMEMBER_MS = 30*24*60*60*1000;
 const OAUTH_MS = 10*60*1000;
+const VERIFY_MS = 24*60*60*1000; // az e-mail-megerősítő link érvényessége
+const UNVERIFIED_KEEP_MS = 7*24*60*60*1000; // a meg nem erősített, soha be nem lépett fiók ennyi ideig foglalja a nevet / címet
 const TEMP_PASSWORD_MS = 14*24*60*60*1000; // az üzemeltető által adott ideiglenes jelszó ennyi ideig használható (utána újat kell kérni)
 const TEMP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; // félreérthető karakterek (I, O, l, 0, 1) nélkül
 // Ideiglenes jelszó: 12 véletlen karakter, 4-esével kötőjellel (pl. "Kp7x-Qm3a-Zt9R"), kriptográfiai véletlenből; legalább 12 karakter, így a jelszó-szabálynak is megfelel.
@@ -140,12 +143,35 @@ function createAuth(options={}) {
     secret:env['AUTH_'+provider.toUpperCase()+'_CLIENT_SECRET']||''
   }]));
   const enabled=provider=>!!(origin && configs[provider]?.clientId && configs[provider]?.secret && !storageError);
-  const mailEnabled=!!(origin && (options.sendMail || (env.AUTH_MAIL_API_KEY && env.AUTH_MAIL_FROM)));
+  // Levélküldés (Resend SDK) a közös mailer.js-en át; a sablonok a mail-templates.js-ben vannak.
+  const mailer=options.mailer||createMailer({env,origin,sendMail:options.sendMail,resendClient:options.resendClient});
+  const mailEnabled=mailer.enabled;
+  // E-mail-megerősítés az új (jelszavas) regisztrációkhoz: csak ha működik a levélküldés (különben senki nem tudna belépni).
+  // Az AUTH_REQUIRE_EMAIL_VERIFICATION=0 kikapcsolja. A régi fiókok (emailVerified mező nélkül) megerősítettnek számítanak.
+  const requireVerification=mailEnabled && env.AUTH_REQUIRE_EMAIL_VERIFICATION!=='0';
+  // Visszaélés-védelem: címenkénti / felhasználónkénti levélkorlát (memóriában, újraindításkor nullázódik).
+  const mailLog=new Map();
+  function mailAllowed(key,max,windowMs) {
+    const t=now(), list=(mailLog.get(key)||[]).filter(x=>t-x<windowMs);
+    if(list.length>=max) {mailLog.set(key,list);return false;}
+    list.push(t);mailLog.set(key,list);
+    if(mailLog.size>5000) mailLog.delete(mailLog.keys().next().value);
+    return true;
+  }
+  // Értesítő levél a háttérben: a hiba nem állít meg semmit, csak naplózódik (a cím és a kulcs nélkül).
+  function notify(user,template,data) {
+    if(!mailEnabled || !user || !user.email) return;
+    Promise.resolve().then(()=>mailer.sendTemplate(template,user.email,{name:user.username,...data})).catch(error=>{
+      console.error('A(z) '+template+' levél kézbesítése nem sikerült:',scrub(error&&error.message,200));
+      try {options.onError?.('mail',error);} catch(_) { /* a naplózás hibája nem állíthat meg semmit */ }
+    });
+  }
+  const whenText=()=>new Date(now()).toLocaleString('hu-HU',{timeZone:'Europe/Budapest',dateStyle:'long',timeStyle:'short'});
   const router=express.Router();
   // A fix (alapító) kártyák nevei nem foglalhatók le fiókkal.
   const reserved=name=>(options.reservedNames?options.reservedNames():[]).some(r=>normalize(r)===normalize(name));
   const publicUser=user=>user?{id:user.id,username:user.username,email:user.email,
-    hasPassword:!!user.password,mustChangePassword:!!user.mustChangePassword,providers:Object.keys(user.providers||{}),legend:user.legend||'',
+    hasPassword:!!user.password,mustChangePassword:!!user.mustChangePassword,emailVerified:user.emailVerified!==false,providers:Object.keys(user.providers||{}),legend:user.legend||'',
     profile:{titulus:'',priusz:'',jelveny:'',avatar:'',...(user.profile||{})}}:null;
   const rawSession=req=>{
     if(!store) return null;
@@ -168,6 +194,7 @@ function createAuth(options={}) {
     store.commit(data=>{
       data.sessions=data.sessions.filter(s=>s.expiresAt>now() && (!old || s.hash!==digest(old)));
       data.resets=data.resets.filter(r=>r.expiresAt>now());
+      if(data.verifications) data.verifications=data.verifications.filter(v=>v.expiresAt>now());
       data.sessions.push({hash:digest(token),userId:user.id,expiresAt:now()+duration});
       const account=data.users.find(u=>u.id===user.id);
       if(account) account.lastLoginAt=now();
@@ -231,7 +258,7 @@ function createAuth(options={}) {
   });
   router.get('/status',(req,res)=>res.json({user:publicUser(rawSession(req)),
     available:!storageError,providers:{google:enabled('google'),discord:enabled('discord')},
-    passwordReset:mailEnabled && !storageError}));
+    passwordReset:mailEnabled && !storageError,mail:mailEnabled && !storageError,emailVerification:requireVerification && !storageError}));
   router.use((req,res,next)=>storageError?res.status(503).json({error:'A fiókkezelés most nem elérhető. Próbáld újra később.'}):next());
   router.post('/register',wrap(async(req,res)=>{
     // Legendás kártya igénylése: érvényes igénylő-kóddal a fiók a legenda pontos nevén jön létre (a név egyébként foglalt).
@@ -242,18 +269,28 @@ function createAuth(options={}) {
     }
     const address=email(req.body.email),name=legendName||username(req.body.username),password=newPassword(req.body);
     const record=await hash(password);
+    const pending=requireVerification && !legendName; // a legendás igénylő-link maga a bizonyíték, ott nincs megerősítő levél
     const user=store.commit(data=>{
+      // a meg nem erősített, soha be nem lépett régi fiókok nem foglalhatják örökre a nevet / címet
+      data.users=data.users.filter(u=>!(u.emailVerified===false && !u.lastLoginAt && now()-(u.createdAt||0)>UNVERIFIED_KEEP_MS));
       if(data.users.some(u=>u.email===address)) fail(409,'Ezzel az e-mail címmel már van fiók.');
       if(data.users.some(u=>normalize(u.username)===normalize(name))) fail(409,legendName?'Ezt a legendás kártyát már igényelték. Jelentkezz be a fiókjával.':'Ez a felhasználónév már foglalt.');
       if(!legendName && reserved(name)) fail(409,'Ez a felhasználónév már foglalt.');
       const user={id:crypto.randomUUID(),username:name,email:address,password:record,providers:{},createdAt:now()};
+      if(pending) user.emailVerified=false;
       if(legendName) {
         user.legend=legendName;
         user.profile=cleanProfile(options.legendProfile?options.legendProfile(legendName):{});
       }
       data.users.push(user);return user;
     });
+    if(pending) {
+      // Megerősítés nélkül nincs belépés: a fiók a levélben lévő linkkel válik használhatóvá.
+      const sent=await sendVerification(user);
+      return res.status(201).json({pending:true,email:address,mailSent:sent,message:sent?'Elküldtük a megerősítő levelet. Kattints a benne lévő gombra, és már léphetsz is be.':'A megerősítő levelet most nem sikerült elküldeni. Próbáld újra az újraküldéssel.'});
+    }
     createSession(user,req,res);
+    notify(user,'welcome');
     res.status(201).json({user:publicUser(user)});
   }));
   router.post('/login',wrap(async(req,res)=>{
@@ -264,6 +301,7 @@ function createAuth(options={}) {
     if(user.mustChangePassword && user.tempPasswordExpiresAt && user.tempPasswordExpiresAt<now()) {
       fail(401,'Az ideiglenes jelszó lejárt. Kérj újat attól, aki a fiókot létrehozta.');
     }
+    if(user.emailVerified===false) fail(403,'Előbb erősítsd meg az e-mail címedet: a regisztrációkor levelet küldtünk. Nem kaptad meg? Kérj újat.','email_unverified');
     createSession(user,req,res,remember(req));res.json({user:publicUser(user)});
   }));
   // Jelszócsere: a mostani (ideiglenes) jelszó ellenőrzésével, új jelszóval (12–128 karakter). Az ideiglenes jelszó kötelező cseréje itt zárul: a fiók
@@ -286,6 +324,7 @@ function createAuth(options={}) {
       data.resets=data.resets.filter(r=>r.userId!==account.id);
       return account;
     });
+    notify(user,'passwordChanged',{when:whenText()});
     res.json({user:publicUser(user)});
   }));
   // Saját kártya szerkesztése: név, vicces cím, priusz-szöveg, jelvény, avatár (csak bejelentkezve).
@@ -360,31 +399,63 @@ function createAuth(options={}) {
     });
     return token;
   }
-  // Levélküldés (Resend vagy teszt-küldő). Hiba esetén a Resend válaszkódját és üzenetét is megmutatja (az API-kulcs soha nem szerepel benne).
-  async function deliver(message) {
-    if(options.sendMail) return options.sendMail(message);
-    let result;
+  // E-mail-megerősítő token: 32 véletlen bájt, csak a lenyomata tárolódik; felhasználónként egy él, 24 óráig, egyszer használható.
+  function issueVerification(user) {
+    const token=crypto.randomBytes(32).toString('base64url');
+    store.commit(data=>{
+      data.verifications=(data.verifications||[]).filter(v=>v.userId!==user.id && v.expiresAt>now());
+      data.verifications.push({hash:digest(token),userId:user.id,expiresAt:now()+VERIFY_MS});
+    });
+    return token;
+  }
+  async function sendVerification(user) {
+    const token=issueVerification(user);
     try {
-      result=await request('https://api.resend.com/emails',{method:'POST',
-        headers:{Authorization:'Bearer '+env.AUTH_MAIL_API_KEY,'Content-Type':'application/json'},
-        body:JSON.stringify({...message,from:env.AUTH_MAIL_FROM,to:[message.to]}),signal:AbortSignal.timeout(10000)});
-    } catch(error) {error.mail=true;throw error;} // hálózati hiba / időtúllépés
-    if(!result.ok) {
-      let detail='';
-      try {detail=String((await result.json()).message||'');} catch(_) { /* nincs JSON-törzs */ }
-      const error=new Error('Mail delivery failed ('+result.status+')'+(detail?': '+scrub(detail,200):''));
-      error.mail=true;throw error;
+      await mailer.sendTemplate('confirmEmail',user.email,{name:user.username,url:origin+'/#verify='+token});
+      return true;
+    } catch(error) {
+      try {store.commit(data=>{data.verifications=(data.verifications||[]).filter(v=>v.hash!==digest(token));});} catch(_) { /* a törlés hibája nem számít */ }
+      console.error('A megerősítő levél kézbesítése nem sikerült:',scrub(error&&error.message,200));
+      try {options.onError?.('mail',error);} catch(_) { /* a naplózás hibája nem állíthat meg semmit */ }
+      return false;
     }
   }
+  // A levélben lévő link: egyszer használható, lejáró; sikeres megerősítés után a fiók belép, és megkapja az üdvözlő levelet.
+  router.post('/verify',wrap(async(req,res)=>{
+    const token=req.body.token;
+    if(typeof token!=='string' || !/^[A-Za-z0-9_-]{43}$/.test(token)) fail(400,'A megerősítő link érvénytelen vagy lejárt.');
+    const tokenHash=digest(token);
+    const user=store.commit(data=>{
+      const found=(data.verifications||[]).find(v=>v.hash===tokenHash && v.expiresAt>now());
+      if(!found) fail(400,'A megerősítő link lejárt vagy már felhasználtad. Ha még nem tudsz belépni, kérj új levelet a belépőoldalon.');
+      const account=data.users.find(u=>u.id===found.userId);
+      if(!account) fail(400,'A megerősítő link érvénytelen.');
+      data.verifications=data.verifications.filter(v=>v.userId!==account.id);
+      account.emailVerified=true;
+      return account;
+    });
+    createSession(user,req,res);
+    notify(user,'welcome');
+    res.json({user:publicUser(user)});
+  }));
+  // Új megerősítő levél kérése. A válasz mindig ugyanaz (nem derül ki, van-e ilyen fiók); címenként 1/perc és napi 5 levél.
+  router.post('/resend-verification',wrap(async(req,res)=>{
+    if(!mailEnabled) fail(503,'A levélküldés jelenleg nem elérhető.');
+    const address=email(req.body.email), user=store.state.users.find(u=>u.email===address && u.emailVerified===false);
+    if(user && mailAllowed('verify-min:'+address,1,60*1000) && mailAllowed('verify-day:'+address,5,24*60*60*1000)) {
+      Promise.resolve().then(()=>sendVerification(user)).catch(()=>{});
+    }
+    res.json({message:'Ha ehhez a címhez megerősítésre váró fiók tartozik, újra elküldtük a levelet.'});
+  }));
+  // Levélküldés (Resend SDK vagy teszt-küldő). Hiba esetén a Resend válaszkódját és üzenetét is megmutatja (az API-kulcs soha nem szerepel benne).
   router.post('/forgot',wrap(async(req,res)=>{
     if(!mailEnabled) fail(503,'A jelszó-visszaállítás jelenleg nem elérhető.');
     const address=email(req.body.email), user=store.state.users.find(u=>u.email===address && u.password);
-    if(user) {
+    // címenként óránként legfeljebb 3 levél (levélbombázás ellen); a válasz ilyenkor is ugyanaz
+    if(user && mailAllowed('forgot:'+address,3,60*60*1000)) {
       const token=issueReset(user);
-      const message={to:user.email,subject:'Kamu Bíróság – új jelszó',
-        text:'Új jelszó beállításához nyisd meg ezt a linket:\n'+origin+'/#reset='+token+'\n\nA link 1 óráig, egyszer használható. Ha nem te kérted, hagyd figyelmen kívül.'};
       // Respond uniformly; email transport never reveals whether an account exists.
-      Promise.resolve().then(()=>deliver(message)).catch(error=>{
+      Promise.resolve().then(()=>mailer.sendTemplate('passwordReset',user.email,{name:user.username,url:origin+'/#reset='+token})).catch(error=>{
         try {store.commit(data=>{data.resets=data.resets.filter(r=>r.hash!==digest(token));});}
         catch(_) {console.error('A sikertelen visszaállító link törlése nem sikerült.');}
         console.error('A jelszó-visszaállító levél kézbesítése nem sikerült:',scrub(error&&error.message,200));
@@ -402,11 +473,14 @@ function createAuth(options={}) {
       const user=data.users.find(u=>u.id===reset.userId);
       if(!user) fail(400,'A link érvénytelen.');
       user.password=record;delete user.mustChangePassword;delete user.tempPasswordExpiresAt;
+      if(user.emailVerified===false) user.emailVerified=true; // a visszaállító levél megérkezése a címet is igazolja
       data.sessions=data.sessions.filter(s=>s.userId!==user.id);
       data.resets=data.resets.filter(r=>r.userId!==user.id);
       return user;
     });
-    createSession(user,req,res);res.json({user:publicUser(user)});
+    createSession(user,req,res);
+    notify(user,'passwordChanged',{when:whenText()});
+    res.json({user:publicUser(user)});
   }));
   router.get('/:provider/start',rate,wrap((req,res)=>{
     const provider=req.params.provider;
@@ -465,6 +539,7 @@ function createAuth(options={}) {
           const user=data.users.find(u=>u.id===state.userId);
           user.providers[provider]=providerId;perk(user,provider);return user;
         });
+        notify(user,'securityNotice',{headline:'Új belépési mód kapcsolódott a fiókodhoz.',details:['Szolgáltató: '+(provider==='google'?'Google':'Discord'),'Időpont: '+whenText()]});
       } else if(existing) {
         user=options.onProviderLinked?store.commit(data=>{
           const found=data.users.find(u=>u.id===existing.id);
@@ -480,10 +555,11 @@ function createAuth(options={}) {
           let name=raw.length>=3?raw:'Játékos',suffix=1;
           while(data.users.some(u=>normalize(u.username)===normalize(name)) || reserved(name)) name=raw.slice(0,14)+'-'+suffix++;
           const user={id:crypto.randomUUID(),username:name,email:address,password:null,
-            providers:{[provider]:providerId},createdAt:now()};
+            providers:{[provider]:providerId},createdAt:now(),emailVerified:true}; // a szolgáltató igazolta a címet
           perk(user,provider);
           data.users.push(user);return user;
         });
+        notify(user,'welcome');
       }
       if(!state.userId) createSession(user,req,res,state.persistent);
       res.redirect('/?auth=success'+(state.room?'&room='+state.room:''));
@@ -491,7 +567,7 @@ function createAuth(options={}) {
   }));
   router.use((error,req,res,next)=>{
     if(res.headersSent) return next(error);
-    if(error instanceof AuthError) return res.status(error.status).json({error:error.message});
+    if(error instanceof AuthError) return res.status(error.status).json({error:error.message,...(error.code?{code:error.code}:{})});
     if(error.type==='entity.too.large') return res.status(413).json({error:'Túl nagy kérés.'});
     if(error.type==='entity.parse.failed') return res.status(400).json({error:'Érvénytelen kérés.'});
     console.error('Fiókkezelési hiba:',error.code||error.name);
@@ -517,10 +593,15 @@ function createAuth(options={}) {
   };
   // Üzemeltetői műveletek (az admin.js hívja, ADMIN_TOKEN mögött): levélküldés próbája és kézi visszaállító link.
   const admin={
-    mailStatus:()=>({configured:mailEnabled,baseUrl:!!origin,sender:!!(options.sendMail||env.AUTH_MAIL_FROM),key:!!(options.sendMail||env.AUTH_MAIL_API_KEY)}),
-    async sendTestMail(to) {
-      if(!mailEnabled) fail(503,'A levélküldés nincs beállítva (AUTH_MAIL_API_KEY, AUTH_MAIL_FROM, AUTH_BASE_URL).');
-      await deliver({to:email(to),subject:'Kamu Bíróság – próbalevél',text:'Ez egy próbalevél a Kamu Bíróság szerveréről. Ha ezt olvasod, a levélküldés működik.'});
+    mailStatus:()=>({configured:mailEnabled,baseUrl:!!origin,sender:!!(options.sendMail||mailer.hasFrom),key:!!(options.sendMail||mailer.hasKey),headerImage:!!mailer.headerImage,verification:requireVerification}),
+    // Próbalevél (a sablon mintaadatokkal; token nincs benne): név szerint bármelyik sablon, alapból az üdvözlő levél.
+    async sendTestMail(to,template) {
+      if(!mailEnabled) fail(503,'A levélküldés nincs beállítva (RESEND_API_KEY, EMAIL_FROM, AUTH_BASE_URL).');
+      const name=template||'welcome';
+      if(!mailer.templates.includes(name)) fail(400,'Ismeretlen sablon. Lehetséges: '+mailer.templates.join(', ')+'.');
+      const data={...mailer.sample[name]};
+      if(data.url) data.url=data.url.replace('https://example.invalid',origin);
+      await mailer.sendTemplate(name,email(to),data);
     },
     // Az összes fiók (jelszó-kivonat nélkül): az admin-oldal listájához.
     legendNames:()=>options.legendNames?options.legendNames():[],
@@ -591,6 +672,6 @@ function createAuth(options={}) {
       return {link:origin+'/#reset='+issueReset(user),username:user.username,expiresInMinutes:60};
     }
   };
-  return {router,session,mutate,expectedOrigin,directory,admin};
+  return {router,session,mutate,expectedOrigin,directory,admin,mailer};
 }
 module.exports={createAuth,loadAuthEnvironment};

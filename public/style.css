@@ -3927,7 +3927,7 @@ body[data-screen="name"] .comfort-dock, body[data-screen="menu"] .comfort-dock, 
 .bug-fab b { font-weight: 600; }
 @media (max-width: 700px) { .bug-fab b { display: none; } .bug-fab { padding: 8px; font-size: 15px; } }
 body.in-game .bug-fab { opacity: .55; }
-.bug-dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: #f6efdc; padding: 0; width: min(440px, calc(100vw - 32px)); }
+.bug-dialog { max-height: calc(100dvh - 24px); overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: #f6efdc; padding: 0; width: min(440px, calc(100vw - 32px)); }
 .bug-dialog::backdrop { background: rgba(0, 0, 0, .6); }
 .bug-dialog form { display: flex; flex-direction: column; gap: 10px; padding: 18px; }
 .bug-dialog h2 { margin: 0; font-size: 20px; }
@@ -3944,3 +3944,11 @@ body.in-game .bug-fab { opacity: .55; }
 .mug-card.taken[class*="cos-frame-"], .mug-card.taken[class*="cos-bg-"] { filter: none; }
 .mug-card.taken[class*="cos-frame-"] .mug-taken, .mug-card.taken[class*="cos-bg-"] .mug-taken { background: transparent; align-items: flex-end; padding-bottom: 14px; pointer-events: none; }
 .mug-card.taken[class*="cos-frame-"] .mug-taken span, .mug-card.taken[class*="cos-bg-"] .mug-taken span { font-size: 12px; letter-spacing: 2px; padding: 5px 12px; transform: none; }
+
+.bug-img { display: flex; flex-direction: column; gap: 8px; }
+.bug-img-pick { cursor: pointer; font-size: 13px; padding: 8px; border: 1px dashed var(--line); border-radius: 8px; opacity: .9; }
+.bug-img-pick:hover { border-color: var(--gold); opacity: 1; }
+.bug-img-pick input { display: block; margin-top: 6px; max-width: 100%; font-size: 12px; }
+.bug-img-prev { display: flex; align-items: center; gap: 10px; }
+.bug-img-prev[hidden] { display: none; }
+.bug-img-prev img { max-width: 120px; max-height: 80px; border-radius: 6px; border: 1px solid var(--line); object-fit: cover; }

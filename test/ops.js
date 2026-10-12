@@ -178,7 +178,7 @@ async function main() {
 
     await test('Levélpróba beállítás nélkül 503, hibás cím 400 – kulcs nem szivárog', async () => {
       const r = await admin('POST', '/mail-test', { to: 'valaki@example.invalid' });
-      assert.equal(r.status, 503); assert.match(r.data.error, /AUTH_MAIL_API_KEY/);
+      assert.equal(r.status, 503); assert.match(r.data.error, /RESEND_API_KEY/);
       assert.equal((await admin('POST', '/mail-test', { to: 'nem-email' })).status, 503, 'előbb a beállítás hiánya');
     });
 

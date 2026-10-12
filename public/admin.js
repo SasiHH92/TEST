@@ -416,7 +416,7 @@
   });
   $('#mailForm').addEventListener('submit', async (ev) => {
     ev.preventDefault(); msg('#mailMsg', 'Küldés…');
-    try { await api('POST', '/mail-test', { to: $('#mailTo').value }); msg('#mailMsg', 'Elküldve – nézd meg a postaládát (a spamet is).', 'ok'); }
+    try { await api('POST', '/mail-test', { to: $('#mailTo').value, template: $('#mailTpl').value }); msg('#mailMsg', 'Elküldve – nézd meg a postaládát (a spamet is).', 'ok'); }
     catch (e) { msg('#mailMsg', e.message, 'bad'); }
   });
   $('#resetForm').addEventListener('submit', async (ev) => {

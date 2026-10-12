@@ -203,7 +203,7 @@
 
       <section>
         <h2>Levélküldés (Resend)</h2>
-        <form class="row" id="mailForm"><input id="mailTo" type="email" placeholder="címzett e-mail" aria-label="Címzett" required><button type="submit">PRÓBALEVÉL</button></form>
+        <form class="row" id="mailForm"><input id="mailTo" type="email" placeholder="címzett e-mail" aria-label="Címzett" required><select id="mailTpl" aria-label="Melyik levél"><option value="welcome">Üdvözlő</option><option value="confirmEmail">Regisztráció megerősítése</option><option value="passwordReset">Elfelejtett jelszó</option><option value="passwordChanged">Jelszó megváltoztatva</option><option value="gameInvite">Játékmeghívó</option><option value="securityNotice">Biztonsági értesítés</option></select><button type="submit">PRÓBALEVÉL</button></form>
         <p class="msg" id="mailMsg" role="status"></p>
       </section>
 
