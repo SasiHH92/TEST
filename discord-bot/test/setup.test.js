@@ -59,15 +59,24 @@ test('jogosultságok: bétás terület rejtett, szabályzat csak olvasható, voi
   assert.equal(beta.permissionOverwrites.cache.get(findRole(guild, '⚖️ Játékos').id), undefined);
   const bug = chan(guild, '🐛・hibajelentés', ChannelType.GuildText);
   assert.ok(bug.permissionOverwrites.cache.get(everyone).deny.has(P.ViewChannel));
-  for (const n of ['📜・szabályzat', '📢・bejelentések', '📰・frissítések']) {
+  for (const n of ['👋・üdvözlünk', '📜・szabályzat']) {
     const ow = chan(guild, n, ChannelType.GuildText).permissionOverwrites.cache.get(everyone);
     assert.ok(ow.deny.has(P.SendMessages), n);
     assert.ok(ow.allow.has(P.ViewChannel), n);
   }
-  const voice = chan(guild, '🔊 Tárgyalóterem #1', ChannelType.GuildVoice).permissionOverwrites.cache.get(everyone);
-  assert.ok(voice.allow.has(P.Connect) && voice.allow.has(P.Speak));
-  // a nyilvános csatornán nincs tiltás
-  assert.equal(chan(guild, '💬・általános', ChannelType.GuildText).permissionOverwrites.cache.get(everyone), undefined);
+  const player = findRole(guild, '⚖️ Játékos').id;
+  for (const n of ['📢・bejelentések', '📰・frissítések']) {
+    const c = chan(guild, n, ChannelType.GuildText).permissionOverwrites.cache;
+    assert.ok(c.get(everyone).deny.has(P.ViewChannel), n + ': rang nélkül rejtett');
+    assert.ok(c.get(player).allow.has(P.ViewChannel), n + ': rangosnak látható');
+  }
+  const vc = chan(guild, '🔊 Tárgyalóterem #1', ChannelType.GuildVoice).permissionOverwrites.cache;
+  assert.ok(vc.get(everyone).deny.has(P.ViewChannel));
+  assert.ok(vc.get(player).allow.has(P.Connect) && vc.get(player).allow.has(P.Speak));
+  // az általános csatorna rang nélkül rejtett, Játékosnak írható
+  const gen = chan(guild, '💬・általános', ChannelType.GuildText).permissionOverwrites.cache;
+  assert.ok(gen.get(everyone).deny.has(P.ViewChannel));
+  assert.ok(gen.get(player).allow.has(P.SendMessages));
 });
 
 test('embedek: üdvözlünk, szabályzat, játék-kereső, ötletek, hibajelentés; a hibasablon minden mezőt tartalmaz', async () => {
@@ -77,7 +86,8 @@ test('embedek: üdvözlünk, szabályzat, játék-kereső, ötletek, hibajelent�
     const ch = chan(guild, n, ChannelType.GuildText);
     assert.equal(ch.messageStore.size, 1, n);
   }
-  assert.equal(chan(guild, '👋・üdvözlünk', ChannelType.GuildText).messageStore.first().components.length, 1);
+  assert.equal(chan(guild, '📜・szabályzat', ChannelType.GuildText).messageStore.first().components.length, 1);
+  assert.equal((chan(guild, '👋・üdvözlünk', ChannelType.GuildText).messageStore.first().components || []).length, 0);
   const bug = JSON.stringify(chan(guild, '🐛・hibajelentés', ChannelType.GuildText).messageStore.first().embeds);
   for (const f of ['Eszköz/böngésző', 'Mi történt', 'Mit kellett volna történnie', 'Megismételhető-e', 'Szobakód', 'Kép/videó']) assert.ok(bug.includes(f), f);
 });
@@ -229,4 +239,33 @@ test('ha a bot nem látja a csatornát (Missing Access), egyetlen érthető hib�
   assert.equal(calls, 1, 'az első elutasítás után abbahagyja ezt a csatornát');
   assert.ok(report.errors.some((l) => /tesztelők.*nem látja/.test(l)));
   assert.equal(report.errors.filter((l) => /tesztelők/.test(l)).length, 1);
+});
+
+test('szabályzat-kapu: a szabályzaton ✅ gomb van, a gomb ad Játékos rangot, a régi üdvözlő gomb nem', async () => {
+  const { handleButton } = require('../src/commands');
+  const { ACCEPT_BUTTON_ID, JOIN_BUTTON_ID } = require('../src/content');
+  const guild = makeGuild();
+  await runSetup(guild);
+  const rules = chan(guild, '📜・szabályzat', ChannelType.GuildText);
+  const json = JSON.stringify(rules.messageStore.first().components);
+  assert.match(json, /kamu:accept-rules/);
+  assert.match(json, /Elolvastam/);
+  const welcome = chan(guild, '👋・üdvözlünk', ChannelType.GuildText);
+  assert.ok(!JSON.stringify(welcome.messageStore.first().components || []).includes('kamu:join-player'));
+  const player = findRole(guild, '⚖️ Játékos');
+  const mk = (customId) => {
+    const roles = new Set();
+    const out = { replies: [], roles };
+    out.interaction = { customId, guild, member: { roles: { cache: { has: (id) => roles.has(id) }, add: async (r) => { roles.add(r.id); } } }, reply: async (o) => { out.replies.push(o.content); } };
+    return out;
+  };
+  const old = mk(JOIN_BUTTON_ID);
+  assert.equal(await handleButton(old.interaction), true);
+  assert.equal(old.roles.size, 0, 'a régi gomb nem ad rangot');
+  const acc = mk(ACCEPT_BUTTON_ID);
+  await handleButton(acc.interaction);
+  assert.ok(acc.roles.has(player.id));
+  assert.match(acc.replies[0], /Elfogadtad/);
+  await handleButton(acc.interaction);
+  assert.match(acc.replies[1], /már elfogadtad/);
 });

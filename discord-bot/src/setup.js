@@ -212,20 +212,27 @@ async function findOwnMessage(channel, me, key) {
   return msgs.find((m) => m.author && m.author.id === me.id && content.hasMarker(m, key)) || null;
 }
 
-function welcomeComponents() {
+function rulesComponents() {
   return [new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(content.JOIN_BUTTON_ID).setLabel('Játékos leszek').setEmoji('⚖️').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(content.ACCEPT_BUTTON_ID).setLabel('Elolvastam és elfogadom').setEmoji('✅').setStyle(ButtonStyle.Success),
   )];
+}
+
+// A szabályzat-kapu bevezetése előtti üzenetek (szabályzat gomb nélkül / üdvözlő rang-gombbal) repair módban is frissülnek.
+function gateOutdated(msg, key) {
+  const n = (msg.components || []).length;
+  return (key === 'rules' && n === 0) || (key === 'welcome' && n > 0);
 }
 
 async function ensureEmbed(channel, me, key, ctx, mode, report) {
   const payload = { embeds: [content.build(key, ctx)] };
-  if (key === 'welcome') payload.components = welcomeComponents();
+  if (key === 'rules') payload.components = rulesComponents();
+  if (key === 'welcome') payload.components = []; // a régi "Játékos leszek" gomb eltávolítása (a rangot a szabályzat ✅ gombja adja)
   const existing = await findOwnMessage(channel, me, key);
   if (!existing) {
     await channel.send(payload);
     report.created.push(`üzenet: ${channel.name} (${key})`);
-  } else if (mode === 'setup') {
+  } else if (mode === 'setup' || gateOutdated(existing, key)) {
     await existing.edit(payload);
     report.fixed.push(`üzenet frissítve: ${channel.name} (${key})`);
   }

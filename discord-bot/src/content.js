@@ -50,6 +50,7 @@ const EMBEDS = {
         { name: '§5 Nincs tiltott tartalom', value: 'Nincs felnőtt vagy erőszakos tartalom, nincs személyes adatok kiteregetése, nincsenek kalózlinkek.' },
         { name: '§6 A moderátorok szava ítélet', value: 'Kérdésed van egy döntéssel kapcsolatban? Írj egy moderátornak privátban. A nyilvános vita nem fellebbezés.' },
         { name: '§7 Discord irányelvek', value: 'A Discord Felhasználási Feltételei és Közösségi irányelvei ránk is vonatkoznak.' },
+        { name: '✅ Elfogadás', value: 'A szabályzat elfogadásához kattints az alábbi **Elolvastam és elfogadom** gombra. Addig a szerver többi csatornája rejtve marad.' },
         { name: '⚠️ Következmények', value: 'Figyelmeztetés → némítás → kitiltás. A súlyos esetek egyből a harmadik fokozatra ugranak.' },
       );
   },
@@ -115,7 +116,8 @@ const EMBEDS = {
 };
 
 // Az #üdvözlünk embed „Játékos leszek” gombja
-const JOIN_BUTTON_ID = 'kamu:join-player';
+const JOIN_BUTTON_ID = 'kamu:join-player'; // régi üdvözlő gomb: már nem ad rangot
+const ACCEPT_BUTTON_ID = 'kamu:accept-rules';
 
 function build(key, ctx = {}) {
   const json = EMBEDS[key]().toJSON();
@@ -129,4 +131,4 @@ function hasMarker(message, key) {
   return (message.embeds || []).some((e) => e.footer && String(e.footer.text || '').includes(marker(key)));
 }
 
-module.exports = { supportField, gameUrl, EMBEDS, build, marker, hasMarker, JOIN_BUTTON_ID };
+module.exports = { supportField, gameUrl, EMBEDS, build, marker, hasMarker, JOIN_BUTTON_ID, ACCEPT_BUTTON_ID };

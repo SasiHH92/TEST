@@ -1,7 +1,7 @@
 'use strict';
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { runSetup, checkStatus, findRole } = require('./setup');
-const { JOIN_BUTTON_ID } = require('./content');
+const { JOIN_BUTTON_ID, ACCEPT_BUTTON_ID } = require('./content');
 const { ROLES } = require('./spec');
 
 const adminOnly = (b) => b.setDefaultMemberPermissions(PermissionFlagsBits.Administrator).setContexts(0);
@@ -75,17 +75,27 @@ async function handleCommand(interaction) {
 }
 
 async function handleButton(interaction) {
-  if (interaction.customId !== JOIN_BUTTON_ID || !interaction.guild) return false;
+  if (!interaction.guild || (interaction.customId !== JOIN_BUTTON_ID && interaction.customId !== ACCEPT_BUTTON_ID)) return false;
+  const eph = MessageFlags.Ephemeral;
+  // A régi üdvözlő gomb már nem ad rangot: előbb a szabályzatot kell elfogadni.
+  if (interaction.customId === JOIN_BUTTON_ID) {
+    await interaction.reply({ content: '📜 Előbb olvasd el a **szabályzat** csatornát, és ott kattints a **✅ Elolvastam és elfogadom** gombra.', flags: eph });
+    return true;
+  }
   const role = findRole(interaction.guild, ROLES.find((r) => r.key === 'player').name);
   if (!role) {
-    await interaction.reply({ content: 'A ⚖️ Játékos role még nem létezik – szólj egy adminnak.', flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: 'A ⚖️ Játékos role még nem létezik – szólj egy adminnak.', flags: eph });
+    return true;
+  }
+  if (interaction.member.roles.cache.has(role.id)) {
+    await interaction.reply({ content: '✅ A szabályzatot már elfogadtad, a Játékos rangod megvan.', flags: eph });
     return true;
   }
   try {
-    await interaction.member.roles.add(role, 'Játékos gomb');
-    await interaction.reply({ content: '⚖️ Üdv a bíróságon! Megkaptad a **Játékos** rangot.', flags: MessageFlags.Ephemeral });
+    await interaction.member.roles.add(role, 'Szabályzat elfogadva');
+    await interaction.reply({ content: '✅ Elfogadtad a szabályzatot! Üdv a bíróságon – megkaptad a **Játékos** rangot, a szerver többi része megnyílt.', flags: eph });
   } catch {
-    await interaction.reply({ content: 'Nem sikerült a rangot kiosztani. Szólj egy adminnak.', flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: 'Nem sikerült a rangot kiosztani. Szólj egy adminnak.', flags: eph });
   }
   return true;
 }

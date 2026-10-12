@@ -22,16 +22,39 @@ const BETA = ['owner', 'dev', 'mod', 'tester'];
 // A "bot" mindig megkapja a postoláshoz szükséges jogokat azokban a csatornákban, ahová ír.
 const BOT_POST = [P.ViewChannel, P.SendMessages, P.SendMessagesInThreads, P.EmbedLinks, P.ReadMessageHistory, P.ManageThreads];
 
+// Szabályzat-kapu: új tag (rang nélkül) csak az üdvözlő és a szabályzat csatornát látja. A többi csatornához
+// ⚖️ Játékos (vagy tesztelő/stáb) rang kell, amit a szabályzatnál lévő ✅ gomb ad.
+const MEMBERS = ['player', 'tester', ...STAFF];
+const memberRules = (allow) => MEMBERS.map((s) => ({ subject: s, allow }));
+const SEE = [P.ViewChannel, P.ReadMessageHistory];
+const TALK = [P.ViewChannel, P.SendMessages, P.SendMessagesInThreads, P.ReadMessageHistory, P.EmbedLinks, P.AttachFiles, P.AddReactions];
+
 const PRESETS = {
-  public: [],
-  // Csak olvasható a normál játékosoknak; a stáb és a bot írhat.
-  readonly: [
-    { subject: 'everyone', allow: [P.ViewChannel, P.ReadMessageHistory], deny: [P.SendMessages, P.SendMessagesInThreads, P.CreatePublicThreads] },
+  // Kapu: mindenki látja, de csak a stáb és a bot írhat.
+  gate: [
+    { subject: 'everyone', allow: SEE, deny: [P.SendMessages, P.SendMessagesInThreads, P.CreatePublicThreads] },
     ...STAFF.map((s) => ({ subject: s, allow: [P.SendMessages, P.EmbedLinks, P.AttachFiles] })),
     { subject: 'bot', allow: BOT_POST },
   ],
-  // Közösségi csatorna, ahová a bot is posztol (a többiek is írhatnak).
-  community: [{ subject: 'bot', allow: BOT_POST }],
+  // Rangot igénylő nyilvános csatorna (a szabályzat elfogadása után).
+  public: [
+    { subject: 'everyone', deny: [P.ViewChannel] },
+    ...memberRules(TALK),
+    { subject: 'bot', allow: BOT_POST },
+  ],
+  // Rangosoknak olvasható; a stáb és a bot írhat.
+  readonly: [
+    { subject: 'everyone', deny: [P.ViewChannel, P.SendMessages, P.SendMessagesInThreads, P.CreatePublicThreads] },
+    ...memberRules(SEE),
+    ...STAFF.map((s) => ({ subject: s, allow: [P.SendMessages, P.EmbedLinks, P.AttachFiles] })),
+    { subject: 'bot', allow: BOT_POST },
+  ],
+  // Közösségi csatorna, ahová a bot is posztol (a rangosok is írhatnak).
+  community: [
+    { subject: 'everyone', deny: [P.ViewChannel] },
+    ...memberRules(TALK),
+    { subject: 'bot', allow: BOT_POST },
+  ],
   // Bétás terület: csak Tulajdonos, Fejlesztő, Moderátor, Tesztelő látja.
   beta: [
     { subject: 'everyone', deny: [P.ViewChannel] },
@@ -44,7 +67,11 @@ const PRESETS = {
     ...STAFF.map((s) => ({ subject: s, allow: [P.ViewChannel, P.SendMessages, P.ReadMessageHistory, P.EmbedLinks, P.AddReactions] })),
     { subject: 'bot', allow: BOT_POST },
   ],
-  voice: [{ subject: 'everyone', allow: [P.ViewChannel, P.Connect, P.Speak] }],
+  voice: [
+    { subject: 'everyone', deny: [P.ViewChannel] },
+    ...memberRules([P.ViewChannel, P.Connect, P.Speak]),
+    { subject: 'bot', allow: [P.ViewChannel, P.Connect] },
+  ],
 };
 
 const BUG_TAGS = [
@@ -71,10 +98,10 @@ const IDEA_TAGS = [
 // a fórum helyett sima szövegcsatorna jön létre (a Discord csak Community szerveren enged fórumot).
 const STRUCTURE = [
   {
-    name: '📜 BÍRÓSÁG', perm: 'public',
+    name: '📜 BÍRÓSÁG', perm: 'gate',
     channels: [
-      { name: '👋・üdvözlünk', kind: 'text', perm: 'readonly', embed: 'welcome', topic: 'Üdvözlünk a Kamu Bíróságon! Itt indul a tárgyalás.' },
-      { name: '📜・szabályzat', kind: 'text', perm: 'readonly', embed: 'rules', topic: 'A bíróság házirendje. A tudatlanság nem mentesít.' },
+      { name: '👋・üdvözlünk', kind: 'text', perm: 'gate', embed: 'welcome', topic: 'Üdvözlünk a Kamu Bíróságon! Itt indul a tárgyalás.' },
+      { name: '📜・szabályzat', kind: 'text', perm: 'gate', embed: 'rules', topic: 'A bíróság házirendje. A tudatlanság nem mentesít.' },
       { name: '📢・bejelentések', kind: 'text', perm: 'readonly', topic: 'Hivatalos közlemények a Kamu Bíróság vezetésétől.' },
       { name: '📰・frissítések', kind: 'text', perm: 'readonly', topic: 'Újdonságok, új kártyák, javítások.' },
       { name: '❓・gyik', kind: 'text', perm: 'readonly', embed: 'faq', topic: 'Gyakran ismételt kérdések.' },
