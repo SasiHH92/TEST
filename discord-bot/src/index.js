@@ -8,6 +8,7 @@ const { DEFINITIONS, handleCommand, handleButton, isAuthorized, supportPayload }
 const announcer = require('./announcer');
 const { createBackend } = require('./backend');
 const { createCourtSync } = require('./court');
+const { createBugSync } = require('./bugs');
 const { createModerator, loadConfig } = require('./moderation');
 
 /**
@@ -32,6 +33,7 @@ function startBot(o) {
     const client = new Client({ intents });
     announcer.attach(client);
     const court = createCourtSync({ client, backend, gameUrl: String(o.gameUrl || o.backendUrl || '').trim().replace(/\/+$/, ''), log });
+    const bugs = createBugSync({ client, backend, onlyGuild, log });
     const modConfig = loadConfig(env);
     const moderator = createModerator({ client, log, config: { ...modConfig, enabled: withModeration } });
 
@@ -49,6 +51,7 @@ function startBot(o) {
       log.log(`[bot] bejelentkezve: ${c.user.tag}` + (withModeration ? ' (moderáció: be)' : ''));
       for (const guild of c.guilds.cache.values()) await registerCommands(guild);
       court.start();
+      bugs.start();
     });
     client.on(Events.GuildCreate, registerCommands);
 
@@ -93,7 +96,7 @@ function startBot(o) {
 
     client.on(Events.Error, (err) => log.error('[bot] kliens hiba:', err.message));
     client.login(o.token).catch((err) => {
-      court.stop();
+      court.stop(); bugs.stop();
       client.destroy();
       if (withModeration && (err.code === 'DisallowedIntents' || /disallowed intents/i.test(err.message))) {
         log.error('[bot] A „Message Content Intent” nincs engedélyezve a Developer Portalon (Bot fül → Privileged Gateway Intents), ezért a moderáció nélkül indulok újra.');
@@ -102,7 +105,7 @@ function startBot(o) {
       }
       fatal('[bot] belépés sikertelen (rossz token?): ' + err.message);
     });
-    return { client, court, moderator, stop: () => { court.stop(); return client.destroy(); } };
+    return { client, court, moderator, stop: () => { court.stop(); bugs.stop(); return client.destroy(); } };
   }
 
   current = boot(loadConfig(env).enabled);

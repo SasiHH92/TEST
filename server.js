@@ -26,6 +26,7 @@ const {securityHeaders} = require('./security-headers');
 const {createAdmin} = require('./admin');
 const {createCourts, CourtError} = require('./courts');
 const {createCourtsApi} = require('./courts-api');
+const {createBugReports} = require('./bugreports');
 const {createModeration} = require('./moderation');
 const {cleanText} = require('./textclean');
 const {budapestDate, weekStart, msUntilWeekReset} = require('./quests');
@@ -556,7 +557,24 @@ function courtLeft(game, playerId) {
     if (p && p.userId) courts.leaveFromRoom(game.code, p.userId);
   } catch (e) { reportError('court-leave', e); }
 }
-const courtsApi = createCourtsApi({ courts, auth: authApi, io, rooms: courtRooms, botToken: process.env.BOT_SERVICE_TOKEN || '', onError: reportError });
+// Hibajelentések a weboldalról: tárolás itt, a Discordra a bot posztolja ki (a /api/bot/bugreports végponton át).
+const bugs = createBugReports({ file: path.resolve(__dirname, process.env.KB_BUGREPORTS_FILE || 'data/bugreports.json'), persist: () => storage.push('bugreports') });
+const allowBugReport = makeLimiter(4, 10 * 60 * 1000);
+app.post('/api/bugreport', express.json({ limit: '8kb' }), (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const user = authApi.session(req);
+  if (!allowBugReport(user ? 'u:' + user.id : 'ip:' + req.ip)) return res.status(429).json({ error: 'Sok jelentést küldtél egymás után. Próbáld újra pár perc múlva.' });
+  const b = req.body || {};
+  try {
+    const item = bugs.add({ name: user ? user.username : b.name, account: !!user, kind: b.kind, text: b.text, where: b.where, room: b.room, userAgent: req.get('user-agent') });
+    res.json({ ok: true, id: item.id });
+  } catch (e) {
+    if (e.status === 400) return res.status(400).json({ error: e.message });
+    reportError('bugreport', e);
+    res.status(500).json({ error: 'A jelentést most nem sikerült elmenteni.' });
+  }
+});
+const courtsApi = createCourtsApi({ courts, auth: authApi, io, bugs, rooms: courtRooms, botToken: process.env.BOT_SERVICE_TOKEN || '', onError: reportError });
 app.use('/api/bot', courtsApi.bot);
 app.use('/api', courtsApi.web);
 Game.setLifecycleHook((game, event) => {

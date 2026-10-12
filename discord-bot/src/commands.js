@@ -2,6 +2,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { runSetup, checkStatus, findRole } = require('./setup');
 const { JOIN_BUTTON_ID, ACCEPT_BUTTON_ID } = require('./content');
+const { postJoinCard } = require('./joincard');
 const { ROLES } = require('./spec');
 
 const adminOnly = (b) => b.setDefaultMemberPermissions(PermissionFlagsBits.Administrator).setContexts(0);
@@ -94,6 +95,7 @@ async function handleButton(interaction) {
   try {
     await interaction.member.roles.add(role, 'Szabályzat elfogadva');
     await interaction.reply({ content: '✅ Elfogadtad a szabályzatot! Üdv a bíróságon – megkaptad a **Játékos** rangot, a szerver többi része megnyílt.', flags: eph });
+    await postJoinCard(interaction.guild, interaction.member.displayName || (interaction.user && interaction.user.username));
   } catch {
     await interaction.reply({ content: 'Nem sikerült a rangot kiosztani. Szólj egy adminnak.', flags: eph });
   }

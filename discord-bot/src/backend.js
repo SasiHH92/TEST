@@ -40,6 +40,8 @@ function createBackend({ baseUrl, token, fetchImpl = fetch, log = console }) {
     setAppliedRoles: (id, assignments) => request('POST', '/sessions/' + encodeURIComponent(id) + '/applied-roles', { assignments }),
     act: (id, action, payload) => request('POST', '/sessions/' + encodeURIComponent(id) + '/' + action, payload),
     link: (payload) => request('POST', '/link', payload),
+    pendingBugs: async () => (await request('GET', '/bugreports')).reports,
+    bugPosted: (id, ref) => request('POST', '/bugreports/' + encodeURIComponent(id) + '/posted', { ref: String(ref) }),
 
     // Eseményfolyam (SSE). Az esemény csak "kopogtat": a bot a friss állapotot kérdezi le, ezért az elveszett
     // esemény nem okoz eltérést (újracsatlakozáskor és időnként teljes egyeztetés is fut).

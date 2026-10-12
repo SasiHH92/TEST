@@ -35,7 +35,7 @@ function safeEqual(a, b) {
  *  rooms: { info(code) -> {exists, phase, hostUserId, witnessEnabled, players:[{playerId,userId,name,connected}]} | null,
  *           start(code, presetByRole) -> {ok:true} | {error} }   (a server.js adja: a játékszoba a motor igazsága)
  */
-function createCourtsApi({ courts, auth, io, botToken = '', rooms, onError = () => {}, now = () => Date.now() }) {
+function createCourtsApi({ courts, auth, io, botToken = '', bugs = null, rooms, onError = () => {}, now = () => Date.now() }) {
   const streams = new Set();
   const botOnline = () => streams.size > 0;
   // A jelentkezők profil-avatárja (csak érvényes, katalógusbeli azonosító); a Discord-azonosítók továbbra sem kerülnek a weboldalra.
@@ -221,6 +221,12 @@ function createCourtsApi({ courts, auth, io, botToken = '', rooms, onError = () 
     streams.add(res);
     req.on('close', () => streams.delete(res));
   });
+  // Hibajelentések: a bot a várakozókat lekérdezi, kiposztolja a Discordra, majd késznek jelöli.
+  bot.get('/bugreports', wrap((req, res) => res.json({ reports: bugs ? bugs.pending().slice(0, 20) : [] })));
+  bot.post('/bugreports/:id/posted', wrap((req, res) => {
+    if (!bugs || !bugs.markPosted(String(req.params.id), req.body && req.body.ref)) throw new CourtError('not_found', 'Ismeretlen hibajelentés.', 404);
+    res.json({ ok: true });
+  }));
   bot.get('/sessions', wrap((req, res) => res.json({ sessions: courts.listForBot() })));
   bot.get('/sessions/:id', wrap((req, res) => res.json({ session: courts.getForBot(req.params.id) })));
 
