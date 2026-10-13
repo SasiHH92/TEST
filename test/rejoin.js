@@ -252,14 +252,32 @@ const joinStacks = (page) => page.evaluate(() => (window.__stacks || []).join(' 
             const aAfter = await A.page.evaluate(() => ({ n: S.players.length, me: S.players.find((p) => p.id === MY.playerId), screen: document.body.dataset.screen }));
             assert.equal(aAfter.n, aSnap.n, 'az idegen bekerült a szobába'); assert.ok(aAfter.me && aAfter.me.connected, 'a szoba gazdája megszakadt'); assert.equal(aAfter.screen, 'lobby');
           });
-          await check('szándékos kilépés után F5: nincs automatikus visszalépés (bejelentkezési oldal, a tárolt kód törölve)', async () => {
+          await check('szándékos kilépés után F5: nincs automatikus visszalépés a szobába, a tárolt kód törölve – de a játékos bejelentkezve marad (menü, nem a bejelentkezési oldal)', async () => {
             const { page } = await newPage(); await guestEnter(page, 'Kilepo'); await createRoom(page);
             await page.evaluate(() => leaveToMenu());
             await page.waitForFunction(() => document.body.dataset.screen === 'menu');
             await page.reload({ waitUntil: 'domcontentloaded' });
-            await page.waitForFunction(() => document.body.dataset.screen === 'auth', null, { timeout: 15000 });
+            await page.waitForFunction(() => ['menu', 'name'].includes(document.body.dataset.screen), null, { timeout: 15000 });
             await pause(2000);
             assert.equal(await joins(page), 0); assert.equal(await page.evaluate(() => localStorage.getItem('kb_code')), null);
+            assert.notEqual(await page.evaluate(() => document.body.dataset.screen), 'auth', 'nem dob ki a bejelentkezéshez');
+          });
+          await check('szoba nélkül (menü / karakterválasztó) F5: a bejelentkezett játékos bejelentkezve marad, nem a bejelentkezési oldalra kerül; új lapon viszont a bejelentkezés jön (folytatás gombbal)', async () => {
+            const { context, page } = await newPage(); await accountEnter(page, 'Szobatlan' + Date.now().toString(36));
+            const screen = await page.evaluate(() => document.body.dataset.screen);
+            assert.ok(['menu', 'name'].includes(screen), 'belépés után: ' + screen);
+            const acct = await page.evaluate(() => window.kbAccount && window.kbAccount.id);
+            assert.ok(acct);
+            for (let i = 0; i < 2; i++) { // kétszer is
+              await page.reload({ waitUntil: 'domcontentloaded' });
+              await page.waitForFunction(() => ['menu', 'name'].includes(document.body.dataset.screen), null, { timeout: 15000 });
+              assert.equal(await page.evaluate(() => window.kbAccount && window.kbAccount.id), acct, 'ugyanaz a fiók');
+            }
+            // új lap (nincs belépés ebben a lapban): a bejelentkezés jön, és a folytatás gomb látszik
+            const fresh = await context.newPage();
+            await fresh.goto(BASE + '/');
+            await fresh.waitForFunction(() => document.body.dataset.screen === 'auth' && !document.getElementById('authContinue').classList.contains('hidden'), null, { timeout: 15000 });
+            await fresh.close();
           });
           await check('véget ért játék + F5: ugyanabba a szobába tér vissza, a végeredmény (game_over) látszik, nem elavult lobbi / játékállapot', async () => {
             const { page, errors } = await newPage(); await guestEnter(page, 'Vegeredmeny'); await createRoom(page); await startGame(page, { prep: 10, noAuto: true });

@@ -306,10 +306,17 @@ async function startServer() {
 
     await check('Játékos: F5 a csere után → nincs ablak, a fiók megvan; az ideiglenes jelszó többé nem jó, az új igen', async () => {
       await pp.reload({ waitUntil: 'domcontentloaded' });
-      await pp.waitForSelector('#authLoginEmail', { state: 'visible' });
-      await pp.waitForFunction(() => !document.getElementById('authContinue').classList.contains('hidden'));
+      // ugyanabban a lapban az F5 bejelentkezve hagyja a játékost (karakterválasztó / menü), jelszócsere-ablak nélkül
+      await pp.waitForFunction(() => ['name', 'menu'].includes(document.body.dataset.screen), null, { timeout: 15000 });
       assert.equal(await forceOpen(pp), false, 'nincs jelszócsere-ablak');
-      assert.match(await pp.textContent('#authContinueName'), /Ui Anna/);
+      assert.match(await pp.evaluate(() => (window.kbAccount && window.kbAccount.username) || ''), /Ui Anna/);
+      // új lapon (nincs belépés ebben a lapban) a bejelentkezés jön, a folytatás gombbal
+      const freshTab = await pp.context().newPage();
+      await freshTab.goto(BASE + '/');
+      await freshTab.waitForSelector('#authLoginEmail', { state: 'visible' });
+      await freshTab.waitForFunction(() => !document.getElementById('authContinue').classList.contains('hidden'));
+      assert.match(await freshTab.textContent('#authContinueName'), /Ui Anna/);
+      await freshTab.close();
       const attempt = async (password) => (await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: BASE }, body: JSON.stringify({ email: 'ui.anna@example.invalid', password }) })).status;
       assert.equal(await attempt(created['Ui Anna']), 401); assert.equal(await attempt(OWN_PASSWORD), 200);
     });

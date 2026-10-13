@@ -448,14 +448,17 @@
     button.classList.remove('hidden');
     button.onclick=()=>enter(user,true);
   }
-  // Oldal-újratöltés (F5) szobában / játékban: ugyanabban a lapban ugyanazzal az azonosítóval magától visszatér (a szerver a munkamenet-jelszóval
-  // ellenőrzi). A friss látogatónál (új lap, nincs szoba) a bejelentkezés jön először, a fiókkal egy gombbal lehet folytatni.
+  // Oldal-újratöltés (F5): ugyanabban a lapban, ugyanazzal az azonosítóval (fiók vagy vendég) magától visszatér az alkalmazásba: szobában / játékban
+  // a saját ülésébe (a szerver a munkamenet-jelszóval ellenőrzi), különben oda, ahol volt (karakterválasztó / menü). A friss látogatónál (új lap, nincs
+  // belépés ebben a lapban) a bejelentkezés jön először, a fiókkal egy gombbal lehet folytatni.
   let resumed=false;
   function resumeAfterReload(user) {
-    if(resumed||!MY.code||!MY.playerId||!MY.sessionToken||INTENTIONAL_LEAVE||sessionStorage.getItem('kb_tab')!=='1') return false;
+    if(resumed||sessionStorage.getItem('kb_tab')!=='1') return false;
     const identity=LS.getItem('kb_accountId')||'guest';
     const same=user?identity===user.id:(identity==='guest'&&sessionStorage.getItem('kb_guest')==='1');
     if(!same) return false;
+    // szobába csak akkor lépünk vissza, ha megvan a saját ülés adata és nem szándékosan léptünk ki; különben marad az alkalmazás szoba nélkül
+    if(!MY.code||!MY.playerId||!MY.sessionToken||INTENTIONAL_LEAVE) {MY.code=null;LS.removeItem('kb_code');}
     resumed=true;enter(user||null,false);return true;
   }
   async function initialize() {
