@@ -283,6 +283,13 @@ app.get('/api/media', (req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.json(mediaCache.data);
 });
+// Lobbi-botok (a házigazda "Bot hozzáadása" gombja): csak teszteléshez / helyi fejlesztéshez. Élesen (Render: RENDER=true) alapból KI van kapcsolva;
+// a KB_LOBBY_BOTS=1 / 0 felülírja. A kliens a /api/config-ból tudja, hogy mutassa-e a gombokat.
+const LOBBY_BOTS = process.env.KB_LOBBY_BOTS ? process.env.KB_LOBBY_BOTS === '1' : !process.env.RENDER;
+app.get('/api/config', (req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.json({ lobbyBots: LOBBY_BOTS });
+});
 app.get('/api/role-sprites', (req, res) => {
   const now = Date.now();
   if (!roleSpriteCache.data || now - roleSpriteCache.at > 60 * 1000) roleSpriteCache = { at: now, data: scanRoleSprites() };
@@ -1307,6 +1314,7 @@ io.on('connection', (socket) => {
   const findAck = (args) => args.find((a) => typeof a === 'function');
   safeOn('add_bot', (...args) => {
     const ack = findAck(args);
+    if (!LOBBY_BOTS) return ack && ack({ error: 'A botok ezen a szerveren ki vannak kapcsolva.' });
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
     if (!game) return ack && ack({ error: 'Nincs szoba.' });
@@ -1318,6 +1326,7 @@ io.on('connection', (socket) => {
 
   safeOn('remove_bot', (...args) => {
     const ack = findAck(args);
+    if (!LOBBY_BOTS) return ack && ack({ error: 'A botok ezen a szerveren ki vannak kapcsolva.' });
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
     if (!game) return ack && ack({ error: 'Nincs szoba.' });

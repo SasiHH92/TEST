@@ -58,13 +58,14 @@ function connect(transports) {
   for (const transports of [['websocket'], ['polling']]) {
     await check('socket.io kapcsolat (' + transports[0] + ')', async () => { const s = await connect(transports); s.disconnect(); });
   }
-  await check('vendég szoba: létrehozás, 2 bot, lobbi-állapot, beállítások mentése, kilépés (játék NEM indul)', async () => {
+  await check('vendég szoba: létrehozás, lobbi-állapot, beállítások mentése, kilépés (játék NEM indul)', async () => {
     const s = await connect(['websocket']);
     const pid = 'smoke-' + Math.random().toString(36).slice(2, 12);
     const r = await emit(s, 'create_room', { name: 'Füstteszt', avatar: '', playerId: pid, profile: null });
     must(r && /^[A-Z0-9]{4}$/.test(r.code || ''), 'nem jött szobakód: ' + JSON.stringify(r).slice(0, 120));
     must(r.state && r.state.phase === 'lobby', 'nem lobbi az állapot');
-    must((await emit(s, 'add_bot', {})).ok, 'bot hozzáadása'); must((await emit(s, 'add_bot', {})).ok, '2. bot');
+    const bot = await emit(s, 'add_bot', {});
+    must(bot.ok || /ki vannak kapcsolva/.test(bot.error || ''), 'bot hozzáadása: ' + JSON.stringify(bot)); // élesen a botok alapból ki vannak kapcsolva
     const u = await emit(s, 'update_settings', { settings: { rounds: 2 } });
     must(u && u.ok && u.state.settings.rounds === 2, 'a beállítás nem mentődött');
     const j = await emit(s, 'join_room', { code: r.code, name: 'Másik', avatar: '', playerId: pid + 'x', profile: null }).catch(() => null);

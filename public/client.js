@@ -1833,14 +1833,21 @@ function posterHtml(p, idx) {
     '</div>';
 }
 
+// Lobbi-botok: csak ha a szerver engedi (élesen alapból nem; /api/config). Betöltésig rejtve, így nem villan fel.
+let LOBBY_BOTS = false;
+fetch('/api/config', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).then((c) => {
+  LOBBY_BOTS = !!(c && c.lobbyBots);
+  try { if (S && S.phase === 'lobby' && typeof renderLobby === 'function') renderLobby(); } catch (_) { /* a lobbi még nem épült fel */ }
+}).catch(() => { /* marad: nincs bot */ });
+
 function renderLobby() {
   updateQrBox(); // a QR minden lobby-megjelenítésnél élesben álljon
   const host = S.hostId === MY.playerId;
   $('#hostSettings').classList.toggle('hidden', !host);
   $('#nonHostNote').classList.toggle('hidden', host);
   $('#btnStartGame').classList.toggle('hidden', !host);
-  $('#btnAddBot').classList.toggle('hidden', !host);
-  $('#btnRemoveBot').classList.toggle('hidden', !host || !S.players.some((p) => p.isBot));
+  $('#btnAddBot').classList.toggle('hidden', !host || !LOBBY_BOTS);
+  $('#btnRemoveBot').classList.toggle('hidden', !host || !LOBBY_BOTS || !S.players.some((p) => p.isBot));
   const humans = S.players.filter((p) => p.connected && !p.isBot);
   const readyN = humans.filter((p) => p.ready).length;
   $('#lobbyHint').textContent = S.players.filter((p) => p.connected).length < 3
