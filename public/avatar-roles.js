@@ -21,6 +21,11 @@
   const CORE_ROLES = ['judge', 'prosecutor', 'defendant', 'witness', 'juror']; // az 50 × 5 alapkészlet
   const ROLES = ['judge', 'prosecutor', 'defendant', 'defender', 'witness', 'juror']; // + a védőügyvéd (opcionális kép)
   const AVATAR_RE = /^av(0[1-9]|[1-4]\d|50)$/;
+  // A VÁLASZTHATÓ avatárok: csak amelyiknek mind az 5 alap-szerephez megvan az igazi modellje (assets/roles/ROLE_ASSET_MANIFEST.json "real").
+  // A többi (csak portré, vagy hiányos készlet) nem kapható; ha új avatár elkészül mind az 5 szereppel, vedd fel ide (a test/avatar-roles.js ellenőrzi az egyezést).
+  const SELECTABLE = ['av01', 'av02', 'av03', 'av04', 'av05', 'av06', 'av07', 'av09', 'av10', 'av11', 'av21', 'av22'];
+  const isSelectable = (id) => SELECTABLE.includes(id);
+  const selectable = () => SELECTABLE.slice();
   const EXT = 'webp';
   const BASE = '/assets/roles/';
 
@@ -139,5 +144,5 @@
     return '<span class="role-fallback-badge role-fallback-' + role + '" aria-hidden="true">' + label + '</span>';
   }
 
-  return { ROLES, CORE_ROLES, AVATAR_RE, fileName, setAvailable, has, spriteFor, markMissing, getRoleAvatar, layoutFor, ROLE_LAYOUT, MOBILE_LAYOUT, NARROW_LAYOUT, AVATAR_ROLE_ADJUSTMENTS, coverage, costumeHtml, count, BASE };
+  return { SELECTABLE, isSelectable, selectable, ROLES, CORE_ROLES, AVATAR_RE, fileName, setAvailable, has, spriteFor, markMissing, getRoleAvatar, layoutFor, ROLE_LAYOUT, MOBILE_LAYOUT, NARROW_LAYOUT, AVATAR_ROLE_ADJUSTMENTS, coverage, costumeHtml, count, BASE };
 });

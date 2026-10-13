@@ -47,12 +47,13 @@ function socialOf(user) {
 }
 
 // Amit egy másik játékos a fiókból láthat.
+const { isSelectable: avatarSelectable } = require('./public/avatar-roles');
 function cardOf(user) {
   const p = (user && user.profile) || {};
   return {
     id: user.id,
     username: user.username,
-    avatar: typeof p.avatar === 'string' ? p.avatar.slice(0, 40) : '',
+    avatar: typeof p.avatar === 'string' && avatarSelectable(p.avatar) ? p.avatar : '', // csak a választható avatár (a kivett régi nem jelenik meg)
     titulus: typeof p.titulus === 'string' ? p.titulus.slice(0, 80) : ''
   };
 }

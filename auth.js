@@ -7,6 +7,7 @@ const {promisify} = require('util');
 const express = require('express');
 const {scrub} = require('./errorlog');
 const {createMailer} = require('./mailer');
+const {isSelectable:avatarSelectable} = require('./public/avatar-roles'); // csak a mind az 5 szerep-modellel rendelkező avatár választható
 const derive = promisify(crypto.scrypt);
 const SCRYPT = {N:32768,r:8,p:3,maxmem:64*1024*1024};
 const COOKIE = 'kb_account';
@@ -60,7 +61,7 @@ function profileText(value,max,label) {
 }
 function cleanProfile(body) {
   const avatar=body.avatar===undefined||body.avatar===null||body.avatar===''?'':String(body.avatar);
-  if(avatar && !/^av(0[1-9]|[1-4]\d|50)$/.test(avatar)) fail(400,'Érvénytelen avatár.');
+  if(avatar && !(/^av(0[1-9]|[1-4]\d|50)$/.test(avatar) && avatarSelectable(avatar))) fail(400,'Érvénytelen avatár.');
   return {titulus:profileText(body.titulus,60,'A vicces cím'),priusz:profileText(body.priusz,140,'A priusz-szöveg'),
     jelveny:profileText(body.jelveny,8,'A jelvény').toUpperCase(),avatar};
 }
@@ -172,7 +173,8 @@ function createAuth(options={}) {
   const reserved=name=>(options.reservedNames?options.reservedNames():[]).some(r=>normalize(r)===normalize(name));
   const publicUser=user=>user?{id:user.id,username:user.username,email:user.email,
     hasPassword:!!user.password,mustChangePassword:!!user.mustChangePassword,emailVerified:user.emailVerified!==false,providers:Object.keys(user.providers||{}),legend:user.legend||'',
-    profile:{titulus:'',priusz:'',jelveny:'',avatar:'',...(user.profile||{})}}:null;
+    // a mára kivett (régi) avatár nem jelenik meg: a kártya a monogramot kapja, amíg a játékos újat nem választ
+    profile:{titulus:'',priusz:'',jelveny:'',avatar:'',...(user.profile||{}),avatar:avatarSelectable((user.profile||{}).avatar)?user.profile.avatar:''}}:null;
   const rawSession=req=>{
     if(!store) return null;
     const token=cookies(req)[COOKIE];

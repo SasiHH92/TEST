@@ -247,17 +247,17 @@ async function main() {
       assert.equal(claim.status, 201, 'a legenda igénylése sikerült');
 
       const stranger = await connect();
-      stranger.emit('set_avatar', { name: 'Dubble_Gii', avatar: 'av33' });
+      stranger.emit('set_avatar', { name: 'Dubble_Gii', avatar: 'av10' });
       await pause(800);
-      assert.notEqual(savedAvatars().Dubble_Gii, 'av33', 'idegen nem írhatja át az igényelt legenda avatárját');
+      assert.notEqual(savedAvatars().Dubble_Gii, 'av10', 'idegen nem írhatja át az igényelt legenda avatárját');
 
       const owner = await connect();
       const ticket = (await http('POST', '/api/friends/ticket', {}, jar)).data.ticket;
       const idr = await emit(owner, 'identify', { ticket });
       assert.equal(idr.account, true, 'a fiók azonosítva');
-      owner.emit('set_avatar', { name: 'Dubble_Gii', avatar: 'av34' });
+      owner.emit('set_avatar', { name: 'Dubble_Gii', avatar: 'av11' });
       await pause(800);
-      assert.equal(savedAvatars().Dubble_Gii, 'av34', 'a gazdája átírhatja');
+      assert.equal(savedAvatars().Dubble_Gii, 'av11', 'a gazdája átírhatja');
 
       // igényeletlen legenda: szabad, de egy kapcsolatról nem sűrűn
       const guest = await connect();

@@ -340,10 +340,11 @@ const AVATAR_EMOJI = {
   'bírói kalap': '🧑‍⚖️', 'paróka': '👱', 'rabruha': '🧑‍🦱', 'napszemüveg': '🕶️',
   'feltűnő csokornyakkendő': '🎀', 'birkajelmez': '🐑', 'pókaszapityó': '🎩', 'ünnepi kalap': '🎉'
 };
-// Képes avatárok: "av01" … "av50" -> /assets/avatars/avatar_01.webp
-const AVATAR_COUNT = 50;
-const AVATARS = Array.from({ length: AVATAR_COUNT }, (_, i) => 'av' + String(i + 1).padStart(2, '0'));
+// Képes avatárok: "av01" -> /assets/avatars/avatar_01.webp. Csak azok választhatók, amelyeknek mind az 5 szerep-modellje megvan (avatar-roles.js: SELECTABLE).
+const AVATARS = window.kbAvatarRoles.selectable();
 const AVATAR_ID_RE = /^av\d\d$/;
+// egy korábban elmentett, mára kivett avatár: ne maradjon meg a tárolóban (a kártya a monogramot / véletlen választást kapja)
+if (MY.avatar && AVATAR_ID_RE.test(MY.avatar) && !AVATARS.includes(MY.avatar)) { MY.avatar = null; try { LS.removeItem('kb_avatar'); } catch (_) { /* nincs tár */ } }
 
 function avatarSrc(a) {
   return '/assets/avatars/avatar_' + a.slice(2) + '.webp';

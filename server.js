@@ -114,7 +114,7 @@ const authApi = createAuth({
     const reg=REGISTRY.find((r)=>r.nev===name)||{};
     const avatar=PROFILE_AVATARS[name];
     return {titulus:String(reg.titulus||'').slice(0,60),priusz:String(reg.priusz||'').slice(0,140),
-      jelveny:String(reg.jelveny||'').slice(0,8),avatar:AVATAR_ID_RE.test(avatar||'')?avatar:''};
+      jelveny:String(reg.jelveny||'').slice(0,8),avatar:okAvatar(avatar)?avatar:''};
   }
 });
 app.use('/api/auth',authApi.router);
@@ -462,6 +462,8 @@ const LEGEND_LABEL = 'LEGENDA';
 // hogy a névválasztó kártyákon mindenkinél látsszon. Hibatűrő mentés, mint a statisztikánál.
 const AVATARS_FILE = process.env.KB_AVATARS_FILE || path.join(__dirname, 'data', 'avatars.json'); // (a KB_AVATARS_FILE csak a teszteknek kell)
 const AVATAR_ID_RE = /^av(0[1-9]|[1-4]\d|50)$/;
+const { isSelectable: avatarSelectable } = require('./public/avatar-roles'); // csak a mind az 5 szerep-modellel rendelkező avatár választható
+const okAvatar = (a) => typeof a === 'string' && AVATAR_ID_RE.test(a) && avatarSelectable(a);
 let PROFILE_AVATARS = {};
 try {
   PROFILE_AVATARS = JSON.parse(fs.readFileSync(AVATARS_FILE, 'utf8')) || {};
@@ -684,7 +686,9 @@ function profileFor(socket, name, rawProfile) {
   return profile;
 }
 function cleanAvatar(avatar) {
-  return typeof avatar === 'string' ? avatar.slice(0, 40) : '';
+  if (typeof avatar !== 'string') return '';
+  if (AVATAR_ID_RE.test(avatar) && !avatarSelectable(avatar)) return ''; // a kivett avatár (régi tárolt érték) nem kerül a szobába
+  return avatar.slice(0, 40);
 }
 // ---- Szobai csevegő: mindenki ír mindenkinek a szobában (lobbi + játék) ----
 // Az üzenetek a szoba memóriájában élnek (utolsó CHAT_KEEP db); belépéskor/visszacsatlakozáskor megkapja a belépő.
@@ -979,7 +983,7 @@ io.on('connection', (socket) => {
     }
     if (typeof ack === 'function') ack({
       // claimed: a legenda kártyáját már igényelte egy fiók (attól kezdve csak a gazdája használhatja bejelentkezve)
-      registry: REGISTRY.map((r) => ({ ...r, stats: statsForName(r.nev), avatar: PROFILE_AVATARS[r.nev] || '', claimed: !!authApi.directory.byName(r.nev) })),
+      registry: REGISTRY.map((r) => ({ ...r, stats: statsForName(r.nev), avatar: okAvatar(PROFILE_AVATARS[r.nev]) ? PROFILE_AVATARS[r.nev] : '', claimed: !!authApi.directory.byName(r.nev) })),
       vendegPriuszok: GUEST_PRIORS,
       takenNames: Array.from(taken)
     });
@@ -1160,7 +1164,7 @@ io.on('connection', (socket) => {
   // ---- Egy nyilvántartott játékos avatárjának mentése (kártyára kattintás után) ----
   safeOn('set_avatar', ({ name, avatar } = {}) => {
     if (typeof name !== 'string' || !REGISTRY.some((r) => r.nev === name)) return;
-    if (typeof avatar !== 'string' || !AVATAR_ID_RE.test(avatar)) return;
+    if (!okAvatar(avatar)) return;
     // Az igényelt (fiókhoz kötött) legenda kártyájának avatárját csak a gazdája írhatja át, bejelentkezve.
     const owner = authApi.directory.byName(name);
     if (owner && owner.legend && socialApi.userOf(socket.id) !== owner.id) return;
