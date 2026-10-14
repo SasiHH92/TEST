@@ -27,6 +27,7 @@ const {createAdmin} = require('./admin');
 const {createCourts, CourtError} = require('./courts');
 const {createCourtsApi} = require('./courts-api');
 const {createBugReports} = require('./bugreports');
+const {createLegal} = require('./legal');
 const {createModeration} = require('./moderation');
 const {cleanText} = require('./textclean');
 const {budapestDate, weekStart, msUntilWeekReset} = require('./quests');
@@ -118,6 +119,8 @@ const authApi = createAuth({
   }
 });
 app.use('/api/auth',authApi.router);
+// a meg nem erősített, soha be nem lépett régi fiókok takarítása (a név és a cím felszabadul)
+setInterval(() => { try { authApi.purgeUnverified(); } catch (e) { reportError('auth-purge', e); } }, 6 * 60 * 60 * 1000).unref();
 // Bolt + napi küldetések (pogácsa). A küldetések haladását a nyilvántartás napi számlálói adják.
 const shopApi = createShop({
   auth:authApi,
@@ -133,6 +136,9 @@ const shopApi = createShop({
 app.use('/api/shop',shopApi.router);
 // Önkéntes támogatás ("Támogasd a Kamu Bíróságot!"): statikus oldal; a támogatás teljes egészében a Ko-fi oldalán történik (https://ko-fi.com/kamubirosag).
 // A szerveren NINCS fizetési logika, webhook vagy visszaigazolás (lásd TAMOGATAS.md).
+// Jogi oldalak: impresszum, adatkezelési tájékoztató, felhasználási feltételek és játékszabályok (az üzemeltetői adatok a LEGAL_* környezeti változókból jönnek; lásd legal.js)
+const legal = createLegal({ env: process.env, origin: process.env.AUTH_BASE_URL });
+app.use(legal.router);
 app.get(['/tamogatas', '/tamogatas/', '/support', '/tamogatas.html'], (req, res) => res.sendFile(path.join(__dirname, 'public', 'tamogatas.html')));
 // A bolt a játékon belül továbbra is a menüből nyílik; a régi, esetleg elmentett /shop és /bolt címek biztonságosan a főoldalra visznek.
 app.get(['/shop', '/shop/', '/bolt', '/bolt/'], (req, res) => res.redirect(302, '/'));
@@ -156,7 +162,7 @@ const socialApi = createSocial({
 app.use('/api/friends',socialApi.router);
 
 // Üzemeltetői felület: csak ADMIN_TOKEN (legalább 24 karakter) beállításakor él, egyébként 404 (lásd admin.js).
-const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, hideBoardMessage: (id) => hideBoardMessage(id) });
+const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, legal: () => ({ missing: legal.missing(), version: legal.version, minAge: legal.minAge }), hideBoardMessage: (id) => hideBoardMessage(id) });
 app.use('/api/admin', adminApi.router);
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 

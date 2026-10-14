@@ -326,7 +326,8 @@
   $('#authRegisterForm').addEventListener('submit',event=>{
     event.preventDefault();
     const body={username:$('#authRegisterName').value,email:$('#authRegisterEmail').value,
-      password:$('#authRegisterPassword').value,confirmPassword:$('#authRegisterConfirm').value};
+      password:$('#authRegisterPassword').value,confirmPassword:$('#authRegisterConfirm').value,acceptTerms:$('#authTerms').checked};
+    if(!body.acceptTerms) {message('#authRegisterMessage','A regisztrációhoz el kell fogadnod a feltételeket és az adatkezelési tájékoztatót.');$('#authTerms').focus();return;}
     if(body.password!==body.confirmPassword) {
       message('#authRegisterMessage','A két jelszó nem egyezik.');$('#authRegisterConfirm').focus();return;
     }
@@ -466,6 +467,7 @@
     initializing=true;$('#authRetry').classList.add('hidden');
     try {
       availability=await api('status');updateAvailability();
+      if(availability.legal?.minAge) for(const e of $$('.auth-age-n')) e.textContent=availability.legal.minAge; // a korhatár a szerver beállításából jön
       $('#authRetry').classList.toggle('hidden',availability.available);
       message('#authStatus',error?(errors[error]||errors.provider):availability.available?'':'A fiókkezelés jelenleg nem elérhető.');
       if(verifyToken) {

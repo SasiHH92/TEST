@@ -3952,3 +3952,13 @@ body.in-game .bug-fab { opacity: .55; }
 .bug-img-prev { display: flex; align-items: center; gap: 10px; }
 .bug-img-prev[hidden] { display: none; }
 .bug-img-prev img { max-width: 120px; max-height: 80px; border-radius: 6px; border: 1px solid var(--line); object-fit: cover; }
+
+/* jogi hivatkozások és az elfogadás jelölőnégyzete a belépőoldalon */
+.auth-legal { position: relative; z-index: 3; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; padding: 8px 14px 12px; font-size: 12px; }
+.auth-legal a { color: #ffe6b3; opacity: .85; text-decoration: underline; text-underline-offset: 3px; }
+.auth-legal a:hover, .auth-legal a:focus-visible { opacity: 1; }
+.auth-terms { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; margin-top: 6px; cursor: pointer; font-weight: 600; }
+.auth-terms input { margin-top: 3px; flex: none; width: 18px; height: 18px; accent-color: #7b1b2b; }
+.auth-terms a { color: #784018; font-weight: 800; }
+.auth-oauth-note { margin-top: 6px; line-height: 1.4; }
+.auth-oauth-note a { color: #784018; font-weight: 700; }

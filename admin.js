@@ -32,7 +32,7 @@ const MIN_TOKEN = 24;
 const FAIL_LIMIT = 10;
 const FAIL_WINDOW_MS = 10 * 60 * 1000;
 
-function createAdmin({ token = '', errors, storage, auth, moderation, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
+function createAdmin({ token = '', errors, storage, auth, moderation, legal: legalInfo = null, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
   const router = express.Router();
   const enabled = typeof token === 'string' && token.length >= MIN_TOKEN;
   const expected = enabled ? crypto.createHash('sha256').update(token).digest() : null;
@@ -79,7 +79,8 @@ function createAdmin({ token = '', errors, storage, auth, moderation, hideBoardM
       reports: { open: moderation ? moderation.list().filter((r) => r.status === 'new').length : 0, mutes: moderation ? moderation.mutes().length : 0 },
       database: storage.enabled(),
       backups: { count: backups.length, latest: backups[0] || null, error: backupError },
-      mail: auth.admin.mailStatus()
+      mail: auth.admin.mailStatus(),
+      legal: legalInfo ? legalInfo() : null
     });
   }));
 

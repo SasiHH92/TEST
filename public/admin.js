@@ -98,6 +98,7 @@
     row(dl, 'Adatbázis (Neon)', s.database ? 'be van kötve' : 'NINCS (csak helyi fájlok)', s.database ? 'ok' : 'bad');
     row(dl, 'Mentések', s.backups.error ? 'hiba: ' + s.backups.error : s.backups.count + ' db, legutóbbi: ' + (s.backups.latest ? when(s.backups.latest.takenAt) : 'még nincs'), s.backups.error ? 'bad' : (s.backups.count ? 'ok' : 'dim'));
     row(dl, 'Levélküldés', s.mail.configured ? 'be van állítva' : 'nincs beállítva (kulcs: ' + (s.mail.key ? 'van' : 'nincs') + ', feladó: ' + (s.mail.sender ? 'van' : 'nincs') + ', AUTH_BASE_URL: ' + (s.mail.baseUrl ? 'van' : 'nincs') + ')', s.mail.configured ? 'ok' : 'bad');
+    if (s.legal) row(dl, 'Jogi oldalak', s.legal.missing.length ? 'HIÁNYZIK az üzemeltetői adat: ' + s.legal.missing.join(', ') + ' (Render → Environment)' : 'kitöltve (verzió: ' + s.legal.version + ', korhatár: ' + s.legal.minAge + ')', s.legal.missing.length ? 'bad' : 'ok');
     row(dl, 'Jelentések', s.reports.open + ' új, ' + s.reports.mutes + ' aktív némítás', s.reports.open ? 'bad' : 'ok');
     row(dl, 'Hibák', s.errors.distinct + ' féle, összesen ' + s.errors.total + ' előfordulás', s.errors.total ? 'bad' : 'ok');
   }

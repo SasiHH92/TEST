@@ -38,6 +38,13 @@ services:
       #   sync: false
       # - key: EMAIL_HEADER_IMAGE_URL   # (nem kötelező) a levelek fejléc-képe, https cím
       #   sync: false
+      # Jogi oldalak (impresszum, adatkezelés, feltételek): lásd LEGAL_BEALLITAS.md. A három kötelezőt add meg a Render Environment fülén.
+      # - key: LEGAL_OPERATOR_NAME
+      #   sync: false
+      # - key: LEGAL_OPERATOR_ADDRESS
+      #   sync: false
+      # - key: LEGAL_OPERATOR_EMAIL
+      #   sync: false
       # Discord-belépés (opcionális): lásd AUTH_BEALLITAS.md
       # - key: AUTH_DISCORD_CLIENT_ID
       #   sync: false

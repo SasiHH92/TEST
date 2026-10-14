@@ -60,6 +60,7 @@
             <button type="button" data-provider="google" class="auth-provider auth-google" disabled><b aria-hidden="true">G</b> Google</button>
           </div>
           <p id="authProviderHint" class="auth-small"></p>
+          <p class="auth-small auth-oauth-note">Google / Discord belépéssel először regisztrálva elfogadod a <a href="/felhasznalasi-feltetelek" target="_blank" rel="noopener">Felhasználási feltételeket</a> és az <a href="/adatkezeles" target="_blank" rel="noopener">Adatkezelési tájékoztatót</a>, és megerősíted, hogy elmúltál <span class="auth-age-n">16</span> éves.</p>
           <p class="auth-switch">Új vagy itt? <button type="button" data-auth-tab="register" class="auth-text-button">Regisztrálj!</button></p>
         </section>
 
@@ -83,6 +84,7 @@
               <input id="authRegisterConfirm" type="password" name="confirmPassword" autocomplete="new-password" required minlength="12" maxlength="128" placeholder="Ugyanaz a titok">
               <button type="button" data-password="authRegisterConfirm" aria-label="Jelszó megjelenítése" aria-pressed="false">◉</button>
             </div>
+            <label class="auth-terms" for="authTerms"><input id="authTerms" type="checkbox" name="acceptTerms" required> <span>Elmúltam <span id="authTermsAge" class="auth-age-n">16</span> éves, és elfogadom a <a href="/felhasznalasi-feltetelek" target="_blank" rel="noopener">Felhasználási feltételeket</a> és az <a href="/adatkezeles" target="_blank" rel="noopener">Adatkezelési tájékoztatót</a>.</span></label>
             <p id="authRegisterMessage" class="auth-form-message" role="status" aria-live="polite"></p>
             <button id="authRegisterSubmit" type="submit" class="auth-submit" disabled>REGISZTRÁCIÓ <span aria-hidden="true">✦</span></button>
           </form>
@@ -99,6 +101,7 @@
         <span><b aria-hidden="true">🏆</b> GYŰJTSD A PONTOKAT</span>
         <a id="discordInviteAuth" class="discord-invite-auth" href="https://discord.gg/yyG7hH4aEB" target="_blank" rel="noopener noreferrer"><b aria-hidden="true">💬</b> CSATLAKOZZ A DISCORDRA <span aria-hidden="true">↗</span></a>
       </footer>
+      <nav class="auth-legal" aria-label="Jogi információk"><a href="/impresszum" target="_blank" rel="noopener">Impresszum</a><a href="/adatkezeles" target="_blank" rel="noopener">Adatkezelés</a><a href="/felhasznalasi-feltetelek" target="_blank" rel="noopener">Felhasználási feltételek és játékszabályok</a></nav>
     </div>
   </main>
 

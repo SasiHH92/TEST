@@ -488,6 +488,7 @@ async function fullServer() {
           await page.fill('#authRegisterEmail', 'bela@example.invalid');
           await page.fill('#authRegisterPassword', password);
           await page.fill('#authRegisterConfirm', password);
+          await page.check('#authTerms'); // a feltételek elfogadása
           await page.click('#authRegisterSubmit');
           await page.waitForFunction(() => /megerősítő levelet/.test(document.querySelector('#authRegisterMessage').textContent));
           assert.equal(await page.evaluate(() => !!window.kbAccount), false, 'még nincs belépve');

@@ -7,6 +7,7 @@ const {promisify} = require('util');
 const express = require('express');
 const {scrub} = require('./errorlog');
 const {createMailer} = require('./mailer');
+const {LEGAL_VERSION, loadConfig: loadLegalConfig} = require('./legal');
 const {isSelectable:avatarSelectable} = require('./public/avatar-roles'); // csak a mind az 5 szerep-modellel rendelkező avatár választható
 const derive = promisify(crypto.scrypt);
 const SCRYPT = {N:32768,r:8,p:3,maxmem:64*1024*1024};
@@ -147,6 +148,10 @@ function createAuth(options={}) {
   // Levélküldés (Resend SDK) a közös mailer.js-en át; a sablonok a mail-templates.js-ben vannak.
   const mailer=options.mailer||createMailer({env,origin,sendMail:options.sendMail,resendClient:options.resendClient});
   const mailEnabled=mailer.enabled;
+  // A regisztrációhoz a felhasználási feltételek és az adatkezelési tájékoztató elfogadása (és a korhatár) kell: élesen (https) alapból kötelező,
+  // az AUTH_REQUIRE_TERMS=1 / 0 felülírja. A szerver rögzíti az elfogadás idejét és verzióját.
+  const legalConfig=loadLegalConfig(env,origin);
+  const requireTerms=env.AUTH_REQUIRE_TERMS==='1' || (env.AUTH_REQUIRE_TERMS!=='0' && origin.startsWith('https:'));
   // E-mail-megerősítés az új (jelszavas) regisztrációkhoz: csak ha működik a levélküldés (különben senki nem tudna belépni).
   // Az AUTH_REQUIRE_EMAIL_VERIFICATION=0 kikapcsolja. A régi fiókok (emailVerified mező nélkül) megerősítettnek számítanak.
   const requireVerification=mailEnabled && env.AUTH_REQUIRE_EMAIL_VERIFICATION!=='0';
@@ -267,7 +272,8 @@ function createAuth(options={}) {
   });
   router.get('/status',(req,res)=>res.json({user:publicUser(rawSession(req)),
     available:!storageError,providers:{google:enabled('google'),discord:enabled('discord')},
-    passwordReset:mailEnabled && !storageError,mail:mailEnabled && !storageError,emailVerification:requireVerification && !storageError}));
+    passwordReset:mailEnabled && !storageError,mail:mailEnabled && !storageError,emailVerification:requireVerification && !storageError,
+    legal:{version:LEGAL_VERSION,minAge:legalConfig.minAge,termsRequired:requireTerms}}));
   router.use((req,res,next)=>storageError?res.status(503).json({error:'A fiókkezelés most nem elérhető. Próbáld újra később.'}):next());
   router.post('/register',wrap(async(req,res)=>{
     // Legendás kártya igénylése: érvényes igénylő-kóddal a fiók a legenda pontos nevén jön létre (a név egyébként foglalt).
@@ -278,6 +284,7 @@ function createAuth(options={}) {
     }
     const address=email(req.body.email),name=legendName||username(req.body.username),password=newPassword(req.body);
     const record=await hash(password);
+    if(requireTerms && req.body.acceptTerms!==true) fail(400,'A regisztrációhoz el kell fogadnod a Felhasználási feltételeket és az Adatkezelési tájékoztatót, és meg kell erősítened, hogy elmúltál '+legalConfig.minAge+' éves.');
     const pending=requireVerification && !legendName; // a legendás igénylő-link maga a bizonyíték, ott nincs megerősítő levél
     const user=store.commit(data=>{
       // a meg nem erősített, soha be nem lépett régi fiókok nem foglalhatják örökre a nevet / címet
@@ -287,6 +294,7 @@ function createAuth(options={}) {
       if(!legendName && reserved(name)) fail(409,'Ez a felhasználónév már foglalt.');
       const user={id:crypto.randomUUID(),username:name,email:address,password:record,providers:{},createdAt:now()};
       if(pending) user.emailVerified=false;
+      if(req.body.acceptTerms===true) user.terms={version:LEGAL_VERSION,at:now(),minAge:legalConfig.minAge};
       if(legendName) {
         user.legend=legendName;
         user.profile=cleanProfile(options.legendProfile?options.legendProfile(legendName):{});
@@ -564,7 +572,7 @@ function createAuth(options={}) {
           let name=raw.length>=3?raw:'Játékos',suffix=1;
           while(data.users.some(u=>normalize(u.username)===normalize(name)) || reserved(name)) name=raw.slice(0,14)+'-'+suffix++;
           const user={id:crypto.randomUUID(),username:name,email:address,password:null,
-            providers:{[provider]:providerId},createdAt:now(),emailVerified:true}; // a szolgáltató igazolta a címet
+            providers:{[provider]:providerId},createdAt:now(),emailVerified:true,terms:{version:LEGAL_VERSION,at:now(),via:provider}}; // a szolgáltató igazolta a címet; az elfogadást a belépőoldal figyelmeztetése fedi
           perk(user,provider);
           data.users.push(user);return user;
         });
@@ -681,6 +689,12 @@ function createAuth(options={}) {
       return {link:origin+'/#reset='+issueReset(user),username:user.username,expiresInMinutes:60};
     }
   };
-  return {router,session,mutate,expectedOrigin,directory,admin,mailer};
+  // A meg nem erősített, soha be nem lépett, 7 napnál régebbi fiókok törlése (a név és a cím felszabadul); a szerver időnként meghívja.
+  const staleUnverified=u=>u.emailVerified===false && !u.lastLoginAt && now()-(u.createdAt||0)>UNVERIFIED_KEEP_MS;
+  function purgeUnverified() {
+    if(!store || !store.state.users.some(staleUnverified)) return 0;
+    return store.commit(data=>{const before=data.users.length;data.users=data.users.filter(u=>!staleUnverified(u));return before-data.users.length;});
+  }
+  return {router,session,mutate,expectedOrigin,directory,admin,mailer,purgeUnverified};
 }
 module.exports={createAuth,loadAuthEnvironment};

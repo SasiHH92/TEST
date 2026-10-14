@@ -185,7 +185,9 @@ async function main() {
   });
   await test('Secure süti HTTPS telepítésnél; szolgáltatók kulcs nélkül kikapcsolva',async()=>{
     const secure=await boot({env:{AUTH_BASE_URL:'https://game.example.invalid'}});
-    const result=await secure.req('POST','/register',registration(),{headers:{Origin:'https://game.example.invalid'}});
+    // élesen (https) a feltételek elfogadása kötelező: elfogadás nélkül nem jön létre a fiók
+    assert.equal((await secure.req('POST','/register',registration(),{headers:{Origin:'https://game.example.invalid'}})).status,400);
+    const result=await secure.req('POST','/register',{...registration(),acceptTerms:true},{headers:{Origin:'https://game.example.invalid'}});
     assert.equal(result.status,201);assert.match(result.cookies[0],/Secure/);
     assert.equal((await secure.req('GET','/google/start')).status,503);
     assert.equal((await secure.req('GET','/discord/start')).status,503);
