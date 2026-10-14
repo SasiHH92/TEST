@@ -3979,3 +3979,5 @@ body[data-screen="lobby"] .bug-fab { bottom: 52px; }
 }
 /* "Hogyan kell játszani?" gomb a menüben: az első látogatásnál kiemelve, utána halk */
 .howto-btn.first-visit { border-color: var(--gold); color: #ffe3a5; box-shadow: 0 0 0 2px rgba(223, 185, 109, 0.28); }
+/* A gazdához rendelt legenda-kártyán nincs "VÁLASZTOM" gomb, így a jelvények (Elítélve / Felmentve) a kártya aljára kerülnek, ahová az "A GAZDÁJÁÉ" pecsét is rajzolódik: hely kell neki */
+.mug-card.taken[class*="cos-frame-"], .mug-card.taken[class*="cos-bg-"] { padding-bottom: 54px; }

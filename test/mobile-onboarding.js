@@ -142,6 +142,29 @@ async function guestToMenu(page, name) {
       });
     }
 
+    for (const [label, vp, mobileCtx] of [['390x844 telefon', PHONES[0], true], ['1280x800 asztali', { width: 1280, height: 800 }, false]]) {
+      await test('A) névválasztó ' + label + ': a gazdához rendelt legenda-kártyán az "A GAZDÁJÁÉ" pecsét nem takarja az Elítélve / Felmentve jelvényeket', async () => {
+        const ctx = mobileCtx ? await mobile(vp) : await browser.newContext({ viewport: { width: vp.width, height: vp.height } }), page = await ctx.newPage();
+        try {
+          await page.goto(BASE, { waitUntil: 'load' }); await pause(800);
+          await page.locator('#authGuest').click(); await pause(800);
+          // a kliens saját markupjával azonos állapot: lefoglalt (gazdához rendelt) legenda-kártya, nincs "VÁLASZTOM" gomb, van pecsét (a helyi szerveren nincs gazdához rendelt legenda)
+          const res = await page.evaluate(() => {
+            const cards = [...document.querySelectorAll('#mugGrid > *')].slice(0, 2); const out = [];
+            for (const c of cards) {
+              c.classList.add('taken'); const pick = c.querySelector('.mug-pick'); if (pick) pick.remove();
+              const d = document.createElement('div'); d.className = 'mug-taken'; d.innerHTML = '<span>A GAZDÁJÁÉ</span>'; c.appendChild(d);
+              const stats = c.querySelector('.mug-stats').getBoundingClientRect(), stamp = d.querySelector('span').getBoundingClientRect(), card = c.getBoundingClientRect();
+              out.push({ cos: /cos-(frame|bg)-/.test(c.className), overlap: stamp.top < stats.bottom - 0.5 && stamp.bottom > stats.top + 0.5, inside: stamp.bottom <= card.bottom + 0.5 && stamp.top >= card.top });
+            }
+            return out;
+          });
+          assert.ok(res.length >= 2 && res.every((r) => r.cos), 'a legenda-kártyák egyedi kerettel / háttérrel jelennek meg');
+          for (const r of res) { assert.equal(r.overlap, false, 'a pecsét takarja a jelvényeket'); assert.equal(r.inside, true, 'a pecsét a kártyán belül van'); }
+        } finally { await ctx.close(); }
+      });
+    }
+
     await test('D) a gombfeliratok helyesek (BELÉPÉS), és a játékleírás teljes: az összefoglaló az első fejezet, a régi fejezetek megvannak', async () => {
       const html = await (await fetch(BASE + '/', { headers: { Connection: 'close' } })).text();
       assert.ok(!/BELEPÉS/.test(html), 'elütés: BELEPÉS'); assert.match(html, /id="btnJoin"[^>]*>BELÉPÉS A TEREMBE</); assert.match(html, /id="btnGuestGo"[^>]*>BELÉPÉS A NYILVÁNTARTÁSBA</);
