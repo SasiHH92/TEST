@@ -50,5 +50,33 @@ A fájlnevek kisbetűsek, csak betű / szám / kötőjel. **Ne használj interne
 
 ## Mi hiányzik még?
 
-Jelenleg **egyetlen fájl sincs** (minden hang szintetizált). A fenti táblázat mind a 31 hang-neve igényelhető.
-A prioritás (a legtöbbet halló / legnagyobb hatású): `gavel`, `verdict-guilty`, `verdict-acquitted`, `reveal`, `stinger`, `victory`, `challenge-success`, `challenge-fail`, `card-play`, `ui-click`.
+Ami fájlként hiányzik (jelenleg a `challenge`, amit a generátor hangtalanra készített), azt a játék a szintetizált hanggal pótolja. A fenti táblázat mind a 31 hang-neve igényelhető fájlként.
+
+## Hangok generálása (ElevenLabs)
+
+A hiányzó hangokat az ElevenLabs Sound Effects szolgáltatással le lehet generálni a `scripts/generate-audio.js` szkripttel (30 hang, a fenti nevekkel + `chat`, `dm`). A saját gépeden futtasd, a saját API-kulcsoddal (**a kulcsot ne írd be a parancsba vagy a tárolóba**, csak környezeti változóként a saját terminálodban):
+
+```powershell
+$env:ELEVENLABS_API_KEY="..."
+node scripts/generate-audio.js --dry-run                       # csak a terv, nem fogy kredit
+node scripts/generate-audio.js                               # a hiányzó hangok legenerálása (a meglévőt nem írja felül)
+node scripts/generate-audio.js --only gavel,victory --variants 3   # 3 változat, a _candidates mappába
+node scripts/generate-audio.js --use gavel=2                # a 2. változat legyen az éles hang
+```
+
+A generált hang legalább 0,5 mp hosszú, és nincs levágva a csend az elejéről / végéről; ha egy hang túl hosszú vagy puffogós, kérj változatokat (`--variants`), vagy szerkeszd a szkriptben a prompt szövegét. A hangerőt a játék állítja.
+
+### Hangok mesterelése (hangerő-kiegyenlítés)
+
+A generált hangok hangereje nagyon eltér (a leghalkabb kb. 35 dB-lel halkabb a leghangosabbnál), és sok hang végén hosszú a csend. A játék minden fájlt ugyanazzal a mester-hangerővel játszik, ezért a generálás után futtasd:
+
+```powershell
+node scripts/master-audio.js --dry-run     # csak a terv és a mért számok, nem ír fájlt
+node scripts/master-audio.js               # levágja a csendet, kategóriánként célszintre hozza, MP3-ba kódolja
+node scripts/master-audio.js --only gavel  # csak egy hang
+```
+
+- A szintek hangonként a `scripts/master-audio.js` `LEVELS` táblázatában vannak (csúcs-cél és átlagos szint korlát dBFS-ben): a kattintások, kártya- és papírhangok halkak, az ítélet, a kalapács, a felfedés és a győzelem hangosak. A csúcs sehol nem lépi át a -1 dBFS-t. Ha egy hang a játékban túl hangos vagy halk, itt módosítsd, és futtasd újra.
+- A mesterelés előtti fájlok az `assets/audio/_original/` mappába kerülnek (a játék ezt a mappát nem tölti be), és a szkript mindig onnan dolgozik, így többször is futtatható. Ha egy hangot újragenerálsz vagy kézzel lecserélsz, a szkript felismeri, és az új fájlt veszi eredetinek.
+- A hangtalan (-30 dBFS-nél halkabb) vagy sérült fájlt nem módosítja, hanem jelzi: azt generáld újra (`node scripts/generate-audio.js --only <név> --force`), majd futtasd újra a mesterelést.
+- Kell hozzá a gépen egy Edge / Chrome (a dekódolást a böngésző végzi) és a fejlesztői csomagok (`npm install`).

@@ -7,6 +7,8 @@
     "start": "node server.js",
     "test": "node test/e2e.js",
     "test:email": "node test/email.js",
+    "audio:generate": "node scripts/generate-audio.js",
+    "test:audio-gen": "node test/audio-gen.js",
     "test:legal": "node test/legal.js",
     "email:preview": "node scripts/preview-emails.js",
     "email:test": "node scripts/send-test-email.js",
@@ -49,7 +51,9 @@
     "smoke": "node scripts/live-smoke.js",
     "test:tester": "node test/tester-bonus.js",
     "test:support": "node test/support.js",
-    "test:wardrobe": "node test/wardrobe-ui.js"
+    "test:wardrobe": "node test/wardrobe-ui.js",
+    "audio:master": "node scripts/master-audio.js",
+    "test:audio-master": "node test/audio-master.js"
   },
   "engines": {
     "node": ">=18"
@@ -63,6 +67,7 @@
     "socket.io": "^4.7.5"
   },
   "devDependencies": {
+    "lamejs": "^1.2.1",
     "pg-mem": "^3.0.14",
     "playwright-core": "^1.63.0",
     "socket.io-client": "^4.8.4"

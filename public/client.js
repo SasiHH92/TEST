@@ -169,9 +169,11 @@ const SOUND_HOOKS = {
   paper: 'paper', score: 'points', 'ui-click': 'uiClick', 'card-hover': 'cardHover', 'card-play': 'cardPlay', reaction: 'reactionPop', stinger: 'stinger', reveal: 'reveal',
   'challenge-success': 'challengeOk', 'challenge-fail': 'challengeNo', victory: 'victory'
 };
+// Csevegő-hangjelzés: előbb a hangfájl (assets/audio/chat.* / dm.*), különben a szintetizált tartalék.
+const fileFirst = (name) => { try { if (vol() === 0 || !window.kbMedia || !window.kbMedia.hasSound(name)) return false; ensureAudio(); return !!window.kbMedia.playSound(name, vol()); } catch (_) { return false; } };
 window.kbSound = {
-  ping() { if (chatSound) { ensureAudio(); SFX.dm(); } },
-  chat() { if (chatSound) { ensureAudio(); SFX.chat(); } },
+  ping() { if (chatSound && !fileFirst('dm')) { ensureAudio(); SFX.dm(); } },
+  chat() { if (chatSound && !fileFirst('chat')) { ensureAudio(); SFX.chat(); } },
   // Egy hang lejátszása néven: előbb a feltöltött hangfájl (assets/audio/<név>.mp3|ogg|m4a|wav), különben a szintetizált tartalék. A mester-hangerő / némítás mindkettőre érvényes.
   play(name) {
     try {

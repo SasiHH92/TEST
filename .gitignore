@@ -38,3 +38,7 @@ Thumbs.db
 # e-mail sablon-előnézet (scripts/preview-emails.js)
 email-preview/
 data/outbox.jsonl
+
+# hangok: a mesterelés előtti nyers fájlok és a generált változatok csak helyben maradnak
+assets/audio/_original/
+assets/audio/_candidates/
