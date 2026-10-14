@@ -19,6 +19,7 @@ try { ({ chromium } = require('playwright-core')); } catch (_) { /* böngésző 
 
 const root = path.resolve(__dirname, '..');
 const KOFI = 'https://ko-fi.com/kamubirosag';
+const DISCORD = 'https://discord.gg/yyG7hH4aEB';
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kamu-support-'));
 const f = (n) => path.join(tmp, n);
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -70,7 +71,10 @@ async function start(port) {
     assert.ok(m[0].includes('target="_blank"'));
     assert.match(m[0], /rel="noopener noreferrer"/);
     const ext = [...html.matchAll(/(?:href|src|action)="(https?:\/\/[^"]+)"/g)].map((x) => x[1]);
-    assert.deepEqual([...new Set(ext)], [KOFI], 'egyetlen külső cím: a Ko-fi oldal; kapott: ' + ext.join(', '));
+    // külső cím csak kettő lehet: a Ko-fi oldal és a Discord-meghívó (a lábléc "💬 Discord" linkje, noopener-rel)
+    assert.deepEqual([...new Set(ext)], [KOFI, DISCORD], 'külső címek: a Ko-fi oldal és a Discord-meghívó; kapott: ' + ext.join(', '));
+    const dm = /<a[^>]*id="discordInviteSupport"[^>]*>/.exec(html);
+    assert.ok(dm && dm[0].includes('target="_blank"') && /rel="noopener noreferrer"/.test(dm[0]), 'a Discord-link új lapon, noopener noreferrer-rel nyílik');
     assert.ok(!/<(form|input|textarea|select|iframe)\b/i.test(html), 'nincs űrlap / beviteli mező / keret');
     assert.ok(!/<button\b/i.test(html), 'nincs gomb: nincs fizetési interakció (csak a link)');
     assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/i.test(html), 'nincs inline szkript (CSP)');

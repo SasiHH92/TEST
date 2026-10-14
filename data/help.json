@@ -2,6 +2,17 @@
   "title": "Kamu Bíróság – Játékleírás",
   "sections": [
     {
+      "heading": "RÖVIDEN – ELŐSZÖR JÁTSZOL?",
+      "list": [
+        "Kell hozzá 3–8 játékos és közös hangos beszélgetés (általában Discord-hívás): a telefon / böngésző csak vezeti a tárgyalást.",
+        "Az egyikőtök ÚJ TÁRGYALÁST indít, a többiek a szobakóddal, a linkkel vagy a QR-kóddal csatlakoznak. Ha mindenki KÉSZEN ÁLL, a házigazda elindítja a játékot.",
+        "Minden körben valakit egy abszurd, vicces bűnnel vádolnak. A játék kiosztja a szerepeket (vádlott, ügyész, védő, tanú, bíró, esküdtek) és a titkos kártyákat: ezeket csak te látod a saját képernyődön.",
+        "Élőszóban vitáztok: az ügyész bizonyítani akarja a bűnösséget, a vádlott védekezik, a kártyákat pedig bele kell szőni a beszédbe. A játék méri az időt, a többiek reagálhatnak (😂 💀 🤡 🔥 👏).",
+        "A végén az esküdtek titokban szavaznak: BŰNÖS vagy ÁRTATLAN. Pontot kap a győztes fél, az ítélettel egyező szavazat és a teljesített titkos kihívás. Utána jön a következő kör, új szerepekkel."
+      ],
+      "after": "Lent a teljes játékleírás: szerepek, a kör menete, pontozás, gombok, barátok és csevegő."
+    },
+    {
       "heading": "MI EZ A JÁTÉK?",
       "body": [
         "A Kamu Bíróság egy online party játék, amit Discordon, hangban játszotok. A játék a böngészőben/telefonon csak levezeti a tárgyalást: kiosztja a szerepeket és a titkos kártyákat, méri az időt, és lebonyolítja a szavazást. Minden körben valakit egy abszurd, vicces bűnnel vádolnak. Ti élőszóban érveltek, védekeztek, hazudtok és röhögtök, a többiek pedig eldöntik, bűnös-e. 3–8 játékos kell hozzá."

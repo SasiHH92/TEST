@@ -3962,3 +3962,20 @@ body.in-game .bug-fab { opacity: .55; }
 .auth-terms a { color: #784018; font-weight: 800; }
 .auth-oauth-note { margin-top: 6px; line-height: 1.4; }
 .auth-oauth-note a { color: #784018; font-weight: 700; }
+
+/* ============================================================
+   TELEFON: új játékos útja + fix gombok helye
+   - a bal felső 🔊/🏃 és a jobb felső ⓘ gomb helye a képernyők tetején szabad (ne takarják a címet / a fejlécet)
+   - a névválasztón a vendég-belépés (ÚJ GYANÚSÍTOTT) a cím alatt van, nem a legendák kártyái alatt
+   - a lobbiban a hibajelentő gomb a hírszalag fölé kerül (nem takarja a "RENDKÍVÜLI" feliratot)
+   ============================================================ */
+body[data-screen="lobby"] .bug-fab { bottom: 52px; }
+@media (max-width: 700px) {
+  #screen-name.active { padding-top: 84px; } /* a cím negatív felső margója miatt több hely kell, mint a menün */
+  #screen-menu.active { padding-top: 66px; }
+  #screen-lobby .lobby-wrap { padding-top: 66px; }
+  #screen-name.active .station-header { order: -2; margin-bottom: 14px; }
+  #screen-name.active .new-suspect-box { order: -1; width: 100%; margin: 0 0 18px; }
+}
+/* "Hogyan kell játszani?" gomb a menüben: az első látogatásnál kiemelve, utána halk */
+.howto-btn.first-visit { border-color: var(--gold); color: #ffe3a5; box-shadow: 0 0 0 2px rgba(223, 185, 109, 0.28); }

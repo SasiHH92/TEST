@@ -972,9 +972,12 @@ function closeHelp() {
   $('#helpModal').classList.add('hidden');
 }
 
-$$('[data-help]').forEach((b) => b.addEventListener('click', () => openHelp(false)));
+// A "Hogyan kell játszani?" gomb (menü) az első látogatásnál kiemelt; ha a játékleírást egyszer megnyitották, már nem.
+const markHelpSeen = () => { LS.setItem('kb_helpSeen', '1'); $$('.howto-btn').forEach((b) => b.classList.remove('first-visit')); };
+if (!LS.getItem('kb_helpSeen')) $$('.howto-btn').forEach((b) => b.classList.add('first-visit'));
+$$('[data-help]').forEach((b) => b.addEventListener('click', () => { openHelp(false); markHelpSeen(); }));
 $('#helpClose').addEventListener('click', closeHelp);
-$('#helpOk').addEventListener('click', () => { closeHelp(); LS.setItem('kb_helpSeen', '1'); });
+$('#helpOk').addEventListener('click', () => { closeHelp(); markHelpSeen(); });
 $('#helpModal').addEventListener('click', (e) => { if (e.target === $('#helpModal')) closeHelp(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#helpModal').classList.contains('hidden')) closeHelp(); });
 if (!LS.getItem('kb_helpSeen')) setTimeout(() => {

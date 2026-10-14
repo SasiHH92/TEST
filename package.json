@@ -53,7 +53,8 @@
     "test:support": "node test/support.js",
     "test:wardrobe": "node test/wardrobe-ui.js",
     "audio:master": "node scripts/master-audio.js",
-    "test:audio-master": "node test/audio-master.js"
+    "test:audio-master": "node test/audio-master.js",
+    "test:mobile": "node test/mobile-onboarding.js"
   },
   "engines": {
     "node": ">=18"
