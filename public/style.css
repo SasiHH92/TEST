@@ -3981,3 +3981,24 @@ body[data-screen="lobby"] .bug-fab { bottom: 52px; }
 .howto-btn.first-visit { border-color: var(--gold); color: #ffe3a5; box-shadow: 0 0 0 2px rgba(223, 185, 109, 0.28); }
 /* A gazdához rendelt legenda-kártyán nincs "VÁLASZTOM" gomb, így a jelvények (Elítélve / Felmentve) a kártya aljára kerülnek, ahová az "A GAZDÁJÁÉ" pecsét is rajzolódik: hely kell neki */
 .mug-card.taken[class*="cos-frame-"], .mug-card.taken[class*="cos-bg-"] { padding-bottom: 54px; }
+
+/* ============================================================
+   BELÉPŐOLDAL LÁBLÉC: a jogi hivatkozások a hírsávban vannak (nem lebegnek a háttérképen), a sáv alja és a hibajelentő gomb nem ütközik
+   ============================================================ */
+.auth-features { flex-wrap: wrap; row-gap: 0; }
+.auth-features .auth-legal { flex: 0 0 100%; margin: 9px 0 -3px; padding: 7px 0 0; background: linear-gradient(90deg, transparent 0%, #ddae6055 18%, #ddae6055 82%, transparent 100%) top / 100% 1px no-repeat; font-size: 11.5px; letter-spacing: .3px; font-weight: 600; }
+@media (max-width: 700px) {
+  .auth-features .auth-legal { margin-top: 6px; gap: 2px 14px; }
+  .auth-screen.active { padding-bottom: 56px; } /* a lebegő hibajelentő gomb helye az oldal alján: ne takarja a lábléc hivatkozásait */
+}
+@media (min-width: 701px) {
+  .auth-features { padding: 12px 20px 10px; margin-top: 2px; } /* 1080p-s böngészőablakban (kb. 940 px) a teljes belépőoldal görgetés nélkül elférjen */
+}
+@media (max-width: 700px) {
+  /* telefonon a négy elem egy sorban marad (összébb húzódnak), a jogi sor alattuk külön sorban */
+  .auth-features > span, .auth-features > a { flex: 1 1 0; min-width: 0; }
+}
+@media (min-width: 701px) {
+  /* a belépőoldalon a hibajelentő gomb a bal felső sarokban ül (az ⓘ gomb tükörpárja), így nem ütközik a lábléc sávjával */
+  body:not([data-screen]) .bug-fab, body[data-screen="auth"] .bug-fab { top: 12px; left: 12px; bottom: auto; }
+}

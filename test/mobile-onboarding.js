@@ -165,6 +165,35 @@ async function guestToMenu(page, name) {
       });
     }
 
+    const FOOTER_SIZES = [{ w: 1920, h: 937, mobile: false, fits: true }, { w: 1896, h: 950, mobile: false, fits: true }, { w: 1920, h: 1080, mobile: false, fits: true }, { w: 1366, h: 768, mobile: false }, { w: 1024, h: 768, mobile: false }, { w: 390, h: 844, mobile: true }, { w: 360, h: 640, mobile: true }];
+    for (const s of FOOTER_SIZES) {
+      await test('E) belépőoldal lábléc ' + s.w + 'x' + s.h + ': a jogi hivatkozások a hírsávban vannak, a hibajelentő gomb nem takar semmit' + (s.fits ? ', az oldal görgetés nélkül elfér' : '') + (s.mobile ? ', a négy elem egy sorban' : ''), async () => {
+        const ctx = s.mobile ? await mobile({ width: s.w, height: s.h }) : await browser.newContext({ viewport: { width: s.w, height: s.h } }), page = await ctx.newPage();
+        try {
+          await page.goto(BASE, { waitUntil: 'load' }); await pause(1000);
+          const info = await page.evaluate(() => {
+            const rect = (e) => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }; };
+            const footer = document.querySelector('.auth-features');
+            const items = [...footer.querySelectorAll(':scope > span, :scope > a')].map(rect);
+            const legal = footer.querySelector('.auth-legal');
+            return { inFooter: !!legal, links: legal ? [...legal.querySelectorAll('a')].map((a) => a.getAttribute('href')) : [], itemCount: items.length, tops: items.map((r) => Math.round(r.top)), bottoms: items.map((r) => Math.round(r.bottom)), scrollW: document.documentElement.scrollWidth, innerW: window.innerWidth, scrollH: document.documentElement.scrollHeight, innerH: window.innerHeight };
+          });
+          assert.equal(info.inFooter, true, 'a jogi hivatkozások a lábléc-sávban vannak');
+          assert.deepEqual(info.links, ['/impresszum', '/adatkezeles', '/felhasznalasi-feltetelek']);
+          assert.equal(info.itemCount, 4, 'négy elem a sávban');
+          assert.ok(info.scrollW <= info.innerW, 'nincs vízszintes görgetés');
+          if (s.fits) assert.ok(info.scrollH <= info.innerH, 'az oldal elfér görgetés nélkül: ' + info.scrollH + ' <= ' + info.innerH);
+          if (s.mobile) assert.ok(Math.max(...info.tops) < Math.min(...info.bottoms), 'a négy elem egy sorban (a függőleges tartományuk átfedi egymást): ' + info.tops.join(', ') + ' / ' + info.bottoms.join(', '));
+          // az oldal aljára görgetve: a hibajelentő gomb nem ütközik a lábléc egyetlen elemével / hivatkozásával sem
+          await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await pause(300);
+          const bug = await rectOf(page, '#bugFab'); assert.ok(bug, 'a hibajelentő gomb látszik');
+          const boxes = await page.evaluate(() => [...document.querySelectorAll('.auth-features > span, .auth-features > a, .auth-legal a')].map((e) => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, t: (e.textContent || '').trim().slice(0, 24) }; }));
+          for (const b of boxes) assert.ok(!hit(bug, b), 'a hibajelentő gomb takarja: ' + b.t + ' ' + JSON.stringify({ bug, b }));
+          assert.ok(bug.top >= 0 && bug.bottom <= s.h && bug.left >= 0, 'a gomb a képernyőn belül van');
+        } finally { await ctx.close(); }
+      });
+    }
+
     await test('D) a gombfeliratok helyesek (BELÉPÉS), és a játékleírás teljes: az összefoglaló az első fejezet, a régi fejezetek megvannak', async () => {
       const html = await (await fetch(BASE + '/', { headers: { Connection: 'close' } })).text();
       assert.ok(!/BELEPÉS/.test(html), 'elütés: BELEPÉS'); assert.match(html, /id="btnJoin"[^>]*>BELÉPÉS A TEREMBE</); assert.match(html, /id="btnGuestGo"[^>]*>BELÉPÉS A NYILVÁNTARTÁSBA</);
