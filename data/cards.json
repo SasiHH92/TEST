@@ -479,6 +479,336 @@
       "A következő közös estén ő hozza a lángost, és mindenkinek külön megköszöni, hogy megette."
     ]
   },
+  "ggd": {
+    "nev": "Goose Goose Duck",
+    "vadak": [
+      "Három kört töltött egy szellőzőben, és azt mondta, hogy \"csak a feladatot kerestem\".",
+      "Összehívta a gyűlést, mert \"valaki gyanúsan nézett\", és a gyanúsított egy fal volt.",
+      "Dodóként azt hitte, hogy nyert, amikor kiszavazták, és az egész szerveren ünnepelt.",
+      "Mindenkit kiszavaztatott, aki nála jobban csinálta a feladatokat, mert \"túl szorgalmas\".",
+      "Végig a falnak beszélt a közelségi chatben, és azt mondta, hogy \"furcsán működik a hang\".",
+      "Egész gyűlésen azt ismételte, hogy \"nem láttam semmit\", pedig végig a holttest mellett állt.",
+      "A holttestet jelentette be, amit ő hagyott ott, és még jutalmat is kért érte.",
+      "Kacsaként annyit hajtogatta, hogy \"én csak feladatot csinálok\", hogy mindenki azonnal rájött.",
+      "Egy feladat közben elaludt, és mire felébredt, a gyűlés már lement, és őt szavazták ki."
+    ],
+    "bizonyitekok": [
+      "A gyűlés felvétele, ahol a vádlott mindenkit sorban megvádol, csak magát nem.",
+      "A szellőző melletti nyomok, amelyek pontosan a vádlott cipőméretéhez illenek.",
+      "A hangfelvétel, ahogy a vádlott azt mondja: \"én csak a feladatot csinálom\".",
+      "Egy szemtanú képernyőfotója a vádlottról, aki éppen kijön a szellőzőből.",
+      "A szavazási napló: a vádlott szavazott elsőként, és mindenkit másra buzdított.",
+      "Egy tojás a holttest mellett, amiről senki nem tudja, kié."
+    ],
+    "alibik": [
+      "A térkép túlsó végén voltál feladatot csinálni, és senki nem látott.",
+      "Épp a gyűlésre siettél, és közben elkéstél mindenről.",
+      "Már halott voltál, így nem csinálhattál semmit.",
+      "Egy dodót követtél, mert azt hitted, ő a vezető.",
+      "A közelségi chat nem működött, ezért semmit nem hallottál."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a vádlott csak azért vitte a holttestet, mert \"takarított\".",
+      "Követeld, hogy mindenki hangosan mondja el, hol volt, és az elsőt kiáltsd ki gyanúsnak.",
+      "Állítsd, hogy a szellőző csak egy kényelmes rövidítés volt, nem gyilkos eszköz.",
+      "Érvelj úgy, hogy a vádlott dodo, tehát azt akarta, hogy kiszavazzák, így ártatlan."
+    ],
+    "tanuk": [
+      "Te voltál a szellőző, amelyből mindenki ki-be mászott.",
+      "Te voltál a holttest, aki mindent látott, de már nem tud beszélni.",
+      "Te voltál a gyűlés gombja, amit mindenki túl gyakran nyomkodott.",
+      "Te voltál a galamb, aki mindent látott, és mindent továbbadott."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy gyanús kacsa, aki nagyon próbál ártatlannak látszani.",
+      "Minden mondatod végén mondd: \"én csak a feladatot csináltam\".",
+      "Beszélj úgy, mint egy lúdvezér, aki a falkát tereli.",
+      "Minden mondatban kiabáld, hogy \"GYŰLÉS!\", és közben mutass valakire."
+    ],
+    "buntetesek": [
+      "A következő meccsen csak dodóként játszhat, és hangosan közli mindenkivel, hogy ki akarja szavaztatni magát.",
+      "Egy hétig \"Gyanús Kacsa\" a Discord-neve.",
+      "Egy meccsig mindenkinek percről percre el kell mondania, mit csinált az utolsó feladat közben.",
+      "A következő gyűlést kötelezően ő hívja össze, és mindenkit megvádol, mielőtt megszólalna.",
+      "Egy meccsen át senki nem hihet neki, bármit is mond.",
+      "Egy hétig minden üzenete végére oda kell írnia: \"hönk\"."
+    ]
+  },
+  "amongus": {
+    "nev": "Among Us",
+    "vadak": [
+      "Az admin-térképen végig ugyanarra a pontra nézett, aztán azt mondta, hogy \"csak a feladatot figyelem\".",
+      "A kamerák előtt mindig ugyanabban a másodpercben tűnt el, amikor valaki meghalt.",
+      "Elsőként jelentette a holttestet, amit egyedül talált meg egy zárt szobában.",
+      "Vészgyűlést hívott, mert \"valaki zöld volt\", és a szoba tele volt zöld színű játékossal.",
+      "Az elektromos szobában három kört töltött, és mindig ugyanazt a három kábelt húzta.",
+      "Azt mondta, hogy feladatot csinál, miközben a falnak állt, és egy másodpercig sem mozdult.",
+      "A szellőzőből jött ki, és azt mondta, hogy \"csak gyorsan arra járt\".",
+      "Kiszavaztatott egy teljesen ártatlan csapattársat, aztán megdicsérte magát a jó megfigyelésért.",
+      "A reaktor-szabotázsnál \"megoldom!\" kiáltással elfutott az ellenkező irányba."
+    ],
+    "bizonyitekok": [
+      "A biztonsági kamerák felvétele, ahol a vádlott pont a holttest előtt tűnik el.",
+      "A vészgyűlés jegyzőkönyve: a vádlott hat alkalommal mutatott rá valaki másra.",
+      "Egy képernyőfotó a feladatlistáról, ahol a vádlott feladatai három kör után sem haladtak.",
+      "Az admin-térkép, amelyen a vádlott pontja kétszer is a holttest szobájában villan.",
+      "A névsor, amelyben a vádlott mindenkit \"sus\"-nak nevezett, csak magát nem.",
+      "Egy szellőzőrács, amelyen a vádlott ujjlenyomata látszik."
+    ],
+    "alibik": [
+      "Az elektromos szobában voltál, és ott semmit nem láttál, mert sötét volt.",
+      "A kamerák nézésével voltál elfoglalva, ezért egész végig a monitor előtt ültél.",
+      "Épp feladatot csináltál, és az közben bugos lett.",
+      "Épp az orvosi szkennerben álltál, és az mindent rögzített.",
+      "A vészgyűlés idején a vécében ültél, és nem hallottad a hívást."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a vádlott csak azért ment a szellőző felé, mert eltévedt.",
+      "Követeld, hogy mindenki mondja el a feladatát, és a hibákat kiabáld ki.",
+      "Hivatkozz arra, hogy \"a piros szín túl feltűnő, tehát biztosan ártatlan\".",
+      "Állítsd, hogy a vádlott egy hamis \"sus\"-áldozat, és az igazi tettes valaki más."
+    ],
+    "tanuk": [
+      "Te voltál a biztonsági kamera, amelyik csak a falat nézte.",
+      "Te voltál a vészgyűlés gombja, amit mindenki nyomkodott.",
+      "Te voltál a szellőző, amelybe valaki bemászott, és soha nem jött ki.",
+      "Te voltál az orvosi szkenner, amelyik mindenkit megvizsgált, és mindenre emlékszik."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy impostor, aki nagyon próbál meggyőzően hazudni.",
+      "Minden mondatod elején mondj egy színt, pl. \"Piros szerint...\".",
+      "Beszélj úgy, mint egy összeomlott legénység a reaktor-szabotázsnál.",
+      "Mindenkire mondd rá, hogy \"szerintem sus\", akit csak megemlítesz."
+    ],
+    "buntetesek": [
+      "A következő körben ő az első szavazás áldozata, bármit is mond.",
+      "Egy hétig \"Sus\" a Discord-neve.",
+      "A következő meccsen csak az elektromos szobában csinálhat feladatot.",
+      "Egy meccsen át mindenre azt kell mondania: \"nem én voltam, a piros volt\".",
+      "Egy egész meccsen csak szellemként beszélhet, suttogva.",
+      "A következő meccsen minden feladat után hangosan be kell jelentenie a csapatnak, mit csinált."
+    ]
+  },
+  "valorant": {
+    "nev": "Valorant",
+    "vadak": [
+      "Sage-ként egyszer sem élesztett fel senkit, de a falat felhúzta a saját csapata elé.",
+      "Jettként a kör elején előreugrott, és mindenkinek odakiabálta: \"nyomulj!\".",
+      "Az Operatorra költötte az egész csapat pénzét, és az első körben elejtette.",
+      "A spike-ot a saját csapata lába elé tette, aztán elfelejtette, hogy ő is ott áll.",
+      "Brimstone-ként a füstöt a saját csapata elé dobta, és azt mondta, hogy \"így biztonságosabb\".",
+      "Phoenix villantással elvakította az egész csapatot, és azt mondta, hogy \"ez neked is jó\".",
+      "Rankedben nyolc kört vesztett egymás után, és mindegyiket a csapat másik négy tagjára fogta.",
+      "Az ultját a legrosszabb pillanatban használta, és közben a saját csapatát is megsemmisítette.",
+      "Reynaként végig önmagát dicsérte a csapatchatben, miközben nulla gyilkossága volt."
+    ],
+    "bizonyitekok": [
+      "A killcam felvétele, ahol a vádlott a saját csapattársát villantja el.",
+      "A kör utáni statisztika: 0 kill, 12 halál, és az ult még mindig töltve.",
+      "Egy képernyőfotó a csapatchatből: \"gg, ez a csapat nem játszik\" a vádlottól.",
+      "A vásárlási napló, ahol a vádlott egyedül vett Operatort, a csapat egy pisztolyt kapott.",
+      "A felvétel, amelyen a vádlott a spike-ot a rossz helyre teszi le.",
+      "Az üres Sage-gyógyítás számlálója: 0 gyógyítás három meccs alatt."
+    ],
+    "alibik": [
+      "A vásárlási fázisban ragadtál, mert nem tudtál dönteni.",
+      "Az eco körben spóroltál, és csak egy pisztolyod volt.",
+      "Épp az ultet töltötted, és közben senkit nem akartál zavarni.",
+      "A telefonod felvillant, és pont akkor néztél bele.",
+      "A lag miatt a szerver csak három másodperc múlva mutatta, hogy lőttél."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a vádlott ultja a csapat összes sérülését meggyógyította volna, ha nem szakad meg a kapcsolat.",
+      "Hivatkozz a \"te se vagy jobb\" elvre, és mutass a bíróra.",
+      "Állítsd, hogy az ellenfél smurf volt, tehát a vereség nem számít.",
+      "Követeld, hogy a bizonyítékot a vádlott ügynökének nézőpontjából is nézzék meg."
+    ],
+    "tanuk": [
+      "Te voltál az ellenfél Jettje, aki mindent látott, mert mindenhol ott volt.",
+      "Te voltál a spike, amit mindenki a rossz helyre vitt.",
+      "Te voltál a csapat Sage-je, aki soha nem élesztett fel senkit, de mindenre emlékszik.",
+      "Te voltál a Sova drónja, amely mindent látott, és közben végig csipogott."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy játékos, aki az utolsó körben egyedül maradt öt ellenféllel szemben.",
+      "Minden mondatod végén mondd: \"ez az ult\", és hangosan sóhajts.",
+      "Beszélj úgy, mint egy Valorant-kommentátor, aki mindent \"clean\"-nek nevez.",
+      "Minden mondatodban szerepeljen egy ügynök neve."
+    ],
+    "buntetesek": [
+      "A következő 5 meccsen csak Sage-ként játszhat, és mindenkit fel kell élesztenie.",
+      "Egy hétig \"Eco Kör\" a Discord-neve.",
+      "A következő meccsen a csapatchatben mindenkinek köszönnie kell, az ellenfeleknek is.",
+      "Egy meccsig csak pisztollyal játszhat, de minden kör előtt beszédet kell tartania.",
+      "A következő meccsen minden halála után meg kell dicsérnie az ellenfelet.",
+      "Egy hétig ő a \"carry\", és minden hibát rá lehet fogni."
+    ]
+  },
+  "fortnite": {
+    "nev": "Fortnite",
+    "vadak": [
+      "A harcbuszról leugrott, azt kiabálva, hogy \"ma én nyerek!\", aztán egyenesen a tengerbe esett.",
+      "Háromszor építette fel ugyanazt a tornyot, és háromszor magára hagyta benne a csapatát.",
+      "Az utolsó pillanatban egy emote-tánccal elárulta a csapat rejtekhelyét.",
+      "Megvette az egész battle passt, aztán az első szinten abbahagyta.",
+      "Lelőtte a csapattársát, aztán azt mondta, hogy \"ez csak egy gyakorló kör\".",
+      "Bokornak öltözve állt húsz percig, és közben a csapata meghalt.",
+      "A V-Buckst egy olyan skinre költötte, amit senki nem lát, mert mindig a földön fekszik.",
+      "A Chug Jugot az utolsó körben a pályán hagyta, mert \"majd később\".",
+      "Zero Buildben is építeni próbált, és az egész csapat nevetett rajta."
+    ],
+    "bizonyitekok": [
+      "A killcam, ahol a vádlott a saját csapatát építi be a falak közé.",
+      "Egy képernyőfotó a skin-vásárlásról: 4500 V-Buck egy kalapért.",
+      "A harcbusz útvonala, amelyen a vádlott neve a víz fölé van jelölve.",
+      "Az emote-napló: a vádlott 14-szer táncolt, miközben lőttek rá.",
+      "Egy üres Chug Jug a vádlott inventoryjában, amit a csapat hiába keresett.",
+      "A meccs vége képernyő: 1 kill, 0 építés, 9 emote."
+    ],
+    "alibik": [
+      "A buszon ragadtál, mert nem tudtál leugrani.",
+      "Épp a boltban válogattál skineket, és a meccs elindult nélküled.",
+      "A kontrollered driftelt, és a karaktered magától ment.",
+      "A vihar elkapott, és semmit nem láttál a ködben.",
+      "A szerver visszalépett, és ezt a visszajátszás is mutatja."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a vádlott csak szórakozott, mert a Victory Royale úgysem fontos.",
+      "Hivatkozz a Battle Passra: aki fizetett, annak jogai vannak.",
+      "Állítsd, hogy az ellenfél cheatelt, mert nem lehet valaki ennyire jó.",
+      "Érvelj úgy, hogy az építés művészet, és a művészet nem büntethető."
+    ],
+    "tanuk": [
+      "Te voltál a bokor, amelyben a vádlott mozdulatlanul állt.",
+      "Te voltál a harcbusz sofőrje, aki mindenkit látott leugrani.",
+      "Te voltál a Chug Jug, amit senki nem ivott meg.",
+      "Te voltál a vihar, amelyik mindenkit elnyelt, és mindenre emlékszik."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy Fortnite-kommentátor a világbajnokságon.",
+      "Minden mondatod végén táncolj egyet, vagy legalább mondd, hogy \"emote\".",
+      "Beszélj úgy, mint aki épp falat épít, és közben nagyon kapkod.",
+      "Minden mondatodban szerepeljen egy építési elem: fal, padló, rámpa vagy tető."
+    ],
+    "buntetesek": [
+      "A következő meccsen csak emote-okkal kommunikálhat a csapattal.",
+      "Egy hétig \"Zero Build Béla\" a Discord-neve.",
+      "Egy meccsen a csapat dönti el, hová ugrik, és csak a legrosszabb helyre.",
+      "Köteles egy komplett emote-koreográfiát előadni a hívásban.",
+      "A következő meccsen mindenkit meg kell dicsérnie építésért, még ha csak egy falat húztak fel.",
+      "Egy hétig minden üzenete elé ki kell írnia: \"Victory Royale?\"."
+    ]
+  },
+  "fifa": {
+    "nev": "EA FC / FIFA",
+    "vadak": [
+      "Háromezer pontot költött csomagnyitásra, és egy 62-es hátvéd lett a legjobb húzása.",
+      "A kontrollert a falhoz vágta, mert a kapus \"szándékosan\" kapott gólt.",
+      "A hosszabbításban lekapcsolta a konzolt, hogy a vereség ne kerüljön a statisztikába.",
+      "Úgy állította fel a csapatot, hogy hat csatár és egy kapus volt, aztán csodálkozott a 9-1-en.",
+      "Egész Weekend Leagueen ugyanazzal az egy trükkel játszott, és azt állította, hogy nem sweaty.",
+      "Csomagnyitás előtt tizenötször imádkozott, aztán egy közepes játékost húzott, és két napig nem szólt senkihez.",
+      "A saját kapusát kicserélte egy védőre, mert \"az legalább mozog\".",
+      "Egy lag miatt elvesztett meccsről képernyőfotót küldött az EA-nek, mellé egy hosszú verset.",
+      "A 94. percben kapott gólt a játékbíróra fogta, akit nem is lehet irányítani."
+    ],
+    "bizonyitekok": [
+      "A csomagnyitás képernyőfotója: három azonos közepes játékos.",
+      "A statisztika: 78% labdabirtoklás, 0 gól.",
+      "A konzol összetört kontrollere, és a falon egy lyuk.",
+      "A meccsnapló, amelyen a vádlott neve mellett a \"kilépett\" felirat látható.",
+      "Egy hosszú hangüzenet, amelyben a vádlott a kapusát szidja.",
+      "Az Ultimate Team felállítása, ahol a kapus a támadósorban áll."
+    ],
+    "alibik": [
+      "A kontrolleredről lemerült az akkumulátor a döntő pillanatban.",
+      "Épp a szünetben voltál a konyhában, és közben a gép játszott helyetted.",
+      "A lag miatt a csapatod egy másodperccel később mozdult.",
+      "Egy csomagot nyitottál, és közben nem figyeltél semmi másra.",
+      "A kapusod saját akaratából futott ki a kapuból."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a mérkőzést a játék igazságtalan algoritmusa döntötte el.",
+      "Hivatkozz arra, hogy \"mindenki tudja, hogy a kapusok szándékosan hibáznak\".",
+      "Érvelj úgy, hogy az 5-0 valójában erkölcsi győzelem.",
+      "Állítsd, hogy a vádlott csak kísérletezett egy új felállással."
+    ],
+    "tanuk": [
+      "Te voltál a kapus, aki szándékosan kapott gólt.",
+      "Te voltál a labda, amelyik soha nem akart bemenni.",
+      "Te voltál az ellenfél, aki csak a támadó gombot nyomta lefelé.",
+      "Te voltál az a csomag, amiben végül nem volt semmi, és mégis mindenki izgult."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy focikommentátor, aki a 90. percben nem hisz a szemének.",
+      "Minden mondatod végén ujjongj, mintha gólt szereztél volna.",
+      "Beszélj úgy, mint egy csalódott csomagnyitó, aki egy átlagos kártyát húzott.",
+      "Minden mondatodban szerepeljen egy focista neve."
+    ],
+    "buntetesek": [
+      "A következő mérkőzést csak kapusként játszhatja, és minden gólnál magyarázatot kell adnia.",
+      "Egy hétig \"Csomagfüggő\" a Discord-neve.",
+      "Egy meccsen a csapat dönti el a felállítását, és csak a legrosszabb játékosokat tehetik be.",
+      "A következő vereségnél kötelező elénekelnie a csapat indulóját.",
+      "Egy meccsen át a kontrollert csak egy kézzel foghatja.",
+      "Köteles bocsánatot kérni a kontrollerétől, hangosan, a csapat előtt."
+    ]
+  },
+  "lol": {
+    "nev": "League of Legends",
+    "vadak": [
+      "Tizenöt percig farmolt egyedül a sávban, és azt mondta, hogy \"majd később hozom\".",
+      "A Baront a saját csapata elől ellopta az ellenfél, és ő azt mondta, hogy \"jó volt a ward\".",
+      "Az egész meccs alatt nem tett le egyetlen látótornyot sem, aztán a csapatot hibáztatta a gankért.",
+      "Az első perctől a tizenötödikig egyfolytában az \"ff@15\" szót ismételgette a chatben.",
+      "Teemoként minden bokorba gombát tett, aztán a saját csapata futott bele.",
+      "Elsőként lépett ki a meccsből, hogy \"ne legyen nagyobb a baj a statisztikában\".",
+      "Yasuóval 0/10-es állásnál is azt mondta, hogy \"majd a teamfight megoldja\".",
+      "Az ultját mindig a bokorban hagyta, aztán azt mondta, hogy nem látta az ellenfelet.",
+      "Smurfként lépett be egy kezdő játékba, mindenkit lealázott, aztán bocsánatot kért az anyukájától."
+    ],
+    "bizonyitekok": [
+      "A meccs utáni statisztika: 0/12/1, és egy sárga \"AFK észlelve\" jelzés.",
+      "A csapatchat naplója, ahol a vádlott minden perc után az \"ff\" szót ismétli.",
+      "Egy videó, ahol a vádlott a Baront nézi, miközben a Nexus ég.",
+      "A pingelési napló: 94 kérdőjel egy perc alatt.",
+      "A ward-statisztika: 0 lerakott ward 140 perc alatt.",
+      "Egy képernyőfotó a csapat bojkottjáról: mindenki némította a vádlottat."
+    ],
+    "alibik": [
+      "A bokorban álltál, és nem láttad, mi történik.",
+      "A kapcsolat megszakadt, és mire újracsatlakoztál, vége lett.",
+      "Épp a boltot nézted, és közben megölték a karaktered.",
+      "Supportként játszottál, és soha nem láttad, hová megy a csapat.",
+      "A csapatod elfelejtett pingelni, ezért semmit nem tudtál."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a csapat \"nem szinkronizált\", ezért a vádlott ártatlan.",
+      "Hivatkozz a \"jungle diff\" szabályra: mindig a dzsungel a hibás.",
+      "Állítsd, hogy a vádlott csak \"áldozta magát\" a csapatért.",
+      "Követeld a mérkőzés visszajátszását, de csak az első három percet nézzétek meg."
+    ],
+    "tanuk": [
+      "Te voltál a Nexus, amelyik mindent látott, és utoljára omlott össze.",
+      "Te voltál a gomba, amit Teemo rakott le, és azóta is ott zöldellsz.",
+      "Te voltál az ellenfél junglere, aki az egész meccset a vádlott sávjában töltötte.",
+      "Te voltál a Baron, akit kétszer is ugyanaz a csapat vert meg."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy dühös ADC, aki szerint a support mindent elrontott.",
+      "Minden mondatod végén mondd ki: \"kérdőjel\".",
+      "Beszélj úgy, mint egy LoL-kommentátor, aki a pentakill után sírva fakad.",
+      "Minden mondatodban szerepeljen egy hős neve."
+    ],
+    "buntetesek": [
+      "A következő meccsen csak supportként játszhat, és minden wardért külön köszönetet kell kérnie.",
+      "Egy hétig \"0/10\" a Discord-neve.",
+      "A következő meccsen minden halála után be kell jelentenie a pontos okot, és hozzá kell tennie: \"ez nem az én hibám\".",
+      "Egy meccsen a csapat dönti el, melyik hőst választja, és csak Teemót választhatják neki.",
+      "A következő meccsen minden mondatát úgy kell befejeznie: \"gg wp\".",
+      "Köteles minden csapattársának udvariasan megköszönni a közös meccset, a vesztesnek is."
+    ]
+  },
   "altalanos": {
     "kihivasok": [
       "Beszélj úgy, mint egy sportkommentátor.",
