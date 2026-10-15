@@ -214,6 +214,37 @@ app.post('/api/client-error', express.json({ limit: '4kb' }), (req, res) => {
   res.status(204).end();
 });
 
+// Főoldal: a megosztási előnézet (Open Graph: Discord, Messenger, Telegram…) abszolút címeket kér, ezért a szerver tölti ki a public/index.html {{...}} helyőrzőit.
+// Szobalinkre (/?room=KÓD) szobára szóló előnézet készül. A kód szigorúan 4 betű / szám, a cím ellenőrzött, minden érték HTML-escape-elt.
+const INDEX_FILE = path.join(__dirname, 'public', 'index.html');
+let indexCache = { mtime: 0, html: '' };
+const escAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function renderIndex(req) {
+  const st = fs.statSync(INDEX_FILE);
+  if (indexCache.mtime !== st.mtimeMs) indexCache = { mtime: st.mtimeMs, html: fs.readFileSync(INDEX_FILE, 'utf8') };
+  const configured = String(process.env.AUTH_BASE_URL || '').trim().replace(/\/+$/, '');
+  const host = String(req.get('host') || '');
+  const origin = /^https?:\/\/[A-Za-z0-9.:\-\[\]]+$/.test(configured) ? configured : (/^[A-Za-z0-9.\-:\[\]]+$/.test(host) ? req.protocol + '://' + host : '');
+  const room = typeof req.query.room === 'string' && /^[A-Za-z0-9]{4}$/.test(req.query.room) ? req.query.room.toUpperCase() : '';
+  const values = {
+    ORIGIN: origin,
+    OG_TITLE: room ? 'Gyere a tárgyalásra! (' + room + ') – Kamu Bíróság' : 'Kamu Bíróság – online party játék Discordra',
+    OG_DESC: room
+      ? 'Meghívót kaptál a ' + room + ' szobába. Kattints, válassz karaktert, és vádolj, védekezz, nevess a barátaiddal: böngészőből, telepítés nélkül.'
+      : 'Vádolj, védekezz, nevess: online party játék 3–8 játékosnak, Discord-hanggal, böngészőből vagy telefonról, telepítés nélkül.',
+    OG_URL: origin + '/' + (room ? '?room=' + room : '')
+  };
+  let html = indexCache.html;
+  for (const [key, value] of Object.entries(values)) html = html.split('{{' + key + '}}').join(escAttr(value));
+  return html;
+}
+app.get(['/', '/index.html'], (req, res, next) => {
+  let html;
+  try { html = renderIndex(req); } catch (_) { return next(); } // hiba esetén a statikus fájl megy (a helyőrzők csak az előnézetet érintik)
+  res.set('Cache-Control', 'no-cache');
+  res.type('html').send(html);
+});
+
 // Statikus fájlok: a html/js/css ETag/Last-Modified fejléccel (nem cache-el hosszan),
 // a rajzok (assets/) hosszan cache-elhetők, mert ritkán változnak.
 app.use(express.static(path.join(__dirname, 'public'), { etag: true, lastModified: true, maxAge: 0 }));
