@@ -40,7 +40,7 @@ const EVENTS = {
 };
 
 const DEFAULT_MIN = 3;
-const DEFAULT_MAX = 8;
+const DEFAULT_MAX = require('./limits').MAX_PLAYERS;
 const LINK_CODE_MS = 10 * 60 * 1000;
 const LINK_CODE_LEN = 8;
 const LINK_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

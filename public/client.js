@@ -1957,7 +1957,8 @@ function renderLobby() {
         const cell = document.createElement('div');
         cell.className = 'case-tab';
         cell.dataset.mode = m.key;
-        cell.innerHTML = escapeHtml(m.name.toUpperCase()) +
+        if (m.pack) cell.classList.add('pack-tile'); // közösségi csomag: jelölés + a készítő neve
+        cell.innerHTML = (m.pack ? '🃏 ' : '') + escapeHtml(m.name.toUpperCase()) + (m.pack ? '<span class="pack-by">készítette: ' + escapeHtml(m.owner || '') + '</span>' : '') +
           '<div class="case-stamp"><span>AKTÍV ÜGY</span></div>';
         cell.addEventListener('click', () => {
           cell.classList.toggle('active-case');
@@ -2008,7 +2009,7 @@ function renderLobby() {
 const QUICK_DEFAULTS = { speechSeconds: 60, defenderSeconds: 45, prepSeconds: 30, witnessSeconds: 30, closingSeconds: 20, rounds: 3,
   witnessEnabled: true, challengesEnabled: true, autoNextRound: true, autoNewGame: true, challengeMode: 'judge', customAccusations: [] };
 let lobbyQuick = LS.getItem('kb_lobby_mode') !== 'custom';
-function quickSettings() { return { ...QUICK_DEFAULTS, modes: (S.modes || []).map((m) => m.key) }; }
+function quickSettings() { return { ...QUICK_DEFAULTS, modes: (S.modes || []).filter((m) => !m.pack).map((m) => m.key) }; } // a gyors játék a beépített témákat használja, a közösségi csomagokat a házigazda külön jelöli ki
 function applyLobbyMode() {
   $('#customSettings').classList.toggle('hidden', lobbyQuick);
   $('#btnQuickGame').setAttribute('aria-selected', lobbyQuick ? 'true' : 'false');
@@ -2151,14 +2152,14 @@ function renderAccusationTicker() {
   // A vád-sáv a nyitó-animáció végén átúszik a helyére; a színpad (bíró-buborék) elrendezése csak az átmenet VÉGÉN mérje a sáv helyét,
   // különben a gyors továbblépés (pl. azonnali FELOLVASTAM) utáni mérés félúton talál rá, és a buborék rossz helyen marad.
   if(!chargeTransitionBound) {chargeTransitionBound=true;t.addEventListener('transitionend',ev=>{if(ev.target===t) scheduleSceneLayout();});}
-  if(S.accusationText) lastCharge={text:S.accusationText,name:nameOf(S.defendantId),mode:S.modeName,caseNo:S.caseNo,custom:S.isCustom};
+  if(S.accusationText) lastCharge={text:S.accusationText,name:nameOf(S.defendantId),mode:S.modeName,caseNo:S.caseNo,custom:S.isCustom,pack:S.modePack||null};
   const c=S.accusationText?lastCharge:(S.phase==='game_over'?lastCharge:null);
   if(!c) {cancelChargeIntro();t.classList.add('hidden');return;}
   t.classList.remove('hidden');
   const key=(c.caseNo||'')+':'+c.text;
   if(t.dataset.charge!==key) {
     cancelChargeIntro();t.dataset.charge=key;t.classList.remove('expanded','charge-intro');t.setAttribute('aria-expanded','false');
-    t.innerHTML='<div class="charge-file-head"><span>⚖️ ÜGYIRAT · '+escapeHtml(c.caseNo||'')+'</span><span class="charge-mode">'+escapeHtml(c.mode||'')+(c.custom?' · SAJÁT':'')+'</span></div><div class="charge-text">'+chargeMarkup(c.text,c.name)+'</div><span class="charge-expand-hint">Teljes vád ↗</span>';
+    t.innerHTML='<div class="charge-file-head"><span>⚖️ ÜGYIRAT · '+escapeHtml(c.caseNo||'')+'</span><span class="charge-mode">'+escapeHtml(c.mode||'')+(c.pack?' · 🃏 '+escapeHtml(c.pack.owner||'')+' csomagja':'')+(c.custom?' · SAJÁT':'')+'</span></div><div class="charge-text">'+chargeMarkup(c.text,c.name)+'</div><span class="charge-expand-hint">Teljes vád ↗</span>';
     t.title=c.text;
   }
   if(S.phase==='accusation' && chargeCaseKey!==key) {

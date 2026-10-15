@@ -40,8 +40,8 @@ function fill(c, id, n) { for (let i = 1; i <= n; i++) c.join(id, user(i)); }
     c.join(s.id, user(1));
     assert.equal(c.join(s.id, user(1)).already, true);
     assert.equal(c.get(s.id).participants.length, 2);
-    fill(c, s.id, 7); // összesen 8
-    assert.equal(c.get(s.id).participants.length, 8);
+    fill(c, s.id, 11); // összesen 12 (a felső határ a limits.js-ben)
+    assert.equal(c.get(s.id).participants.length, 12);
     throwsCode(() => c.join(s.id, user(99)), 'full');
     const c2 = createCourts();
     const t = c2.create({ hostUserId: host.userId, hostName: 'Host', roomCode: 'BBBB' }).session;
@@ -61,9 +61,9 @@ function fill(c, id, n) { for (let i = 1; i <= n; i++) c.join(id, user(i)); }
     assert.equal(c.get(id).status, 'READY');
   });
 
-  await test('sorsolás: kevés játékos elutasítva; 3/4/5/8 főnél a szerepkészlet helyes és egyedi', () => {
+  await test('sorsolás: kevés játékos elutasítva; 3/4/5/8/12 főnél a szerepkészlet helyes és egyedi', () => {
     for (const [n, expect] of [[3, { judge: 1, prosecutor: 1, defendant: 1 }], [4, { judge: 1, prosecutor: 1, defendant: 1, witness: 1 }],
-      [5, { judge: 1, prosecutor: 1, defendant: 1, defender: 1, witness: 1 }], [8, { judge: 1, prosecutor: 1, defendant: 1, defender: 1, witness: 1, juror: 3 }]]) {
+      [5, { judge: 1, prosecutor: 1, defendant: 1, defender: 1, witness: 1 }], [8, { judge: 1, prosecutor: 1, defendant: 1, defender: 1, witness: 1, juror: 3 }], [12, { judge: 1, prosecutor: 1, defendant: 1, defender: 1, witness: 1, juror: 7 }]]) {
       const c = createCourts();
       const id = c.create({ hostUserId: host.userId, hostName: 'Host', roomCode: 'DDDD' }).session.id;
       if (n === 3) throwsCode(() => c.draw(id, host), 'too_few');
@@ -108,8 +108,8 @@ function fill(c, id, n) { for (let i = 1; i <= n; i++) c.join(id, user(i)); }
     let ok = 0, full = 0;
     for (let i = 0; i < 40; i++) { try { c2.join(id2, user(i % 20)); ok++; } catch (e) { if (e.code === 'full') full++; else throw e; } }
     const ps = c2.get(id2).participants;
-    assert.equal(ps.length, 8);
-    assert.equal(new Set(ps.map((p) => p.uid)).size, 8);
+    assert.equal(ps.length, 12);
+    assert.equal(new Set(ps.map((p) => p.uid)).size, 12);
     assert.ok(full > 0 && ok > 0);
   });
 

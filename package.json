@@ -56,7 +56,10 @@
     "test:audio-master": "node test/audio-master.js",
     "test:mobile": "node test/mobile-onboarding.js",
     "test:share": "node test/share-preview.js",
-    "brand:images": "node scripts/make-brand-images.js"
+    "brand:images": "node scripts/make-brand-images.js",
+    "test:packs": "node test/packs.js",
+    "test:packs-ui": "node test/packs-ui.js",
+    "test:twelve": "node test/twelve-players.js"
   },
   "engines": {
     "node": ">=18"

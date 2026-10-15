@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/cards.css">
   <link rel="stylesheet" href="/cinema.css">
   <link rel="stylesheet" href="/courts.css">
+  <link rel="stylesheet" href="/packs.css">
   <link rel="preload" href="/assets/terem-hatter.webp" as="image">
   <meta name="description" content="{{OG_DESC}}">
   <meta name="theme-color" content="#2a0b14">
@@ -399,6 +400,7 @@
       <p id="menuError" class="error"></p>
       <p class="hint">Tipp: a szoba linkjét be lehet másolni a Discordra, aki rákattint, azonnal csatlakozik.</p>
       <button id="btnHowTo" type="button" class="btn small ghost howto-btn" data-help>❓ Hogyan kell játszani?</button>
+      <button id="btnPacks" type="button" class="btn small ghost" data-packs="mine">🃏 Kártyaműhely: saját csomagok</button>
       <div class="discord-link-box hidden" aria-live="polite"></div>
       <div id="courtMine" class="discord-link-box court-mine hidden" aria-live="polite"></div>
       <button id="btnChangeSuspect" class="btn small ghost">↩ Másik gyanúsított vagyok</button>
@@ -453,6 +455,11 @@
         <div id="customSettings" class="hidden">
         <h4 class="folder-heading">Mely ügyekben folyik a tárgyalás? (több is bejelölhető)</h4>
         <div id="modeGrid" class="folder-grid"></div>
+        <div class="pack-lobby-row">
+          <input id="packCodeInput" type="text" maxlength="6" placeholder="CSOMAG KÓD" autocomplete="off" autocapitalize="characters" aria-label="Közösségi csomag kódja">
+          <button id="btnPackAdd" type="button" class="btn small">CSOMAG FELVÉTELE</button>
+          <button type="button" class="btn small ghost" data-packs="library">🃏 KÁRTYAMŰHELY</button>
+        </div>
         <p id="activeModes" class="hint active-modes"></p>
         <p class="hint">Több mód is bejelölhető – ilyenkor körönként sorsolódik, melyik vezeti a tárgyalást. A kijelölés a mappára kattintással AZONNAL mentődik.</p>
         <div class="settings-grid">
@@ -626,6 +633,7 @@
   <script src="/ranking.js"></script>
   <script src="/court.js"></script>
   <script src="/courts.js"></script>
+  <script src="/packs.js"></script>
   <script src="/cards.js"></script>
   <script src="/bugreport.js"></script>
   <script src="/invite-mail.js"></script>

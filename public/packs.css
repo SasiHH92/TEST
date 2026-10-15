@@ -1,0 +1,73 @@
+/* ============================================================
+   KÁRTYAMŰHELY (közösségi csomagok): ablak, listák, szerkesztő. Pergamen-stílus, mint a játékleírásé; telefonon teljes képernyő.
+   ============================================================ */
+body.packs-open { overflow: hidden; }
+.packs-modal { position: fixed; inset: 0; z-index: 125; display: flex; align-items: center; justify-content: center; background: rgba(4, 5, 10, 0.78); padding: 18px; }
+.packs-panel {
+  display: flex; flex-direction: column; width: min(880px, 96vw); max-height: 92dvh;
+  background: repeating-linear-gradient(0deg, rgba(120, 90, 40, 0.05) 0 2px, transparent 2px 4px), var(--paper);
+  color: var(--ink); border: 1px solid var(--paper-edge); border-radius: 10px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+.packs-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 2px solid #8b6a2e; }
+.packs-head h2 { flex: 1; margin: 0; font-family: var(--font-disp); font-size: 22px; letter-spacing: 1px; }
+.packs-tabs { display: flex; gap: 6px; padding: 10px 16px 0; border-bottom: 1px solid var(--paper-edge); flex-wrap: wrap; }
+.packs-tab { font-family: var(--font-disp); font-size: 14px; letter-spacing: 1px; padding: 10px 14px; min-height: 44px; border: 1px solid var(--paper-edge); border-bottom: 0; border-radius: 8px 8px 0 0; background: transparent; color: #6b4e1d; cursor: pointer; }
+.packs-tab.active { background: #f6e7c3; color: #2a1c06; font-weight: 700; box-shadow: inset 0 3px 0 var(--gold, #f2c14e); }
+.packs-body { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 22px; -webkit-overflow-scrolling: touch; }
+.packs-modal .btn { min-height: 44px; }
+.packs-modal .btn.disabled { opacity: .55; }
+.packs-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+.packs-toolbar .packs-input { flex: 1 1 200px; width: auto; margin: 0; }
+.packs-note { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: #5d4620; }
+.packs-error { margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #a22e28; }
+.packs-errors { margin: 12px 0; }
+.packs-errors ul { margin: 0 0 0 18px; padding: 0; color: #a22e28; font-size: 14px; line-height: 1.45; }
+.packs-sub { margin: 20px 0 10px; font-family: var(--font-disp); letter-spacing: 1px; color: #6b4e1d; }
+.packs-input { display: block; width: 100%; min-height: 44px; padding: 10px 12px; margin: 4px 0 12px; border: 1px solid #bd9b71; border-radius: 6px; background: #fff7e7; color: #2f2012; font: inherit; font-size: 16px; box-shadow: inset 0 2px 4px #855d2420; }
+.packs-input:focus-visible { outline: 3px solid #9e681d; outline-offset: 2px; border-color: #9e681d; }
+.code-input { text-transform: uppercase; letter-spacing: 4px; max-width: 220px; text-align: center; }
+
+.pk-item { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; padding: 12px 14px; margin: 0 0 10px; border: 1px solid var(--paper-edge); border-radius: 8px; background: rgba(255, 247, 231, .65); }
+.pk-item.hidden-pack { opacity: .65; border-style: dashed; }
+.pk-main { flex: 1 1 260px; min-width: 0; }
+.pk-main h3, .pk-view-head h3 { margin: 0 0 4px; font-family: var(--font-disp); font-size: 20px; letter-spacing: .5px; overflow-wrap: anywhere; }
+.pk-by { margin: 0 0 4px; font-size: 12.5px; color: #6b4e1d; letter-spacing: .3px; }
+.pk-desc { margin: 0 0 6px; font-size: 14.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.pk-counts, .pk-code { margin: 0; font-size: 12.5px; color: #5d4620; }
+.pk-code { font-family: var(--font-disp); letter-spacing: 2px; }
+.pk-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pk-deck { margin: 0 0 16px; }
+.pk-deck h4 { margin: 0 0 4px; font-family: var(--font-disp); letter-spacing: 1px; font-size: 16px; color: #6b4e1d; }
+.pk-deck ul { margin: 0; padding: 0 0 0 20px; font-size: 15px; line-height: 1.5; }
+.pk-deck li { margin: 0 0 3px; overflow-wrap: anywhere; }
+.pk-hint { margin: 0 0 4px; font-size: 12.5px; color: #6b4e1d; line-height: 1.4; }
+.pk-area { min-height: 120px; resize: vertical; line-height: 1.45; }
+.pk-counter { margin-left: 8px; font-size: 12px; letter-spacing: 0; font-family: Inter, system-ui, sans-serif; font-weight: 700; color: #8a6c50; }
+.pk-counter.ok { color: #2f6b36; }
+.pk-counter.bad { color: #a22e28; }
+.pk-field { display: block; font-weight: 700; font-size: 13px; letter-spacing: .5px; }
+.pk-vis { display: grid; gap: 6px; margin: 0 0 12px; font-size: 14px; }
+.pk-vis label { display: flex; gap: 8px; align-items: center; min-height: 44px; cursor: pointer; }
+.pk-vis input { width: 20px; height: 20px; accent-color: #915c1b; }
+
+/* gombok a pergamenen: a sötét felületre szánt "szellem" és "veszélyes" stílus itt olvasható, kontrasztos legyen */
+.packs-modal .btn.ghost { color: #5a3d0f; background: rgba(255, 247, 231, .55); border: 2px solid #8b6a2e; }
+.packs-modal .btn.ghost:hover, .packs-modal .btn.ghost:focus-visible { background: #f6e7c3; color: #2a1c06; border-color: #6b4e1d; }
+.packs-modal .btn.danger { background: #b3353a; color: #fff; border: 2px solid #8c2a2e; }
+.packs-modal .btn.danger:hover, .packs-modal .btn.danger:focus-visible { background: #c4444a; color: #fff; }
+
+/* lobbi: csomag kóddal + a Kártyaműhely gombja a házigazda asztalán */
+.pack-lobby-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 12px; }
+.pack-lobby-row input { flex: 1 1 140px; max-width: 200px; min-height: 44px; padding: 8px 12px; border-radius: 6px; border: 1px solid #5a4a30; background: #130f0a; color: #f3ece0; font: inherit; font-size: 16px; text-transform: uppercase; letter-spacing: 3px; text-align: center; }
+.case-tab.pack-tile .pack-by { display: block; margin-top: 4px; font-size: 10px; letter-spacing: .5px; font-weight: 600; opacity: .8; text-transform: none; }
+
+@media (max-width: 700px) {
+  .packs-modal { padding: 0; align-items: stretch; }
+  .packs-panel { width: 100vw; max-height: 100dvh; height: 100dvh; border-radius: 0; border: 0; }
+  .packs-head h2 { font-size: 19px; }
+  .packs-tab { flex: 1 1 auto; text-align: center; padding: 10px 8px; font-size: 13px; }
+  .pk-item { flex-direction: column; }
+  .pk-main { flex: 0 1 auto; width: 100%; } /* oszlopban a 260 px-es flex-alap magasságnak számítana: nagy üres rés lenne */
+  .pk-actions { width: 100%; }
+  .pk-actions .btn { flex: 1 1 auto; }
+}

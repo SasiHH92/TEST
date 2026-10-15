@@ -32,7 +32,7 @@ const MIN_TOKEN = 24;
 const FAIL_LIMIT = 10;
 const FAIL_WINDOW_MS = 10 * 60 * 1000;
 
-function createAdmin({ token = '', errors, storage, auth, moderation, legal: legalInfo = null, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
+function createAdmin({ token = '', errors, storage, auth, moderation, packs = null, legal: legalInfo = null, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
   const router = express.Router();
   const enabled = typeof token === 'string' && token.length >= MIN_TOKEN;
   const expected = enabled ? crypto.createHash('sha256').update(token).digest() : null;
@@ -77,6 +77,7 @@ function createAdmin({ token = '', errors, storage, auth, moderation, legal: leg
       uptimeSeconds: Math.round(process.uptime()),
       errors: errors.summary(),
       reports: { open: moderation ? moderation.list().filter((r) => r.status === 'new').length : 0, mutes: moderation ? moderation.mutes().length : 0 },
+      packs: packs ? { total: packs.count(), reported: packs.adminList().filter((p) => p.reports > 0 || p.hidden).length } : null,
       database: storage.enabled(),
       backups: { count: backups.length, latest: backups[0] || null, error: backupError },
       mail: auth.admin.mailStatus(),
@@ -137,6 +138,14 @@ function createAdmin({ token = '', errors, storage, auth, moderation, legal: leg
     if (!moderation.unmute(String(req.body && req.body.id || ''))) { const e = new Error('Nincs ilyen némítás.'); e.status = 404; throw e; }
     res.json({ ok: true });
   }));
+
+  // ---- Közösségi kártyacsomagok: lista (a legtöbb jelentéssel elöl), elrejtés, visszaállítás, törlés ----
+  const packCode = (req) => { const c = String(req.body && req.body.code || '').toUpperCase(); if (!/^[A-Z2-9]{6}$/.test(c)) { const e = new Error('Hibás csomag-kód.'); e.status = 400; throw e; } return c; };
+  const packFound = (ok) => { if (!ok) { const e = new Error('Nincs ilyen csomag.'); e.status = 404; throw e; } };
+  router.get('/packs', (req, res) => res.json({ packs: packs ? packs.adminList() : [] }));
+  router.post('/packs/hide', wrap((req, res) => { packFound(packs && packs.adminHide(packCode(req))); res.json({ ok: true }); }));
+  router.post('/packs/unhide', wrap((req, res) => { packFound(packs && packs.adminUnhide(packCode(req))); res.json({ ok: true }); }));
+  router.post('/packs/delete', wrap((req, res) => { packFound(packs && packs.adminDelete(packCode(req))); res.json({ ok: true }); }));
 
   // ---- Fiókok: lista, létrehozás (ideiglenes jelszóval), új ideiglenes jelszó ----
   const MAX_BULK = 40;

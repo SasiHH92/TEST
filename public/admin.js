@@ -33,7 +33,7 @@
   }
 
   // ---- Fülek ----
-  const TABS = { accounts: '#accounts', reports: '#tab-reports', errors: '#tab-errors', system: '#tab-system' };
+  const TABS = { accounts: '#accounts', reports: '#tab-reports', packs: '#tab-packs', errors: '#tab-errors', system: '#tab-system' };
   function selectTab(name, focus) {
     if (!TABS[name]) name = 'accounts';
     for (const [key, sel] of Object.entries(TABS)) {
@@ -85,9 +85,10 @@
   async function load() {
     const s = await api('GET', '/status'); // előbb ez: rossz tokennel csak egy sikertelen próba számít
     show(true);
-    const [errs, backs, accts, reps] = await Promise.all([api('GET', '/errors'), api('GET', '/backups'), api('GET', '/accounts'), api('GET', '/reports')]);
+    const [errs, backs, accts, reps, packs] = await Promise.all([api('GET', '/errors'), api('GET', '/backups'), api('GET', '/accounts'), api('GET', '/reports'), api('GET', '/packs')]);
     lastStatus = s;
-    renderSystem(s); renderErrors(errs); renderBackups(backs); renderReports(reps); renderAccounts(accts);
+    renderSystem(s); renderErrors(errs); renderBackups(backs); renderReports(reps); renderAccounts(accts); renderPacks(packs);
+    const reportedPacks = s.packs ? s.packs.reported : 0; $('#cntPacks').textContent = reportedPacks ? String(reportedPacks) : ''; $('#cntPacks').className = 'count' + (reportedPacks ? ' bad' : '');
     $('#cntErrors').textContent = s.errors.total ? String(s.errors.total) : ''; $('#cntErrors').className = 'count' + (s.errors.total ? ' bad' : '');
     $('#cntReports').textContent = s.reports.open ? String(s.reports.open) : ''; $('#cntReports').className = 'count' + (s.reports.open ? ' bad' : '');
   }
@@ -348,6 +349,28 @@
   }
 
   // ---- Jelentések és némítások ----
+  // Közösségi kártyacsomagok: a jelentettek elöl; elrejtés / visszaállítás / törlés
+  function renderPacks(data) {
+    const box = $('#packsAdmin'); box.replaceChildren();
+    $('#packsSummary').textContent = data.packs.length + ' csomag';
+    if (!data.packs.length) box.append(el('p', { className: 'dim', textContent: 'Még nincs csomag.' }));
+    const act = (label, path, body, cls, confirm) => el('button', { type: 'button', className: 'small ' + (cls || 'ghost'), textContent: label, onclick: async () => {
+      if (confirm && !(await askConfirm(confirm))) return;
+      try { await api('POST', path, body); await load(); msg('#packsMsg', 'Kész.', 'ok'); } catch (e) { msg('#packsMsg', e.message, 'bad'); }
+    } });
+    for (const p of data.packs) {
+      const state = p.hidden ? (p.hiddenBy === 'admin' ? '🙈 elrejtve (üzemeltető)' : '🙈 elrejtve (jelentések)') : (p.visibility === 'public' ? 'nyilvános' : 'privát');
+      const buttons = [p.hidden ? act('Visszaállítás', '/packs/unhide', { code: p.code }, '') : act('Elrejtés', '/packs/hide', { code: p.code }, 'ghost'),
+        act('Törlés', '/packs/delete', { code: p.code }, 'danger', { title: 'Csomag törlése', lines: ['Biztosan törlöd a(z) „' + p.name + '” csomagot (' + p.owner + ')? A gyűjteményekből is eltűnik, nem vonható vissza.'], okLabel: 'Törlés', danger: true })];
+      box.append(el('div', { className: 'err' }, ...[
+        el('div', {}, el('span', { className: 'tag', textContent: p.code }), el('b', { textContent: p.name }), el('span', { className: 'dim', textContent: '  ' + p.owner + ' • ' + state + (p.reports ? ' • ' + p.reports + ' jelentés' : '') })),
+        p.desc ? el('div', { textContent: p.desc }) : null,
+        el('div', { className: 'dim', textContent: p.total + ' kártya • ' + p.saves + ' mentés • ' + p.uses + ' játék • létrehozva: ' + when(p.createdAt) }),
+        p.sample && p.sample.length ? el('div', { className: 'dim', textContent: 'Ízelítő: ' + p.sample.map((t) => '„' + t + '”').join(' ') }) : null,
+        el('div', { className: 'row', style: 'margin-top:6px' }, ...buttons)].filter(Boolean))); // az el() a null-t "null" szövegként fűzné be
+    }
+  }
+
   function renderReports(data) {
     const box = $('#reports'); box.replaceChildren();
     $('#repSummary').textContent = data.reports.length + ' jelentés';

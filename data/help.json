@@ -4,7 +4,7 @@
     {
       "heading": "RÖVIDEN – ELŐSZÖR JÁTSZOL?",
       "list": [
-        "Kell hozzá 3–8 játékos és közös hangos beszélgetés (általában Discord-hívás): a telefon / böngésző csak vezeti a tárgyalást.",
+        "Kell hozzá 3–12 játékos és közös hangos beszélgetés (általában Discord-hívás): a telefon / böngésző csak vezeti a tárgyalást.",
         "Az egyikőtök ÚJ TÁRGYALÁST indít, a többiek a szobakóddal, a linkkel vagy a QR-kóddal csatlakoznak. Ha mindenki KÉSZEN ÁLL, a házigazda elindítja a játékot.",
         "Minden körben valakit egy abszurd, vicces bűnnel vádolnak. A játék kiosztja a szerepeket (vádlott, ügyész, védő, tanú, bíró, esküdtek) és a titkos kártyákat: ezeket csak te látod a saját képernyődön.",
         "Élőszóban vitáztok: az ügyész bizonyítani akarja a bűnösséget, a vádlott védekezik, a kártyákat pedig bele kell szőni a beszédbe. A játék méri az időt, a többiek reagálhatnak (😂 💀 🤡 🔥 👏).",
@@ -15,7 +15,7 @@
     {
       "heading": "MI EZ A JÁTÉK?",
       "body": [
-        "A Kamu Bíróság egy online party játék, amit Discordon, hangban játszotok. A játék a böngészőben/telefonon csak levezeti a tárgyalást: kiosztja a szerepeket és a titkos kártyákat, méri az időt, és lebonyolítja a szavazást. Minden körben valakit egy abszurd, vicces bűnnel vádolnak. Ti élőszóban érveltek, védekeztek, hazudtok és röhögtök, a többiek pedig eldöntik, bűnös-e. 3–8 játékos kell hozzá."
+        "A Kamu Bíróság egy online party játék, amit Discordon, hangban játszotok. A játék a böngészőben/telefonon csak levezeti a tárgyalást: kiosztja a szerepeket és a titkos kártyákat, méri az időt, és lebonyolítja a szavazást. Minden körben valakit egy abszurd, vicces bűnnel vádolnak. Ti élőszóban érveltek, védekeztek, hazudtok és röhögtök, a többiek pedig eldöntik, bűnös-e. 3–12 játékos kell hozzá."
       ]
     },
     {
@@ -84,6 +84,16 @@
       ]
     },
     {
+      "heading": "KÁRTYAMŰHELY – SAJÁT CSOMAGOK",
+      "list": [
+        "A menü 🃏 KÁRTYAMŰHELY gombjával saját csomagot (játékmódot) készíthetsz: vádak, bizonyítékok, alibik, trükkök, tanúk, kihívások és büntetések. Soronként egy kártya; a vádakban használhatod a [vádlott] és a [játékos] helyőrzőt. Csomagot csak bejelentkezett fiókkal lehet készíteni (legfeljebb 5).",
+        "A csomag lehet PRIVÁT (csak a 6 jegyű kódot ismerők érik el: oszd meg a barátaiddal) vagy NYILVÁNOS (a KÖNYVTÁRBAN bárki megtalálja, mentheti és használhatja).",
+        "Használat: bejelentkezve a saját és a mentett csomagjaid a lobbiban ott vannak a témák mellett (🃏 jelöléssel). Bárki, vendég is, a lobbiban a CSOMAG KÓD mezővel felvehet egy csomagot a saját szobájába: a házigazda dönt arról, melyik témák és csomagok szerepeljenek.",
+        "A csomagot a készítő bármikor szerkesztheti és törölheti; a futó tárgyalást egy módosítás nem szakítja meg (a szoba a csomag pillanatfelvételével játszik). A GYORS JÁTÉK csak a beépített témákat használja.",
+        "Szabályok: link, meghívó, @ és < > jel nem megengedett, és a durva, másokat bántó tartalom tilos. A nyilvános csomagokat a játékosok a JELENTÉS gombbal jelenthetik: három különböző jelentés után a csomag elbújik, és az üzemeltető átnézi."
+      ]
+    },
+    {
       "heading": "BARÁTOK",
       "list": [
         "Bejelentkezett fiókkal a jobb alsó 👥 BARÁTOK gombbal (és a profilnál) nyílik a barátlista. Barátot a HOZZÁADÁS fülön a felhasználónevével jelölhetsz be, vagy a lobbiban a bejelentkezett játékostársak plakátján a ＋ BARÁT gombbal. A kérést a másiknak el kell fogadnia a KÉRÉSEK fülön.",
@@ -105,7 +115,7 @@
       "list": [
         "Vendégként nem kell semmit megadnod. A neved és a beállításaid a böngésződben maradnak; a szoba és a csevegés csak a szerver memóriájában él, a szoba megszűnésével eltűnik. A közös tér üzenetei sem maradnak meg tartósan.",
         "A játékban használt név alatt a nyilvántartás számokat őriz (elítélve, felmentve, pontok…). Ez vendégként is így van, és a nevedhez kötődik.",
-        "Fiókkal ezeket tároljuk: felhasználónév, e-mail cím, a jelszavad (csak titkosított lenyomatként), a kártyád, a barátlistád, a pogácsád és tárgyaid, a privát üzeneteid (barátonként az utolsó 60). Google vagy Discord belépésnél a szolgáltató azonosítóját és az e-mail címet kapjuk meg, jelszót nem.",
+        "Fiókkal ezeket tároljuk: felhasználónév, e-mail cím, a jelszavad (csak titkosított lenyomatként), a kártyád, a barátlistád, a pogácsád és tárgyaid, a privát üzeneteid (barátonként az utolsó 60). Google vagy Discord belépésnél a szolgáltató azonosítóját és az e-mail címet kapjuk meg, jelszót nem. Emellett tároljuk a Kártyaműhelyben készített csomagjaidat is (a nyilvános csomag a felhasználóneveddel együtt mindenki számára látszik).",
         "Az adatok a szerveren és egy külső adatbázisban (Neon) vannak, naponta pillanatképpel; a mentéseket 14 napig őrizzük, ezért a törölt adat még legfeljebb ennyi ideig szerepelhet bennük.",
         "Nincs hirdetés és nincs követés. A betűtípusokat a Google Fontsról töltjük be, ezért a Google láthatja a böngésződ címét.",
         "A jogaid: a PROFIL ablak FIÓK részében letöltheted az összes adatodat (JSON), vagy véglegesen törölheted a fiókodat. A törlés eltávolítja a fiókot, a barátságokat, a kéréseket, a privát üzeneteket, a pogácsát, a tárgyakat és a névhez kötött statisztikát. Jelszavas fióknál a jelszó, Google/Discord fióknál a felhasználóneved begépelése kell hozzá. A legendás kártyák nyilvántartása megmarad, a kártya újra igényelhető."

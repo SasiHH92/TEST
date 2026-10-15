@@ -164,6 +164,7 @@ class Game {
     this.objectionPending = false;
     this.pausedKind = null;
     this.decks = null; // csak játék közben: { mód: { vadak, bizonyitekok, ... } }
+    this.extraModes = {}; // közösségi csomagok ebben a szobában: 'pack:KÓD' -> pillanatfelvétel { nev, owner, code, vadak, ... } (a motor ugyanúgy használja, mint a cards.json módjait)
     this.lastActivityAt = Date.now(); // a szobatakarítás (üzemeltetés) nézi
     this.awardsRecorded = false; // díjak egyszeri rögzítése (bug: broadcastnál duplázódott)
     // KÖRÖNKÉNTI BÍRÓ: minden körben MÁS játékos a bíró (sosem vádlott/ügyész/védő).
@@ -211,6 +212,34 @@ class Game {
   hostId() {
     for (const p of this.players.values()) if (p.isHost) return p.id;
     return null;
+  }
+
+  // ---------- közösségi csomagok (a szoba saját extra módjai) ----------
+
+  // A mód forrása: a cards.json módja, vagy a szobába felvett csomag pillanatfelvétele.
+  modeSource(m) {
+    return CARDS[m] || this.extraModes[m] || null;
+  }
+
+  isKnownMode(m) {
+    return ALL_MODES.includes(m) || Object.prototype.hasOwnProperty.call(this.extraModes, m);
+  }
+
+  // A szoba számára felvehető csomag-kulcsok (a szerver ezekkel szűri a beállításokat).
+  extraModeKeys() {
+    return Object.keys(this.extraModes);
+  }
+
+  // Csomag felvétele a szobába. A snapshot a packs.js modeFor() kimenete; a szerkezetet itt is ellenőrizzük (a motor soha nem kap hibás paklit).
+  addExtraMode(code, snap) {
+    const DECK_KEYS = ['vadak', 'bizonyitekok', 'alibik', 'trukkok', 'tanuk', 'kihivasok', 'buntetesek'];
+    if (!/^[A-Z2-9]{6}$/.test(String(code || ''))) return false;
+    if (!snap || typeof snap.nev !== 'string' || !snap.nev) return false;
+    for (const k of DECK_KEYS) if (!Array.isArray(snap[k]) || snap[k].length === 0 || !snap[k].every((x) => typeof x === 'string' && x)) return false;
+    const key = 'pack:' + code;
+    this.extraModes[key] = { nev: snap.nev, owner: String(snap.owner || ''), code };
+    for (const k of DECK_KEYS) this.extraModes[key][k] = snap[k].slice();
+    return key;
   }
 
   getPlayer(id) {
@@ -293,14 +322,14 @@ class Game {
     // Ha van konkrét mód kiválasztva, annak paklijait is felépítjük
     // Ha csak 'altalanos' van, de van más mód (amit a roundMode használni fog), 
     // akkor azt is felépítjük
-    const modesToBuild = modes.filter(m => ALL_MODES.includes(m));
+    const modesToBuild = modes.filter(m => this.isKnownMode(m));
     
     // Ha nincs konkrét mód kiválasztva, de szükség van rá (pl. csak 'altalanos' van),
     // válassz egyet random
     const buildModes = modesToBuild;
     
     for (const m of buildModes) {
-      const src = CARDS[m];
+      const src = this.modeSource(m);
       if (!src) continue;
       decks[m] = {
         vadak: new Deck(src.vadak || []),
@@ -320,7 +349,7 @@ class Game {
   // SZIGORÚ: csak olyan mód sorsolható, amelyhez a cards.json-ben van pakli.
   // (Az üres listát a startGame már visszautasítja – ide elvileg el sem érhet.)
   roundMode() {
-    const modes = (this.settings.modes || []).filter((m) => ALL_MODES.includes(m));
+    const modes = (this.settings.modes || []).filter((m) => this.isKnownMode(m));
     if (!modes.length) throw new Error('Nincs kijelölt ügyiratmappa.');
     return pick(modes);
   }
@@ -337,7 +366,7 @@ class Game {
       players: this.playerList(),
       departedPlayers: this.scoreList().filter((p) => p.departed),
       settings: { ...this.settings },
-      modes: ALL_MODES.map((k) => ({ key: k, name: CARDS[k].nev })),
+      modes: [...ALL_MODES.map((k) => ({ key: k, name: CARDS[k].nev })), ...Object.entries(this.extraModes).map(([k, v]) => ({ key: k, name: v.nev, pack: true, owner: v.owner, code: v.code }))],
       hostId: this.hostId(),
       serverNow: Date.now(),
       phaseEndsAt: this.phaseEndsAt || null,
@@ -356,7 +385,8 @@ class Game {
     base.currentJudgeId = d.currentJudgeId || null;
     base.judgeName = d.currentJudgeId && this.players.get(d.currentJudgeId)
       ? this.players.get(d.currentJudgeId).name : null;
-    base.modeName = CARDS[d.mode] ? CARDS[d.mode].nev : d.mode;
+    base.modeName = CARDS[d.mode] ? CARDS[d.mode].nev : (this.extraModes[d.mode] ? this.extraModes[d.mode].nev : d.mode);
+    base.modePack = this.extraModes[d.mode] ? { owner: this.extraModes[d.mode].owner, code: this.extraModes[d.mode].code } : null; // közösségi csomag: készítő és kód a felületnek
     base.defendantId = d.defendantId;
     base.prosecutorId = d.prosecutorId;
     if (d.defenderId) base.defenderId = d.defenderId;
@@ -598,8 +628,9 @@ class Game {
     }
     // Az altalanos csak a közös kihívásokhoz kell, körmód nem lehet.
     const hasDeck = (m) => {
-      return ALL_MODES.includes(m) && ['vadak', 'bizonyitekok', 'alibik', 'trukkok', 'tanuk', 'buntetesek']
-        .every((key) => Array.isArray(CARDS[m][key]) && CARDS[m][key].length > 0);
+      const src = this.isKnownMode(m) ? this.modeSource(m) : null;
+      return !!src && ['vadak', 'bizonyitekok', 'alibik', 'trukkok', 'tanuk', 'buntetesek']
+        .every((key) => Array.isArray(src[key]) && src[key].length > 0);
     };
     this.settings.modes = (Array.isArray(this.settings.modes) ? this.settings.modes : [])
       .filter((m) => hasDeck(m));
@@ -705,7 +736,7 @@ class Game {
     // Ha nincs deck a módhoz (pl. altalanos, vagy a mód nem lett felépítve),
     // hozz létre on-the-fly a cards.json-ból
     if (!modeDecks) {
-      const src = CARDS[mode];
+      const src = this.modeSource(mode);
       if (src) {
         modeDecks = {
           vadak: new Deck(src.vadak || []),

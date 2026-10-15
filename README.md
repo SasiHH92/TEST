@@ -2,7 +2,7 @@
 
 Új belépés és regisztráció: [AUTH_BEALLITAS.md](AUTH_BEALLITAS.md). Az e-mailes fiókok önállóan működnek; a Google-, Discord- és jelszó-visszaállítási beállításokat ez az útmutató tartalmazza. Vendégként továbbra is lehet játszani.
 
-Online multiplayer party játék 3–8 játékosnak, **Discord hanggal**.
+Online multiplayer party játék 3–12 játékosnak, **Discord hanggal**.
 
 A játék a tárgyalást vezeti le: kiosztja a szerepeket, megmutatja a vádat és a titkos kártyákat, méri, ki mennyi ideig beszélhet, és lebonyolítja a szavazást. A vádbeszéd és a védekezés **élőszóban, Discordon** zajlik – a játékban nincs se gépelés, se chat. A hangulat teljesen komolytalan, de "hivatalos" bírósági körítéssel – ráadásul **rendőrségi nyilvántartásos lobbyval**: körözési plakátokkal, bögrefotó-kártyákkal és futószalagos rendőrségi hírekkel.
 
@@ -179,7 +179,7 @@ Minden legendás tesztelő a saját kártyájához kapcsolt fiókot kaphat: egy 
 
 Egyedül is ki tudod próbálni a teljes játékot: a házigazda a lobbyban botokat adhat a szobához, és ők önállóan levezetik a tárgyalást.
 
-- **🤖 Bot hozzáadása** – a lobbyban, csak a házigazda láthatja (max. 8 fő összesen, beleértve téged is). A botok rendőrségi plakátot kapnak **„🤖 TESZT-BOT"** pecséttel: *Robi, a Robot*, *Géza, a Gép*, *Szintetikus Sári* és *Kábeles Károly*.
+- **🤖 Bot hozzáadása** – a lobbyban, csak a házigazda láthatja (max. 12 fő összesen, beleértve téged is). A botok rendőrségi plakátot kapnak **„🤖 TESZT-BOT"** pecséttel: *Robi, a Robot*, *Géza, a Gép*, *Szintetikus Sári* és *Kábeles Károly*.
 - **🤖 Bot eltávolítása** – egyet kivesz a szobából (lobbi fázisban).
 - A botok **mindent megcsinálnak helyetted**: felolvasják a vádat, tartják a beszédet, tiltakoznak, reagálnak, tanúnak állnak, szavaznak és leveszik a kihívás-szavazást is. Te csak nézed – vagy szólász be Discordon.
 - A botok **nem íródnak be a `data/stats.json`-be**, és nem rontják el a barátaid számaiét.
@@ -205,11 +205,11 @@ npm test                  # nyilvántartás, vendég és játék/pontírás (18 
 npm run test:rules        # 12 szabály- és időzítési tesztcsoport
 npm run test:rooms        # valódi Socket.io: jogosultságok, kirúgás, kilépés
 node test/e2e-bots.js     # 1 ember + 4 bot, 2 kör botokkal (22 ellenőrzés)
-node test/stress-bots.js  # 6 teljes, háromkörös botjáték virtuális órával (3–8 fő)
+node test/stress-bots.js  # 6 teljes, háromkörös botjáték virtuális órával (3–12 fő)
 npm run test:layout       # valódi böngésző (Playwright), 7 méret: átfedés, kilógás, hang/mozgás kapcsolók (kb. 2 perc)
 ```
 
-A hálózati bot-teszt valós szerveren, valós időzítőkkel játszik két kört. A stresszteszt a valódi BotManager időzített műveleteit futtatja virtuális órával; mind a hat játékmódot és a 3–8 fős szobákat ellenőrzi.
+A hálózati bot-teszt valós szerveren, valós időzítőkkel játszik két kört. A stresszteszt a valódi BotManager időzített műveleteit futtatja virtuális órával; minden játékmódot és a 3–12 fős szobákat ellenőrzi.
 
 A kész v3 karakter-PNG-k és a tárgyalóterem JPG/PNG háttere az `assets/` mappában van. A színpad ezekkel működik, külön beszélőképek és Python utómunka nélkül. A `GRAPHICS_V4.md` írja le a beépítést; a `CHANGES_V4.md` az elkészült javításokat, teszteket és a helyben ellenőrizendő böngészős elrendezést.
 
@@ -254,7 +254,7 @@ A kapott `https://…onrender.com` linket dobd be a Discord szobába. A szobakó
 - **Újraindulás = szobák elvesznek:** a szobák a memóriában élnek, így a szerver alvás/újraterelés után üresen indít. A játék közben megszakadó kapcsolatnál a kliens **automatikusan újracsatlakozik** („Kapcsolat megszakadt, újracsatlakozás…” sáv); ha a szoba már nem létezik, a kliens értelmes hibát kap („A szoba megszűnt, hozz létre egy újat!”) és vissza tud lépni a menübe.
 - **A lemez ideiglenes:** a fiókok, a statisztika (`data/stats.json`) és az avatárok újraindításkor elveszhetnek. Tartós tárolásra a `DATABASE_URL` megadásával egy ingyenes külső Postgres használható, lásd **[TAROLAS.md](TAROLAS.md)**.
 - **Frissítés (deploy):** minden `git push` után a Render újraindítja a szervert – **a futó játékok megszakadnak**. Frissítést érdemes játék szünetében tenni.
-- **Alacsony processzor-limit:** az ingyenes példány lassabban ébred, és nagy terhelésnél lassíthat – 8 fős társasjátékhoz bőven elég.
+- **Alacsony processzor-limit:** az ingyenes példány lassabban ébred, és nagy terhelésnél lassíthat – 12 fős társasjátékhoz bőven elég.
 
 ## Feltöltés ingyen: Railway
 

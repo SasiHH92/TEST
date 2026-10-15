@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 const {createAuth,loadAuthEnvironment} = require('./auth');
 const {createShop} = require('./shop');
+const { createPacks, createPacksApi, CODE_RE: PACK_CODE_RE } = require('./packs');
 const {createSocial} = require('./social');
 const {verifyLegendCode} = require('./legend-claims');
 const {createDms} = require('./dms');
@@ -49,6 +50,7 @@ if (process.env.DATABASE_URL) {
 const {storage} = require('./storage'); // tartós mentés külső adatbázisba (DATABASE_URL)
 
 const { Game, PHASES, ALL_MODES } = require('./game');
+const { MAX_PLAYERS } = require('./limits');
 
 const app = express();
 const server = http.createServer(app);
@@ -90,6 +92,7 @@ const authApi = createAuth({
   // (A legendás kártyák nyilvántartási statisztikája megmarad: azt a kártyán játszott játékok adják, nem a fiók személyes adata.)
   onDelete:(gone)=>{
     dms.purgeUser(gone.id);
+    try { packs.removeOwner(gone.id); } catch (e) { reportError('packs-purge', e); } // a fiók csomagjai és gyűjteménye is törlődik
     courts.purgeUser(gone.id); // Discord-kapcsolat és tárgyalás-jelentkezések
     if(!gone.legend) {
       const key=Object.keys(STATS).find((k)=>k.normalize('NFKC').toLocaleLowerCase('hu-HU')===gone.username.normalize('NFKC').toLocaleLowerCase('hu-HU'));
@@ -101,7 +104,7 @@ const authApi = createAuth({
   reservedNames:()=>REGISTRY.map((r)=>r.nev),
   // Discord-összekapcsolás: a bolt egyszer automatikusan felveszi a Discord-hátteret (ha a kártyahát még üres)
   onProviderLinked:(user,provider)=>shopApi.onProviderLinked(user,provider),
-  onRename:renameStats,
+  onRename:(oldName,newName)=>{ renameStats(oldName,newName); try { packs.renameByName(oldName,newName); } catch (e) { reportError('packs-rename', e); } },
   // érvényes (név, kód) párra a legenda pontos nevét adja vissza, egyébként null
   claimLegend:(name,code)=>{
     const reg=REGISTRY.find((r)=>r.nev===name);
@@ -148,6 +151,9 @@ app.get(['/shop', '/shop/', '/bolt', '/bolt/'], (req, res) => res.redirect(302, 
 const dms = createDms({ file: path.resolve(__dirname, process.env.KB_DMS_FILE || 'data/dms.json'), persist: () => storage.push('dms') });
 // Moderáció: jelentések és időzített némítások (fájlban él, és a külső adatbázisba is feltöltődik, így az újraindítás nem oldja fel a némítást).
 const moderation = createModeration({ file: path.resolve(__dirname, process.env.KB_MODERATION_FILE || 'data/moderation.json'), persist: () => storage.push('moderation') });
+// Közösségi kártyacsomagok (Kártyaműhely): fájlban él, és a külső adatbázisba is feltöltődik (lásd packs.js).
+const packs = createPacks({ file: path.resolve(__dirname, process.env.KB_PACKS_FILE || 'data/packs.json'), persist: () => storage.push('packs') });
+app.use('/api/packs', createPacksApi({ packs, auth: authApi, onError: reportError }).router);
 const socialApi = createSocial({
   auth: authApi,
   dms,
@@ -155,14 +161,14 @@ const socialApi = createSocial({
   roomOf: (socketId) => {
     const sess = sockets.get(socketId);
     const game = sess && rooms.get(sess.code);
-    return game ? { code: sess.code, phase: game.phase === PHASES.LOBBY ? 'lobby' : 'game', full: game.activePlayers().length >= 8 } : null;
+    return game ? { code: sess.code, phase: game.phase === PHASES.LOBBY ? 'lobby' : 'game', full: game.activePlayers().length >= MAX_PLAYERS } : null;
   },
   emit: (userId, event, payload) => io.to('u:' + userId).emit(event, payload)
 });
 app.use('/api/friends',socialApi.router);
 
 // Üzemeltetői felület: csak ADMIN_TOKEN (legalább 24 karakter) beállításakor él, egyébként 404 (lásd admin.js).
-const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, legal: () => ({ missing: legal.missing(), version: legal.version, minAge: legal.minAge }), hideBoardMessage: (id) => hideBoardMessage(id) });
+const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, packs, legal: () => ({ missing: legal.missing(), version: legal.version, minAge: legal.minAge }), hideBoardMessage: (id) => hideBoardMessage(id) });
 app.use('/api/admin', adminApi.router);
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
@@ -191,6 +197,7 @@ app.get('/api/account/export', (req, res) => {
     social: { friends: names(social.friends), incomingRequests: names(social.incoming), outgoingRequests: names(social.outgoing), blocked: names(social.blocked),
       presence: social.presence || 'all', notifyOnline: !!social.notifyOnline },
     shop: user.shop || {},
+    cardPacks: packs.exportFor(user.id),
     stats: statsForName(user.username),
     messages
   });
@@ -231,7 +238,7 @@ function renderIndex(req) {
     OG_TITLE: room ? 'Gyere a tárgyalásra! (' + room + ') – Kamu Bíróság' : 'Kamu Bíróság – online party játék Discordra',
     OG_DESC: room
       ? 'Meghívót kaptál a ' + room + ' szobába. Kattints, válassz karaktert, és vádolj, védekezz, nevess a barátaiddal: böngészőből, telepítés nélkül.'
-      : 'Vádolj, védekezz, nevess: online party játék 3–8 játékosnak, Discord-hanggal, böngészőből vagy telefonról, telepítés nélkül.',
+      : 'Vádolj, védekezz, nevess: online party játék 3–' + MAX_PLAYERS + ' játékosnak, Discord-hanggal, böngészőből vagy telefonról, telepítés nélkül.',
     OG_URL: origin + '/' + (room ? '?room=' + room : '')
   };
   let html = indexCache.html;
@@ -808,7 +815,7 @@ function adsSnapshot() {
   for (const [code, ad] of board.ads) {
     const game = rooms.get(code);
     const players = game ? game.activePlayers().length : 0;
-    if (!game || players === 0 || game.phase !== PHASES.LOBBY || players >= 8 || now - ad.ts > AD_TTL_MS) { board.ads.delete(code); continue; }
+    if (!game || players === 0 || game.phase !== PHASES.LOBBY || players >= MAX_PLAYERS || now - ad.ts > AD_TTL_MS) { board.ads.delete(code); continue; }
     out.push({ id: ad.id, code, name: ad.name, text: ad.text, ts: ad.ts, players, max: 8 });
   }
   return out.sort((a, b) => b.ts - a.ts);
@@ -893,7 +900,8 @@ io.use((socket, next) => {
 // Beállítások fertőtlenítése: szám-típusok határai, csak érvényes mód-kulcsok,
 // saját vádak max. 30 db × 200 karakter. (A partial merge logika is itt él:
 // csak a beküldött kulcsok íródnak felül a `prev`-ben.)
-function sanitizeSettings(s, prev) {
+function sanitizeSettings(s, prev, extraModes = []) {
+  const extra = new Set(extraModes); // a szobába felvett közösségi csomagok kulcsai (pack:KÓD)
   const clamp = (v, min, max, def) => {
     const n = parseInt(v, 10);
     if (isNaN(n)) return def;
@@ -915,7 +923,7 @@ function sanitizeSettings(s, prev) {
     challengeMode: s.challengeMode !== undefined ? (s.challengeMode === 'jury' ? 'jury' : 'judge') : prev.challengeMode, // 'judge' = bíró dönt, 'jury' = esküdtek szavaznak
     // Csak olyan módok maradhatnak, amelyekhez létezik pakli a cards.json-ben.
     modes: Array.isArray(s.modes)
-      ? s.modes.filter((m) => ALL_MODES.includes(m)).slice(0, 10)
+      ? s.modes.filter((m) => ALL_MODES.includes(m) || extra.has(m)).slice(0, 24)
       : prev.modes,
     // Saját vádak: max. 30 db, darabonként max. 200 karakter, min. 4 karakter.
     customAccusations: Array.isArray(s.customAccusations)
@@ -1157,7 +1165,7 @@ io.on('connection', (socket) => {
     const mutedMs = adminMutedMs(socket);
     if (mutedMs) return reply({ error: mutedText(mutedMs) });
     if (game.phase !== PHASES.LOBBY) return reply({ error: 'Hirdetni csak a lobbiból lehet, a játék elindulása előtt.' });
-    if (game.activePlayers().length >= 8) return reply({ error: 'A szoba tele van, nincs mit hirdetni.' });
+    if (game.activePlayers().length >= MAX_PLAYERS) return reply({ error: 'A szoba tele van, nincs mit hirdetni.' });
     const existing = adsSnapshot().find((a) => a.code === sess.code);
     if (existing) return reply({ error: 'A szobának már van hirdetése. Addig érvényes, amíg a szoba a lobbiban van (legfeljebb 20 percig).' });
     const key = socialApi.userOf(socket.id) || socket.id;
@@ -1271,6 +1279,13 @@ io.on('connection', (socket) => {
     game.addPlayer(pid, name, cleanAvatar(avatar), true);
     game.getPlayer(pid).profile = profileFor(socket, name, profile);
     game.getPlayer(pid).userId = socialApi.userOf(socket.id) || null; // csak a szerver tölti (a tárgyalás-összekötéshez)
+    // A bejelentkezett házigazda saját és mentett csomagjai készen állnak a lobbiban (a pillanatfelvétel a szoba létrehozásakor készül).
+    if (game.getPlayer(pid).userId) {
+      try {
+        const hostRef = { id: game.getPlayer(pid).userId }, mine = packs.mine(hostRef);
+        for (const m of [...mine.owned, ...mine.saved].slice(0, 12)) { const snap = packs.modeFor(m.code, hostRef); if (snap) game.addExtraMode(m.code, snap); }
+      } catch (e) { reportError('packs-room', e); }
+    }
     game.getPlayer(pid).sessionToken = crypto.randomBytes(24).toString('hex');
     socket.join(code);
     socket.join(pidRoom(pid, code));
@@ -1308,8 +1323,8 @@ io.on('connection', (socket) => {
       return ack && ack({error:'Ez a játékosazonosító másik munkamenethez tartozik.'});
     }
     if (!returning) {
-      if (game.activePlayers().length >= 8) {
-        return ack && ack({ error: 'A szoba tele van (max 8 játékos).' });
+      if (game.activePlayers().length >= MAX_PLAYERS) {
+        return ack && ack({ error: 'A szoba tele van (max ' + MAX_PLAYERS + ' játékos).' });
       }
       const nameIssue = nameProblem(socket, name);
       if (nameIssue) return ack && ack({ error: nameIssue });
@@ -1356,7 +1371,7 @@ io.on('connection', (socket) => {
     const game = sess && rooms.get(sess.code);
     if (!game) return ack && ack({ error: 'Nincs szoba.' });
     if (game.hostId() !== sess.playerId) return ack && ack({ error: 'Csak a házigazda adhat hozzá botot.' });
-    if (game.players.size >= 8) return ack && ack({ error: 'A szoba tele van (max 8).' });
+    if (game.players.size >= MAX_PLAYERS) return ack && ack({ error: 'A szoba tele van (max ' + MAX_PLAYERS + ').' });
     game.addBot();
     ack && ack({ ok: true });
   });
@@ -1372,6 +1387,28 @@ io.on('connection', (socket) => {
     ack && ack({ ok: true });
   });
 
+  // ---- Közösségi csomag felvétele a szobába kód alapján (csak a házigazda, csak a lobbiban); a felvett csomag ki is van jelölve ----
+  safeOn('pack_add', ({ code } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    if (!game) return reply({ error: 'Nincs szoba.' });
+    if (game.hostId() !== sess.playerId) return reply({ error: 'Csak a házigazda vehet fel csomagot.' });
+    if (game.phase !== PHASES.LOBBY) return reply({ error: 'Csomagot csak a lobbiban vehetsz fel.' });
+    const clean = String(code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (!PACK_CODE_RE.test(clean)) return reply({ error: 'A csomag kódja 6 betű vagy szám.' });
+    if (game.extraModeKeys().length >= 12 && !game.extraModes['pack:' + clean]) return reply({ error: 'Egy szobában legfeljebb 12 csomag lehet.' });
+    const uid = socialApi.userOf(socket.id), lookupKey = clientIpOf(socket);
+    if (!packs.lookupAllowed(lookupKey)) return reply({ error: 'Túl sok sikertelen kód. Próbáld újra pár perc múlva.' });
+    const snap = packs.modeFor(clean, uid ? { id: uid } : null);
+    if (!snap) { packs.lookupMiss(lookupKey); return reply({ error: 'Nincs ilyen csomag (vagy elrejtették).' }); }
+    const key = game.addExtraMode(clean, snap);
+    if (!key) return reply({ error: 'A csomag hibás, nem használható.' });
+    game.settings = sanitizeSettings({ modes: Array.from(new Set([...(game.settings.modes || []), key])) }, game.settings, game.extraModeKeys());
+    reply({ ok: true, key, name: snap.nev, state: game.publicState(sess.playerId) });
+    game.broadcast();
+  });
+
   // ---- Beállítások a lobbyban ----
   safeOn('update_settings', ({ settings }, ack) => {
     const sess = sockets.get(socket.id);
@@ -1381,7 +1418,7 @@ io.on('connection', (socket) => {
     // Részleges, fertőtlenített beállítás-egyesítés: csak a beküldött kulcsok íródnak
     // felül, a számok a határaikra szorulnak. Így a mappa-klikk (ami azonnal, csak
     // a módokat érintve is megérkezhet) nem törli el a többi beállítást.
-    game.settings = sanitizeSettings(settings || {}, game.settings);
+    game.settings = sanitizeSettings(settings || {}, game.settings, game.extraModeKeys());
     ack && ack({ ok: true, state: game.publicState(sess.playerId) });
     game.broadcast();
   });
@@ -1408,7 +1445,7 @@ io.on('connection', (socket) => {
     const raw = (payload && payload.settings) || null;
     // A start-gombbal érkező beállítások is fertőtlenítve mennek a motorhoz
     // (számok határai, csak érvényes mód-kulcsok, max. 30 db × 200 karakteres saját vád).
-    const patch = raw ? sanitizeSettings(raw, game.settings) : null;
+    const patch = raw ? sanitizeSettings(raw, game.settings, game.extraModeKeys()) : null;
     // Discordról/webről sorsolt tárgyalás: az 1. kör szerepei az előre sorsoltak; ha valaki még nincs a szobában, nem indulunk.
     const cp = courtRooms.presetFor(game);
     if (cp && cp.missing.length) return ack && ack({ error: 'A sorsolt játékosok közül még nem léptek be: ' + cp.missing.join(', ') + '.' });
@@ -1419,6 +1456,7 @@ io.on('connection', (socket) => {
       // Nincs érvényes ügyiratmappa (játékmód) kiválasztva.
       return ack && ack({ error: 'Válassz legalább egy ügyiratmappát (játékmódot) a TÁRGYALÁS MEGKEZDÉSE előtt!' });
     }
+    for (const m of game.settings.modes || []) if (String(m).startsWith('pack:')) { try { packs.noteUse(String(m).slice(5)); } catch (_) { /* a számláló hibája nem állíthatja meg a játékot */ } }
     ack && ack({ ok: true, state: game.publicState(sess.playerId) });
   });
 

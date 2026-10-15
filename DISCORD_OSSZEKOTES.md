@@ -91,7 +91,7 @@ Események: `COURT_SESSION_CREATED`, `PLAYER_JOINED`, `PLAYER_LEFT`, `SESSION_LO
 
 ## Szerepsorsolás
 
-3 fő: Bíró, Ügyész, Vádlott. 4 fő: + Tanú. 5+ fő: + Védőügyvéd. A többiek Esküdtek (max. 8 fő).
+3 fő: Bíró, Ügyész, Vádlott. 4 fő: + Tanú. 5+ fő: + Védőügyvéd. A többiek Esküdtek (max. 12 fő).
 Fair: a szerepeket **együtt** osztja ki (az összes lehetséges kiosztásból a legkisebb költségűek közül sorsol, `crypto.randomInt`): a sokszor
 szerepet kapó játékos drágább, az előző szerepének ismétlése is. A statisztika (`roleStats`) csak elindult tárgyalás után frissül. A sorsolás **idempotens** (második
 kattintás nem sorsol újra), újrasorsolás csak a vezetőnek, READY állapotból (`force`).

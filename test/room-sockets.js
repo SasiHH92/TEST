@@ -35,13 +35,13 @@ function pass(label) {checks++;console.log('PASS '+label);}
     assert(created.code&&created.sessionToken);assert(!JSON.stringify(created.state).includes(created.sessionToken));
     pass('privát reconnect azonosító nem kerül a publikus állapotba');
     const peers=[];
-    for(let i=1;i<8;i++) {
+    for(let i=1;i<12;i++) {
       const s=await connect();const joined=await emit(s,'join_room',{code:created.code,name:'Socket '+i,playerId:'p'+i});
       assert(!joined.error);peers.push({s,id:'p'+i,token:joined.sessionToken});
     }
     const visitor=await connect();
-    const full=await emit(visitor,'join_room',{code:created.code,name:'Ninth',playerId:'p9'});
-    assert.match(full.error,/tele/);pass('maximum 8 résztvevő');
+    const full=await emit(visitor,'join_room',{code:created.code,name:'Thirteenth',playerId:'p13'});
+    assert.match(full.error,/tele/);pass('maximum 12 résztvevő');
     const other=await emit(visitor,'create_room',{name:'Other Host',playerId:'host'});
     visitor.states.length=0;let leakedWarning=false;
     visitor.on('host_warning',()=>{leakedWarning=true;});

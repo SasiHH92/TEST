@@ -1,7 +1,7 @@
 {
   "name": "Kamu Bíróság",
   "short_name": "Kamu Bíróság",
-  "description": "Online party játék 3–8 játékosnak: vádolj, védekezz, nevess. Discord-hanggal, böngészőből, telepítés nélkül.",
+  "description": "Online party játék 3–12 játékosnak: vádolj, védekezz, nevess. Discord-hanggal, böngészőből, telepítés nélkül.",
   "lang": "hu",
   "start_url": "/",
   "scope": "/",

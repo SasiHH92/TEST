@@ -116,6 +116,7 @@
     <nav class="tabs" role="tablist" aria-label="Szakaszok">
       <button type="button" role="tab" id="tabbtn-accounts" data-tab="accounts" aria-selected="true" aria-controls="accounts">Fiókok <span class="count" id="cntAccounts"></span></button>
       <button type="button" role="tab" id="tabbtn-reports" data-tab="reports" aria-selected="false" aria-controls="tab-reports">Jelentések <span class="count" id="cntReports"></span></button>
+      <button type="button" role="tab" id="tabbtn-packs" data-tab="packs" aria-selected="false" aria-controls="tab-packs">Csomagok <span class="count" id="cntPacks"></span></button>
       <button type="button" role="tab" id="tabbtn-errors" data-tab="errors" aria-selected="false" aria-controls="tab-errors">Hibák <span class="count" id="cntErrors"></span></button>
       <button type="button" role="tab" id="tabbtn-system" data-tab="system" aria-selected="false" aria-controls="tab-system">Rendszer</button>
     </nav>
@@ -170,6 +171,13 @@
     </section>
 
     <!-- ===================== JELENTÉSEK ===================== -->
+    <section id="tab-packs" class="hidden" role="tabpanel" aria-labelledby="tabbtn-packs">
+      <h2>Közösségi kártyacsomagok <span class="dim" id="packsSummary" style="font-weight:400"></span></h2>
+      <p class="dim">A Kártyaműhelyben készült csomagok. A jelentett csomagok elöl vannak; 3 különböző jelentés után a csomag magától elbújik (a könyvtárból és kóddal sem elérhető, a készítő látja). Elrejtés / visszaállítás / törlés itt. A törlés végleges, a gyűjteményekből is kiveszi.</p>
+      <div id="packsAdmin"></div>
+      <p class="msg" id="packsMsg" role="status"></p>
+    </section>
+
     <section id="tab-reports" class="hidden" role="tabpanel" aria-labelledby="tabbtn-reports">
       <h2>Jelentések és némítások</h2>
       <p class="dim">A játékosok jelentései a szobai és a közös csevegőből. A közös tér üzenete 3 különböző jelentés után magától lekerül. Némításkor a fiókos küldőt a fiókja, a vendéget a címe szerint állítjuk meg (a közös térben és a szobai csevegőben is).</p>

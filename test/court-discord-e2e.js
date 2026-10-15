@@ -210,7 +210,7 @@ async function main() {
   await test('DISCORD: a jelentkezési panel automatikusan megjelenik, ugyanazzal az ügyazonosítóval', async () => {
     await waitFor(() => panels(id).length === 1, 'panel');
     const text = panelText(id);
-    assert.ok(text.includes('ÚJ KAMU BÍRÓSÁGI TÁRGYALÁS') && text.includes('#' + id) && text.includes('JELENTKEZÉS') && text.includes('1/8'));
+    assert.ok(text.includes('ÚJ KAMU BÍRÓSÁGI TÁRGYALÁS') && text.includes('#' + id) && text.includes('JELENTKEZÉS') && text.includes('1/12'));
     assert.ok(text.includes(code), 'szobakód a panelen');
     const ids = panels(id)[0].components[0].components.map((c) => c.data.custom_id);
     assert.deepEqual(ids.slice(0, 2), [`kamu:court:join:${id}`, `kamu:court:leave:${id}`]);
@@ -230,7 +230,7 @@ async function main() {
     assert.deepEqual(web.participants.map((p) => p.name).sort(), ['AnnaT', 'SasiHH']);
     assert.ok(web.participants.find((p) => p.name === 'AnnaT').discordLinked);
     await waitFor(() => hostTab.updates.slice(before).some((u) => u.id === id && u.participants.some((p) => p.name === 'AnnaT')), 'court_update a böngészőnek');
-    await waitFor(() => panelText(id).includes('2/8') && panelText(id).includes(`<@${anna.did}>`), 'a Discord-panel is frissül');
+    await waitFor(() => panelText(id).includes('2/12') && panelText(id).includes(`<@${anna.did}>`), 'a Discord-panel is frissül');
     // a tárgyalás saját csevegője: csak a jelentkezők és a stáb látja
     const chat = await waitFor(() => chatOf(id), 'a csevegőcsatorna létrejön');
     const ow = (did) => chat.permissionOverwrites.cache.get(did);
@@ -266,7 +266,7 @@ async function main() {
     await Promise.all([press(bela, 'join', id), press(bela, 'join', id), press(cili, 'join', id), cili.api('POST', `/api/court-sessions/${id}/join`, {}), press(anna, 'join', id)]);
     const web = (await host.api('GET', '/api/court-sessions/' + id)).data.session;
     assert.deepEqual(web.participants.map((p) => p.name).sort(), ['AnnaT', 'BelaT', 'CiliT', 'SasiHH']);
-    await waitFor(() => panelText(id).includes('4/8'), 'panel 4/8');
+    await waitFor(() => panelText(id).includes('4/12'), 'panel 4/12');
   });
 
   await test('Jogosultság: nem vezető / nem stáb nem sorsolhat; a webes kérés „staff” mezője nem emel jogot', async () => {
@@ -504,7 +504,7 @@ async function main() {
     await emit(hugoTab, 'leave_room', {});
     const after = (await gina.api('GET', '/api/court-sessions/' + sid)).data.session;
     assert.ok(!after.participants.some((p) => p.name === 'HugoT'), 'Hugo kikerült a tárgyalásból');
-    await waitFor(() => !panelText(sid).includes(`<@${hugo.did}>`) && panelText(sid).includes('2/8'), 'a Discord-panel is frissül');
+    await waitFor(() => !panelText(sid).includes(`<@${hugo.did}>`) && panelText(sid).includes('2/12'), 'a Discord-panel is frissül');
     const sidChat = chatOf(sid);
     assert.ok(sidChat, 'van saját csevegő');
     await waitFor(() => !sidChat.permissionOverwrites.cache.has(hugo.did), 'Hugo elveszíti a csevegő jogát');

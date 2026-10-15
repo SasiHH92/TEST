@@ -39,7 +39,7 @@ function human(g) {
 try {
   const total=parseInt(process.argv[2],10)||ALL_MODES.length; // alapból módonként egy futás (a lista a cards.json-ból jön)
   for(let run=0;run<total;run++) {
-    const count=3+run%6, mode=ALL_MODES[run%ALL_MODES.length];
+    const count=3+run%10, mode=ALL_MODES[run%ALL_MODES.length]; // 3..12 fő (a felső határ a limits.js)
     seed=123456+run*7919;
     const g=new Game('BOT'+run,{to:()=>({emit:()=>{}})});
     g.addPlayer('human','Ember','paróka',true);
