@@ -34,7 +34,11 @@
     "tanuk": [
       "Te voltál a kacsa.",
       "Te voltál a szekrény, amiben a vádlott bujkált.",
-      "Te voltál a halott csapattárs feje."
+      "Te voltál a halott csapattárs feje.",
+      "Te voltál a váza, amit eltörtek, és azóta is remegsz.",
+      "Te voltál a kamion, amelyik mindent látott, és már nem bírja tovább.",
+      "Te voltál a bolti eladó, aki szerint a vádlott az egyetlen vevő, aki még sosem fizetett.",
+      "Te voltál az a zongora a folyosón, és most végre elmondhatod, mi történt veled."
     ],
     "kihivasok": [
       "Beszélj úgy, mint aki proximity chatben suttog egy szörny elől, és néha hirtelen sikíts.",
@@ -45,7 +49,13 @@
     "buntetesek": [
       "Mindig ő viszi a legtörékenyebb tárgyat, és ő fizeti a kárt.",
       "A következő 3 körben semmit nem vehet a boltban.",
-      "Ő lesz a csapat hivatalos fejhordozója."
+      "Ő lesz a csapat hivatalos fejhordozója.",
+      "A következő meccsen minden értéktárgyat ő cipel, és közben egy szót sem szólhat.",
+      "Három körig csak suttogva beszélhet a proximity chatben, még akkor is, ha szörny sincs a közelben.",
+      "A következő meccsen ő a csapat csalija: mindig elöl megy, és mindenki őt használja pajzsnak.",
+      "Egy hétig a Discord-neve: Törött Váza.",
+      "Minden elejtett értéktárgyért külön, névvel kell bocsánatot kérnie a csapattól.",
+      "Egy meccsen át a csapat dönti el, mit vásárol a boltban, ő csak a számlát fizeti."
     ]
   },
   "cs": {
@@ -84,7 +94,11 @@
     "tanuk": [
       "Te voltál a random csapattárs.",
       "Te voltál az ellenfél, aki késsel megölte.",
-      "Te voltál a néző, aki mindent látott."
+      "Te voltál a néző, aki mindent látott.",
+      "Te voltál az AWP-s a pálya túloldalán, aki mindent látott, de semmit nem hallott.",
+      "Te voltál a C4, amit a vádlott a rossz helyre tett le.",
+      "Te voltál a moderátor, aki átnézte a demót, és azóta csak a fejét csóválja.",
+      "Te voltál a kisöcs, aki a vádlott gépén játszott, amíg ő pizzát rendelt."
     ],
     "kihivasok": [
       "Beszélj úgy, mint aki rage quitelni készül egy 15:16-ra elvesztett meccsből.",
@@ -95,7 +109,13 @@
     "buntetesek": [
       "A következő 10 meccsen csak Deagle-t vehet.",
       "Egy hétig ő dobja a smoke-okat, és mindet rosszul.",
-      "Minden meccs elején előre bocsánatot kell kérnie a csapattól."
+      "Minden meccs elején előre bocsánatot kell kérnie a csapattól.",
+      "Egy hétig \"AWP-s\" a Discord-neve, akkor is, ha soha életében nem fogott AWP-t.",
+      "Három meccsen át csak késsel játszhat, és minden halála előtt hősi beszédet mond.",
+      "A következő meccsen minden körben hangosan kommentálja a saját halálát, szakmai részletességgel.",
+      "Egy meccsig ő mondja a calloutokat, de mindig a rossz helyet kiabálja be.",
+      "Egy hétig \"Smurf (nem én voltam)\" a Discord-neve.",
+      "A következő meccsen minden kör elején be kell jelentenie, hány pontot szerez, és ha téved, fizet egy kört."
     ]
   },
   "pubg": {
@@ -129,7 +149,11 @@
     "tanuk": [
       "Te voltál a bokor.",
       "Te ültél az autó hátsó ülésén.",
-      "Te voltál a vécé Pochinkiben."
+      "Te voltál a vécé Pochinkiben.",
+      "Te voltál az ejtőernyő, amelyik épp a legrosszabb pillanatban nem nyílt ki.",
+      "Te voltál a kék zóna, amelyik mindent látott, és közben mindent elnyelt.",
+      "Te voltál az üres elsősegélycsomag doboza.",
+      "Te voltál a motor, amit mindenki ellopott, de senki nem tudott megállítani."
     ],
     "kihivasok": [
       "Beszélj úgy, mint aki a kék zónában haldoklik, és még mindig lootolni akar.",
@@ -139,7 +163,13 @@
     "buntetesek": [
       "Csak serpenyővel harcolhat.",
       "Mindig ő vezet, pedig mindenki tudja, hogy nem kéne.",
-      "Mindig utolsónak ugorhat a gépről."
+      "Mindig utolsónak ugorhat a gépről.",
+      "A következő meccsen kötelezően a legnépszerűbb leszállóhelyre ugrik, és közben hangosan megígéri, hogy mindenkit megöl.",
+      "Egy hétig \"Serpenyős\" a Discord-neve.",
+      "A következő meccsen a csapat választja ki a fegyverét, és csak a legrosszabbat adhatják neki.",
+      "Egy meccsig ő a csapat hivatalos sofőrje, de csak hátramenetben vezethet.",
+      "A következő meccs elején előre megmondja, hányadik lesz, és ha téved, fizet egy kört.",
+      "Egy meccsen át minden elsősegélycsomagot át kell adnia a csapattársaknak, még a saját utolsóját is."
     ]
   },
   "minecraft": {
@@ -178,7 +208,11 @@
     "tanuk": [
       "Te voltál a villager.",
       "Te voltál a creeper.",
-      "Te vagy a közös kutya szelleme."
+      "Te vagy a közös kutya szelleme.",
+      "Te voltál az enderman, aki mindent látott, de nem mert a vádlottra nézni.",
+      "Te voltál az ágy, amiben a vádlott állítólag aludt.",
+      "Te voltál a láda, amit mindenki nyitogatott, de senki nem zárt vissza.",
+      "Te voltál a láva, amelybe a vádlott belezuhant, és még most is forrongsz."
     ],
     "kihivasok": [
       "Beszélj úgy, mint egy villager: minden mondatod végén mondd, hogy \"hmm\".",
@@ -189,7 +223,13 @@
     "buntetesek": [
       "Egy hétig csak fa csákánnyal játszhat.",
       "Egy hétig dirt-kunyhóban kell laknia.",
-      "Egyedül ő aratja a közös farmot."
+      "Egyedül ő aratja a közös farmot.",
+      "Három napig a skinje egy creeper, és köteles sziszegni, amikor belép a szerverre.",
+      "Egy hétig minden üzenete elé ki kell írnia: \"nem én voltam\".",
+      "Az összes talált gyémántot a közös ládába kell raknia, és mindegyikért külön köszönetet kell mondania a csapatnak.",
+      "Egy hétig ő építi a közös vécéket, és mindegyiket a többiek avatják fel.",
+      "Egy estén át fáklya nélkül bányászhat, és közben hangosan mondja, amit lát.",
+      "Köteles szobrot építeni a bíróról a közös bázis elé, és addig nem léphet le, amíg a bíró nem elégedett."
     ]
   },
   "roblox": {
@@ -222,7 +262,11 @@
     ],
     "tanuk": [
       "Te voltál az NPC.",
-      "Te voltál a pizzéria főnöke."
+      "Te voltál a pizzéria főnöke.",
+      "Te voltál a boltos NPC, aki mindenkit ugyanazzal a mondattal fogad.",
+      "Te voltál a lag, aki mindent látott, csak mindig késve.",
+      "Te voltál a 2000 robuxos kalap, ami semmit nem csinál, de mindent látott.",
+      "Te voltál a szerver adminja, aki mindent látott, és semmit nem tett."
     ],
     "kihivasok": [
       "Beszélj úgy, mint egy Roblox-játékos, aki mindenáron trade-et akar.",
@@ -231,7 +275,13 @@
     "buntetesek": [
       "3 hónap kényszermunka a Robloxos pizzériában.",
       "Egy hétig a 2000 robuxos kalap a profilképe.",
-      "Minden letöltött ingyen játékot végig kell játszania."
+      "Minden letöltött ingyen játékot végig kell játszania.",
+      "Egy hétig minden belépésnél hangosan be kell jelentenie: \"ez ingyen volt, tehát nem számít\".",
+      "Teljesítenie kell egy nehéz obbyt élőben, és minden elesésnél bocsánatot kér az esküdtektől.",
+      "Egy hétig a csapat választja ki a skinjét, és csak a legcsúnyábbat adhatják rá.",
+      "Egy estén át csak olyan mobiljátékot játszhat, ami harminc másodpercenként reklámot mutat.",
+      "Három napig \"Noob\" a Discord-neve.",
+      "Köteles egy ingyenes játékot kitörölni a csapat szeme láttára, mielőtt egyszer is elindítaná."
     ]
   },
   "buli": {
@@ -296,7 +346,11 @@
       "Te voltál a lángosos aznap este.",
       "A szomszéd asztalnál ültél, és mindent hallottál, de nagyon részeg voltál.",
       "Te vagy a vádlott exe.",
-      "Te is benne voltál, de ezt nem árulhatod el."
+      "Te is benne voltál, de ezt nem árulhatod el.",
+      "Te voltál a DJ, aki hajnalra már csak egyetlen dalt ismert.",
+      "Te voltál a taxis, aki hazavitte a vádlottat, és mindent végighallgatott.",
+      "Te voltál a kidobó a bejáratnál, aki egy szavát sem hitte el.",
+      "Te voltál a pultos, aki mindenre emlékszik, főleg a számlára."
     ],
     "kihivasok": [
       "Minden mondatodat fejezd be úgy: \"oksa\".",
@@ -310,7 +364,13 @@
       "Köteles egy kör sört fizetni az esküdteknek.",
       "Egy hónapig tilos neki a \"pill\" szó.",
       "Egy hétig \"Elítélt Bűnös\" a Discord-neve.",
-      "Egy teljes estét a szégyensarok voice channelben kell töltenie."
+      "Egy teljes estét a szégyensarok voice channelben kell töltenie.",
+      "Köteles élőben elénekelni egy dalt a hívásban, a pontszámot az esküdtek adják.",
+      "Egy hétig minden üzenetét NAGYBETŰVEL írhatja a közös csatornán.",
+      "A következő közös estén egész este harmadik személyben beszélhet magáról.",
+      "A következő hívásban végig csak \"oksa\"-val válaszolhat, akármit kérdeznek.",
+      "A következő estén ő a DJ, de csak azt a dalt játszhatja, amit a csapat választ neki.",
+      "A következő közös estén ő hozza a lángost, és mindenkinek külön megköszöni, hogy megette."
     ]
   },
   "altalanos": {
@@ -325,13 +385,25 @@
       "Suttogva beszélj az egész idő alatt.",
       "Tarts egy legalább 5 másodperces drámai szünetet a legfontosabb résznél.",
       "A beszéd közben hirtelen kezdj el énekelni (a saját szavaidat).",
-      "Legalább egyszer mondj ellent saját magadnak."
+      "Legalább egyszer mondj ellent saját magadnak.",
+      "Beszélj úgy, mint egy nyugodt meditációs oktató, akit valami mélyen felzaklatott.",
+      "Beszélj úgy, mint egy repülőtéri hangosbemondó.",
+      "Beszélj úgy, mint egy túlzottan lelkes teleshop-műsorvezető.",
+      "Minden mondatodban szerepeljen egy állat neve.",
+      "Minden mondatod végére tedd oda, hogy \"állítólag\".",
+      "Hivatkozz háromszor egy nem létező tudósra, névvel és évszámmal.",
+      "Beszélj úgy, mint egy dühös tévés szakács, aki épp elrontott egy főzést.",
+      "A beszéded végén tarts egy könnyes, drámai záróbeszédet, mintha az életed múlna rajta."
     ],
     "nehezitesek": [
       "Tilos az \"igen\" és a \"nem\" szó.",
       "Minden mondatod kérdés legyen.",
       "Minden harmadik mondatod angolul legyen.",
-      "A teljes beszéded maximum 5 mondat lehet."
+      "A teljes beszéded maximum 5 mondat lehet.",
+      "Tilos az \"és\" és a \"hogy\" szó.",
+      "Minden mondatod pontosan hat szó legyen.",
+      "Csak harmadik személyben beszélhetsz magadról.",
+      "Minden mondatod végén ismételd meg az utolsó szavadat."
     ]
   }
 }
