@@ -11,7 +11,7 @@
 const { Game } = require('../game');
 const CARDS = require('../data/cards.json');
 
-const MODES = ['repo', 'cs', 'pubg', 'minecraft', 'roblox', 'buli'];
+const MODES = Object.keys(CARDS).filter((k) => k !== 'altalanos'); // minden játékmód a cards.json kulcsaiból: új téma automatikusan bekerül a tesztbe
 const ROUNDS = 20;
 
 let fails = 0;
@@ -82,7 +82,7 @@ function playOneRound(g, mode, label) {
 }
 
 (function main() {
-  // 1) Mind a 6 mód külön-külön, ROUNDS körön át
+  // 1) Minden mód külön-külön, ROUNDS körön át
   for (const mode of MODES) {
     console.log('\n== MÓD: ' + mode + ' (' + CARDS[mode].nev + ') – ' + ROUNDS + ' kör ==');
     const { g } = makeGame();
@@ -99,7 +99,7 @@ function playOneRound(g, mode, label) {
     g.clearTimers();
   }
 
-  // 2) Vegyes: mind a 6 mód kijelölve – körönként EGY mód, körön belül nincs keveredés
+  // 2) Vegyes: minden mód kijelölve – körönként EGY mód, körön belül nincs keveredés
   console.log('\n== VEGYES mód – ' + ROUNDS + ' kör ==');
   {
     const { g } = makeGame();

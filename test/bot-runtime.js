@@ -3,7 +3,7 @@
 // A virtual clock runs its actual scheduled callbacks without waiting minutes.
 // test/e2e-bots.js separately checks real clocks and Socket.io over two rounds.
 const assert=require('assert/strict');
-const {Game}=require('../game');
+const {Game,ALL_MODES}=require('../game');
 const original={now:Date.now,random:Math.random,setTimeout,clearTimeout};
 const timers=new Map();
 let now=1700000000000,sequence=1,seed=1;
@@ -37,9 +37,9 @@ function human(g) {
   }
 }
 try {
-  const total=parseInt(process.argv[2],10)||6;
+  const total=parseInt(process.argv[2],10)||ALL_MODES.length; // alapból módonként egy futás (a lista a cards.json-ból jön)
   for(let run=0;run<total;run++) {
-    const count=3+run%6, mode=['repo','cs','pubg','minecraft','roblox','buli'][run%6];
+    const count=3+run%6, mode=ALL_MODES[run%ALL_MODES.length];
     seed=123456+run*7919;
     const g=new Game('BOT'+run,{to:()=>({emit:()=>{}})});
     g.addPlayer('human','Ember','paróka',true);

@@ -980,9 +980,17 @@ $('#helpClose').addEventListener('click', closeHelp);
 $('#helpOk').addEventListener('click', () => { closeHelp(); markHelpSeen(); });
 $('#helpModal').addEventListener('click', (e) => { if (e.target === $('#helpModal')) closeHelp(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#helpModal').classList.contains('hidden')) closeHelp(); });
-if (!LS.getItem('kb_helpSeen')) setTimeout(() => {
-  if (IDENTITY_READY) openHelp(true);
-}, 500);
+// Az első látogatáskor, a belépés (vendég / fiók) után egyszer magától megnyílik a rövid útmutató (az auth.js enter() hívja).
+// Egyszeri: megnyitáskor látottnak számít, így bezárás / újratöltés után nem tér vissza. Játék közben (újracsatlakozás) és más ablak fölött nem nyílik meg.
+function maybeShowFirstHelp() {
+  if (LS.getItem('kb_helpSeen')) return;
+  setTimeout(() => {
+    if (LS.getItem('kb_helpSeen') || !IDENTITY_READY) return;
+    if (document.body.dataset.screen === 'game' || document.body.classList.contains('in-game') || document.querySelector('dialog[open]')) return;
+    markHelpSeen();
+    openHelp(true);
+  }, 700);
+}
 
 // ============================================================
 // KÉPERNYŐ 1: KI VAGY TE, GYANÚSÍTOTT? (nyilvántartási kártyák)

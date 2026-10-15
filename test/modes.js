@@ -1,12 +1,12 @@
 'use strict';
 
-// Játékmód-teszt: mind a 6 mód külön-külön, a Vegyes és az
-// "egyik sincs kijelölve" eset érthető elutasítást kap.
+// Játékmód-teszt: minden mód külön-külön (a lista a data/cards.json kulcsaiból jön, így új téma automatikusan bekerül),
+// a Vegyes és az "egyik sincs kijelölve" eset érthető elutasítást kap.
 // Futtatás: node test/modes.js
 
-const { Game } = require('../game');
+const { Game, ALL_MODES } = require('../game');
 
-const MODES = ['repo', 'cs', 'pubg', 'minecraft', 'roblox', 'buli'];
+const MODES = ALL_MODES.slice();
 
 function makeGame() {
   const warnings = [];
@@ -46,7 +46,7 @@ function check(name, cond) {
     }
   }
 
-  // 2) Vegyes: mind a 6 mód egyszerre
+  // 2) Vegyes: minden mód egyszerre
   {
     const { g } = makeGame();
     try {

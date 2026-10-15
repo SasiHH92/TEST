@@ -141,6 +141,7 @@
     $('#guestName').value=account?.username||'';
     $('#guestForm').classList.add('hidden');
     closeHelp();
+    if(typeof maybeShowFirstHelp==='function') maybeShowFirstHelp(); // első belépéskor egyszer magától megnyílik a rövid útmutató
     $('#authContinue').classList.add('hidden');
     // Kézi belépés (gomb): mindig a karakterválasztóra érkezünk, nem egyből a terembe/menübe.
     if(fresh&&(MY.name||MY.code)) {

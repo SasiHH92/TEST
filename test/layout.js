@@ -122,6 +122,7 @@ async function walk(browser, vp) {
   const tag = width + 'x' + height + ' (' + label + ')';
   const touch = width < 600;
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, isMobile: touch, hasTouch: touch, locale: 'hu-HU' });
+  await context.addInitScript(() => { try { localStorage.setItem('kb_helpSeen', '1'); } catch (_) { /* nincs tár */ } }); // az első belépéskor magától megnyíló útmutatót a test/mobile-onboarding.js ellenőrzi
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
@@ -221,6 +222,9 @@ async function walk(browser, vp) {
         await page.waitForTimeout(250);
         await page.evaluate(() => { document.getElementById('btnAddBot').click(); });
         await page.waitForTimeout(250);
+        // A lobbi alapból GYORS JÁTÉK módban áll, ami indításkor a saját alap-időzítőit küldi (60/45/30/30/20 mp, 3 kör), és felülírja az egyéni mezőket:
+        // a rövid időzítők csak az EGYÉNI JÁTÉK módban érvényesülnek.
+        await page.evaluate(() => { document.getElementById('btnCustomGame').click(); });
         await page.evaluate(() => {
           const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
           const mode = document.querySelector('#modeGrid .case-tab[data-mode]');
@@ -229,24 +233,38 @@ async function walk(browser, vp) {
           document.getElementById('btnSaveSettings').click();
         });
         await page.waitForTimeout(400);
+        // A fázisokat a szerver 'state' üzenetei adják, a böngészőben gyűjtve – nem a 1,5 mp-es lekérdezés, így a rövid fázis (pl. a vádemelés, amit egy bot 1,5–6 mp után olvas fel)
+        // sem csúszhat el egy terhelt gépen a mintavételek között.
+        await page.evaluate(() => { window.__phasesSeen = []; socket.on('state', (st) => { if (st && st.phase && !window.__phasesSeen.includes(st.phase)) window.__phasesSeen.push(st.phase); }); });
         await page.evaluate(() => document.getElementById('btnStartGame').click());
         await page.waitForFunction(() => document.body.dataset.screen === 'game', null, { timeout: 15000 });
-        const seen = new Set();
-        let before = { phase: '', keys: new Set() }; // csak az a hiba számít, ami két egymás utáni mérésben ugyanabban a fázisban is megvan (az átmenetek animációja nem)
-        const deadline = Date.now() + 70000;
-        while (Date.now() < deadline) {
-          await page.waitForTimeout(1500);
-          const phase = await page.evaluate(() => (typeof S !== 'undefined' && S && S.phase) || '');
-          if (!phase) continue;
-          const result = await page.evaluate(audit);
-          if (!seen.has(phase)) { seen.add(phase); await shot(page, vp[0] + 'x' + vp[1] + '-game-' + phase); }
-          const keys = new Set(result.problems.map((p) => p.replace(/\s*\(.*$/, '')));
-          const lasting = result.problems.filter((p) => before.phase === phase && before.keys.has(p.replace(/\s*\(.*$/, '')));
-          assert.deepEqual(lasting, [], '[' + tag + ' fázis: ' + phase + '] ' + lasting.join(' | '));
-          before = { phase, keys };
-          if (seen.size >= 4 && (phase === 'verdict_vote' || phase === 'verdict' || phase === 'round_results' || phase === 'game_over')) break;
+        try {
+          assert.equal(await page.evaluate(() => S.settings.prepSeconds), 10, 'a rövid (egyéni) időzítők érvényesülnek, nem a GYORS JÁTÉK alapértékei');
+          const seen = new Set();
+          let before = { phase: '', keys: new Set() }; // csak az a hiba számít, ami két egymás utáni mérésben ugyanabban a fázisban is megvan (az átmenetek animációja nem)
+          const deadline = Date.now() + 70000;
+          while (Date.now() < deadline) {
+            await page.waitForTimeout(1500);
+            const phase = await page.evaluate(() => (typeof S !== 'undefined' && S && S.phase) || '');
+            if (!phase) continue;
+            const result = await page.evaluate(audit);
+            if (!seen.has(phase)) { seen.add(phase); await shot(page, vp[0] + 'x' + vp[1] + '-game-' + phase); }
+            const keys = new Set(result.problems.map((p) => p.replace(/\s*\(.*$/, '')));
+            const lasting = result.problems.filter((p) => before.phase === phase && before.keys.has(p.replace(/\s*\(.*$/, '')));
+            assert.deepEqual(lasting, [], '[' + tag + ' fázis: ' + phase + '] ' + lasting.join(' | '));
+            before = { phase, keys };
+            if (seen.size >= 4 && (phase === 'verdict_vote' || phase === 'verdict' || phase === 'round_results' || phase === 'game_over')) break;
+          }
+          // a szerver által küldött fázisok (gyűjtve) – a mért (képernyőkép + átfedés-vizsgálat) fázisok mindig része ennek
+          const delivered = await page.evaluate(() => window.__phasesSeen || []);
+          assert.ok(delivered.length >= 4, 'legalább 4 fázis érkezett a szervertől a 70 mp alatt: ' + delivered.join(', '));
+          assert.ok(seen.size >= 3, 'legalább 3 fázist mértünk (érkezett: ' + delivered.join(', ') + '): ' + [...seen].join(', '));
+        } finally {
+          // Az élő játékot befagyasztjuk: a szerver további állapotai (köztük a valódi ítélet) ne írják felül a lenti ellenőrzések saját állapotát és jelenet-rendezőjét.
+          // (Rövid időzítőknél a játék a 70 mp alatt az ítéletig is eljut.)
+          await page.evaluate(() => { socket.off('state'); if (window.kbCourt) window.kbCourt.reset(); });
+          await page.waitForTimeout(300);
         }
-        assert.ok(seen.size >= 3, 'legalább 3 fázist láttunk: ' + [...seen].join(', '));
       });
 
       await check(tag + ' – ítélet-effektek: galambok és rázkódás teljes mozgásnál, csökkentettnél elmaradnak, nincs túlcsordulás', async () => {
@@ -348,6 +366,7 @@ async function walkAccount(browser, vp) {
   const tag = width + 'x' + height + ' (' + label + ', fiókkal)';
   const touch = width < 600;
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, isMobile: touch, hasTouch: touch, locale: 'hu-HU' });
+  await context.addInitScript(() => { try { localStorage.setItem('kb_helpSeen', '1'); } catch (_) { /* nincs tár */ } }); // az első belépéskor magától megnyíló útmutatót a test/mobile-onboarding.js ellenőrzi
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));

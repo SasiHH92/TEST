@@ -43,10 +43,18 @@ const rectOf = (page, sel) => page.evaluate((s) => {
 const fixedButtons = (page) => page.evaluate(() => [...document.querySelectorAll('.comfort-btn, .info-btn')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).position === 'fixed'; })
   .map((e) => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, what: e.className.toString() }; }));
 
-async function guestToMenu(page, name) {
+// A flag nélküli (első) látogatásnál a játék a belépés után magától megnyitja a rövid útmutatót: egy játékos itt az "Értem, kezdjük!" gombbal zárja be
+async function closeFirstHelp(page) {
+  await page.waitForSelector('#helpModal:not(.hidden)', { timeout: 4000 });
+  await page.locator('#helpOk').click(); await page.waitForSelector('#helpModal.hidden', { state: 'attached' });
+}
+const presetHelpSeen = (page) => page.addInitScript(() => { try { localStorage.setItem('kb_helpSeen', '1'); } catch (_) { /* nincs tár */ } });
+
+async function guestToMenu(page, name, { firstHelp = false } = {}) {
   await page.goto(BASE, { waitUntil: 'load' });
-  await pause(800); // az emberi tempó: a játék 0,5 mp-en belüli belépésnél magától megnyitná a súgót (régi, időzítős viselkedés)
+  await pause(800);
   await page.locator('#authGuest').click();
+  if (firstHelp) await closeFirstHelp(page);
   await page.locator('#btnNewSuspect').click();
   await page.locator('#guestName').fill(name);
   await page.locator('#btnGuestGo').click();
@@ -68,6 +76,7 @@ async function guestToMenu(page, name) {
       await test('A) névválasztó ' + p.name + ': a cím szabad, az új-játékos gomb a legendák előtt és az első képernyőn van, az űrlap elfér', async () => {
         const ctx = await mobile(p), page = await ctx.newPage(); const errors = []; page.on('pageerror', (e) => errors.push(String(e.message || e)));
         try {
+          await presetHelpSeen(page);
           await page.goto(BASE, { waitUntil: 'load' }); await pause(800);
           await page.locator('#authGuest').click(); await pause(700);
           assert.equal(await page.evaluate(() => document.body.dataset.screen), 'name');
@@ -87,6 +96,7 @@ async function guestToMenu(page, name) {
     await test('A) nagy képernyőn a névválasztó sorrendje változatlan: a legendák kártyái után jön a vendég-gomb', async () => {
       const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }), page = await ctx.newPage();
       try {
+        await presetHelpSeen(page);
         await page.goto(BASE, { waitUntil: 'load' }); await pause(800); await page.locator('#authGuest').click(); await pause(700);
         const btn = await rectOf(page, '#btnNewSuspect'), card = await rectOf(page, '#mugGrid > *');
         assert.ok(btn && card && btn.top > card.top, 'a gomb a kártyák után van nagy képernyőn: ' + JSON.stringify({ btn: btn && btn.top, card: card && card.top }));
@@ -94,28 +104,54 @@ async function guestToMenu(page, name) {
     });
 
     for (const p of PHONES) {
-      await test('B) menü ' + p.name + ': a cím és a profilkártya szabad; a "Hogyan kell játszani?" gomb látszik, első látogatásnál kiemelt; a megnyíló súgó a rövid összefoglalóval kezdődik; utána nem kiemelt', async () => {
+      await test('B) első belépés ' + p.name + ': az útmutató magától megnyílik a rövid összefoglalóval (egyszer), a menü gombja utána nem kiemelt, de kézzel is megnyitható; a cím és a profilkártya szabad', async () => {
         const ctx = await mobile(p), page = await ctx.newPage(); const errors = []; page.on('pageerror', (e) => errors.push(String(e.message || e)));
         try {
-          await guestToMenu(page, 'Mobil' + p.width);
+          await page.goto(BASE, { waitUntil: 'load' }); await pause(800);
+          assert.equal(await page.evaluate(() => localStorage.getItem('kb_helpSeen')), null, 'friss böngésző: még nincs látott-jelző');
+          await page.waitForTimeout(1200); assert.equal(await page.evaluate(() => document.querySelector('#helpModal').classList.contains('hidden')), true, 'belépés előtt nem nyílik meg');
+          await page.locator('#authGuest').click();
+          await page.waitForSelector('#helpModal:not(.hidden)', { timeout: 4000 });
+          const first = await page.evaluate(() => { const s = document.querySelector('#helpBody .help-sec'); return { h: s.querySelector('h3').textContent, items: s.querySelectorAll('li').length, ok: document.querySelector('#helpOk').textContent.trim() }; });
+          assert.match(first.h, /^RÖVIDEN/); assert.ok(first.items >= 4, 'az összefoglaló pontjai'); assert.equal(first.ok, 'Értem, kezdjük!');
+          assert.equal(await page.evaluate(() => localStorage.getItem('kb_helpSeen')), '1', 'megnyitáskor látottnak számít (egyszeri)');
+          assert.ok(await rectOf(page, '#helpOk'), 'az "Értem, kezdjük!" gomb látszik');
+          await page.locator('#helpOk').click(); await page.waitForSelector('#helpModal.hidden', { state: 'attached' });
+          await page.locator('#btnNewSuspect').click(); await page.locator('#guestName').fill('Mobil' + p.width); await page.locator('#btnGuestGo').click();
+          await page.waitForFunction(() => document.body.dataset.screen === 'menu', null, { timeout: 15000 }); await pause(400);
           const title = await rectOf(page, '#screen-menu .logo'), who = await rectOf(page, '#menuWho');
           assert.ok(title && who, 'a cím és a "belépsz mint" kártya látszik');
           for (const b of await fixedButtons(page)) { assert.ok(!hit(title, b), 'a cím ütközik: ' + b.what); assert.ok(!hit(who, b), 'a profilkártya ütközik: ' + b.what); }
           const how = page.locator('#btnHowTo'); await how.scrollIntoViewIfNeeded();
-          assert.match(await how.innerText(), /Hogyan kell játszani/i); assert.equal(await how.evaluate((e) => e.classList.contains('first-visit')), true, 'első látogatásnál kiemelt');
+          assert.match(await how.innerText(), /Hogyan kell játszani/i); assert.equal(await how.evaluate((e) => e.classList.contains('first-visit')), false, 'az útmutató már látott: a gomb nem kiemelt');
           assert.ok((await rectOf(page, '#btnHowTo')).height >= 44, 'az érintési célpont legalább 44 px magas');
+          assert.equal(await page.evaluate(() => document.querySelector('#helpModal').classList.contains('hidden')), true, 'a menün nem nyílik meg újra');
           await how.click(); await page.waitForSelector('#helpModal:not(.hidden)');
-          const first = await page.evaluate(() => { const s = document.querySelector('#helpBody .help-sec'); return { h: s.querySelector('h3').textContent, items: s.querySelectorAll('li').length }; });
-          assert.match(first.h, /^RÖVIDEN/); assert.ok(first.items >= 4, 'az összefoglaló pontjai');
-          assert.equal(await page.evaluate(() => localStorage.getItem('kb_helpSeen')), '1', 'megnyitva látottnak számít');
-          assert.equal(await page.evaluate(() => document.querySelector('#btnHowTo').classList.contains('first-visit')), false, 'utána nem kiemelt');
+          assert.match(await page.evaluate(() => document.querySelector('#helpBody .help-sec h3').textContent), /^RÖVIDEN/, 'kézzel megnyitva is a rövid összefoglaló az első');
           await page.locator('#helpOk').click(); await page.waitForSelector('#helpModal.hidden', { state: 'attached' });
           assert.deepEqual(errors, [], 'nincs JS-hiba');
         } finally { await ctx.close(); }
       });
     }
 
-    await test('B) a menü gombja látott súgó után sem tűnik el (újratöltés után is látszik, nem kiemelt)', async () => {
+    await test('B) az útmutató csak EGYSZER nyílik meg: újratöltés és újabb belépés után sem tér vissza; bezárás nélkül (Esc) sem; nagy képernyőn is', async () => {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } }), page = await ctx.newPage();
+      try {
+        await page.goto(BASE, { waitUntil: 'load' }); await pause(800); await page.locator('#authGuest').click();
+        await page.waitForSelector('#helpModal:not(.hidden)', { timeout: 4000 });
+        await page.keyboard.press('Escape'); await page.waitForSelector('#helpModal.hidden', { state: 'attached' }); // nem az "Értem" gombbal zárta be
+        assert.equal(await page.evaluate(() => localStorage.getItem('kb_helpSeen')), '1', 'a megnyitás is elég: bezárás módjától független');
+        // újratöltés: a játék visszaállítja a munkamenetet (belépés újra lefut), de az útmutató nem tér vissza
+        await page.reload({ waitUntil: 'load' }); await pause(2200);
+        assert.notEqual(await page.evaluate(() => document.body.dataset.screen || 'auth'), 'auth', 'a munkamenet visszaállt (belépés lefutott)');
+        assert.equal(await page.evaluate(() => document.querySelector('#helpModal').classList.contains('hidden')), true, 'újratöltés és újra-belépés után nem nyílik meg újra');
+        // teljesen új lap ugyanabban a böngészőben (a localStorage megmarad): új belépés sem hozza vissza
+        const page2 = await ctx.newPage(); await page2.goto(BASE, { waitUntil: 'load' }); await pause(800); await page2.locator('#authGuest').click(); await pause(1800);
+        assert.equal(await page2.evaluate(() => document.querySelector('#helpModal').classList.contains('hidden')), true, 'új lapon, új belépéskor sem nyílik meg újra');
+      } finally { await ctx.close(); }
+    });
+
+    await test('B) a menü gombja látott súgó után sem tűnik el (újratöltés után is látszik, nem kiemelt), és nem nyílik meg magától', async () => {
       const ctx = await mobile(PHONES[0]), page = await ctx.newPage();
       try {
         await page.addInitScript(() => { try { localStorage.setItem('kb_helpSeen', '1'); } catch (_) { /* nincs tár */ } });
