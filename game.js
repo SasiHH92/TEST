@@ -114,6 +114,11 @@ class Game {
     Game._stateHook = fn;
   }
 
+  // Kártya-visszajelzés (cardfeedback.js): a szerver adja át a tárolót; a vádra adott 😂/👎 szavazatok oda gyűlnek (név nélkül).
+  static setCardFeedback(store) {
+    Game._cardFeedback = store;
+  }
+
   // Tárgyalás-összekötés (courts.js): a szerver iratkozik fel; a játék indulásáról / végéről kap értesítést.
   static setLifecycleHook(fn) {
     Game._lifecycleHook = fn;
@@ -508,6 +513,15 @@ class Game {
       };
     }
 
+    if ((this.phase === PHASES.VERDICT || this.phase === PHASES.ROUND_RESULTS) && d.accusationTemplate) {
+      const accVotes = Object.values(d.accFun || {});
+      base.accFun = {
+        yes: accVotes.filter((v) => v === true).length,
+        no: accVotes.filter((v) => v === false).length,
+        mine: me && d.accFun && d.accFun[me.id] !== undefined ? d.accFun[me.id] : null,
+        canVote: !!(me && !me.isBot)
+      };
+    }
     if (this.phase === PHASES.VERDICT) base.verdict = d.verdictResult;
     if (this.phase === PHASES.ROUND_RESULTS) base.roundResults = d.roundResults;
 
@@ -806,6 +820,9 @@ class Game {
       defenderId,
       accusationText,
       isCustomAccusation: isCustom,
+      // a vád sablonja a kártya-visszajelzéshez: csak a beépített témák kártyáinál (egyéni vád és közösségi csomag nem)
+      accusationTemplate: (!isCustom && !String(mode).startsWith('pack:')) ? template : null,
+      accFun: {}, // 😂/👎 a kihirdetett vádra (playerId -> bool)
       evidence: modeDecks.bizonyitekok.drawN(3),
       alibi: modeDecks.alibik.draw(),
       tricks: defenderId ? modeDecks.trukkok.drawN(2) : null,
@@ -1140,6 +1157,23 @@ class Game {
     if (this.currentChallenge()?.who !== who || byId === d.currentJudgeId) return false;
     if (!d.funVotes[byId]) d.funVotes[byId] = {};
     d.funVotes[byId][who] = !!done;
+    this.broadcast();
+    return true;
+  }
+
+  // A játékosok 😂/👎 reakciója a kör vádjára (az ítélet után és a kör végén) – a kártya-visszajelzés alapja, pontot nem ad.
+  // up: true = 😂, false = 👎, null = visszavonás. Játékosonként egy szavazat, a változás a tárolóban is átvezetődik.
+  accusationFunVote(byId, up) {
+    const d = this.roundData, me = this.players.get(byId);
+    if (!d || !d.accusationTemplate || !me || me.isBot || !me.connected) return false;
+    if (this.phase !== PHASES.VERDICT && this.phase !== PHASES.ROUND_RESULTS) return false;
+    const next = up === true ? true : up === false ? false : null;
+    const prev = d.accFun[byId] === undefined ? null : d.accFun[byId];
+    if (prev === next) return false;
+    if (next === null) delete d.accFun[byId]; else d.accFun[byId] = next;
+    if (Game._cardFeedback) {
+      try { Game._cardFeedback.record(d.mode, d.accusationTemplate, prev, next); } catch (e) { console.error('kártya-visszajelzés:', e.message); }
+    }
     this.broadcast();
     return true;
   }

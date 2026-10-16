@@ -94,6 +94,10 @@ Nyisd meg a `data/cards.json` fájlt, és írd az új szöveget a megfelelő mó
 - Indítsd újra a szervert (`npm start`) a módosítás után.
 - A szövegekben a `[játékos]` és `[vádlott]` helyőrzőket használhatod.
 
+### Kártya-visszajelzés
+
+Az ítélet után és a kör végén minden játékos 😂 / 👎 szavazatot adhat a kör vádjára (pontot nem ad). A szavazatok névtelenül, összesítve gyűlnek a `data/cardfeedback.json`-ban (`cardfeedback.js`; külső adatbázisba is feltöltődik), és csak a beépített témák kártyáira vonatkoznak (egyéni vád és közösségi csomag nem). Az `/admin` **Kártyák** lapján a leggyengébb vádak elöl látszanak (rendezés, minimum szavazatszám); a lecserélt kártya szavazatai maguktól kihullnak, egy kártyáé kézzel is törölhető. Tesztek: `npm run test:cardfb`, `npm run test:cardfb-ui`.
+
 ### Napi küldetések és bolt
 
 - **Pénznem:** pogácsa 🍪, a fiók pénztárcájában (`user.shop` a fiókfájlban / az adatbázisban). Csak bejelentkezett fiók kaphat jutalmat.

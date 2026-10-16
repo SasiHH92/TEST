@@ -21,6 +21,8 @@ data/moderation.json
 data/moderation.json.*.tmp
 data/packs.json
 data/packs.json.*.tmp
+data/cardfeedback.json
+data/cardfeedback.json.*.tmp
 data/bugreports.json
 data/bugreports.json.*.tmp
 data/bugimages/

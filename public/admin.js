@@ -33,7 +33,7 @@
   }
 
   // ---- Fülek ----
-  const TABS = { accounts: '#accounts', reports: '#tab-reports', packs: '#tab-packs', errors: '#tab-errors', system: '#tab-system' };
+  const TABS = { accounts: '#accounts', reports: '#tab-reports', packs: '#tab-packs', cards: '#tab-cards', errors: '#tab-errors', system: '#tab-system' };
   function selectTab(name, focus) {
     if (!TABS[name]) name = 'accounts';
     for (const [key, sel] of Object.entries(TABS)) {
@@ -85,9 +85,10 @@
   async function load() {
     const s = await api('GET', '/status'); // előbb ez: rossz tokennel csak egy sikertelen próba számít
     show(true);
-    const [errs, backs, accts, reps, packs] = await Promise.all([api('GET', '/errors'), api('GET', '/backups'), api('GET', '/accounts'), api('GET', '/reports'), api('GET', '/packs')]);
+    const cardsQuery = '/cardfeedback?sort=' + encodeURIComponent($('#cardsSort').value) + '&min=' + encodeURIComponent($('#cardsMin').value || '3');
+    const [errs, backs, accts, reps, packs, cards] = await Promise.all([api('GET', '/errors'), api('GET', '/backups'), api('GET', '/accounts'), api('GET', '/reports'), api('GET', '/packs'), api('GET', cardsQuery)]);
     lastStatus = s;
-    renderSystem(s); renderErrors(errs); renderBackups(backs); renderReports(reps); renderAccounts(accts); renderPacks(packs);
+    renderSystem(s); renderErrors(errs); renderBackups(backs); renderReports(reps); renderAccounts(accts); renderPacks(packs); renderCards(cards);
     const reportedPacks = s.packs ? s.packs.reported : 0; $('#cntPacks').textContent = reportedPacks ? String(reportedPacks) : ''; $('#cntPacks').className = 'count' + (reportedPacks ? ' bad' : '');
     $('#cntErrors').textContent = s.errors.total ? String(s.errors.total) : ''; $('#cntErrors').className = 'count' + (s.errors.total ? ' bad' : '');
     $('#cntReports').textContent = s.reports.open ? String(s.reports.open) : ''; $('#cntReports').className = 'count' + (s.reports.open ? ' bad' : '');
@@ -370,6 +371,25 @@
         el('div', { className: 'row', style: 'margin-top:6px' }, ...buttons)].filter(Boolean))); // az el() a null-t "null" szövegként fűzné be
     }
   }
+
+  // Vádak értékelése (kártya-visszajelzés): a leggyengébbek elöl; egy kártya szavazatainak törlése
+  function renderCards(data) {
+    const box = $('#cardsAdmin'); box.replaceChildren();
+    $('#cardsSummary').textContent = data.summary.cards + ' értékelt vád • ' + data.summary.votes + ' szavazat';
+    if (!data.cards.length) box.append(el('p', { className: 'dim', textContent: data.summary.votes ? 'Ezzel a szűrővel nincs kártya (csökkentsd a szavazatok minimumát).' : 'Még nincs szavazat. Az ítélet után a játékosok a vád alatti 😂 / 👎 gombbal értékelhetnek.' }));
+    for (const c of data.cards) {
+      const pct = Math.round(c.noShare * 100);
+      box.append(el('div', { className: 'err' }, ...[
+        el('div', {}, el('span', { className: 'tag', textContent: c.modeName }), el('b', { textContent: '😂 ' + c.yes + ' · 👎 ' + c.no }), el('span', { className: 'dim', textContent: '  ' + c.total + ' szavazat • ' + pct + '% 👎' + (c.updatedAt ? ' • utolsó: ' + when(c.updatedAt) : '') })),
+        el('div', { textContent: c.text }),
+        el('div', { className: 'row', style: 'margin-top:6px' }, el('button', { type: 'button', className: 'small ghost', textContent: 'Szavazatok törlése', onclick: async () => {
+          if (!(await askConfirm({ title: 'Szavazatok törlése', lines: ['Biztosan törlöd ennek a vádnak a szavazatait? (Pl. lecserélés után az újragyűjtéshez.)'], okLabel: 'Törlés', danger: true }))) return;
+          try { await api('POST', '/cardfeedback/clear', { key: c.key }); await load(); msg('#cardsMsg', 'Kész.', 'ok'); } catch (e) { msg('#cardsMsg', e.message, 'bad'); }
+        } }))].filter(Boolean)));
+    }
+  }
+  $('#cardsSort').addEventListener('change', () => { load().catch((e) => msg('#cardsMsg', e.message, 'bad')); });
+  $('#cardsMin').addEventListener('change', () => { load().catch((e) => msg('#cardsMsg', e.message, 'bad')); });
 
   function renderReports(data) {
     const box = $('#reports'); box.replaceChildren();

@@ -26,7 +26,8 @@ function defaultFiles(env) {
     moderation: path.resolve(ROOT, env.KB_MODERATION_FILE || 'data/moderation.json'), // jelentések és némítások (moderation.js)
     courts: path.resolve(ROOT, env.KB_COURTS_FILE || 'data/courts.json'), // tárgyalások, Discord-kapcsolatok (courts.js)
     bugreports: path.resolve(ROOT, env.KB_BUGREPORTS_FILE || 'data/bugreports.json'), // hibajelentések a Discordra (bugreports.js)
-    packs: path.resolve(ROOT, env.KB_PACKS_FILE || 'data/packs.json') // közösségi kártyacsomagok (packs.js)
+    packs: path.resolve(ROOT, env.KB_PACKS_FILE || 'data/packs.json'), // közösségi kártyacsomagok (packs.js)
+    cardfeedback: path.resolve(ROOT, env.KB_CARDFB_FILE || 'data/cardfeedback.json') // vádak 😂/👎 összesítése (cardfeedback.js)
   };
 }
 

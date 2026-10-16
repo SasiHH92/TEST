@@ -2681,6 +2681,21 @@ function revealedCardsHtml() {
   return '<details class="revealed-cards"><summary>🎴 AZ ÖSSZES KÁRTYA FELFEDÉSE</summary><div class="revealed-panel">' + items.map(x=>'<p>' + escapeHtml(x) + '</p>').join('') + '</div></details>';
 }
 
+// A kör vádjának értékelése (😂 / 👎): névtelen kártya-visszajelzés az üzemeltetőnek, pontot nem ad. Csak a beépített témák vádjainál van (S.accFun).
+function accFunHtml() {
+  const f = S.accFun;
+  if (!f) return '';
+  const btn = (up, emoji, n, label) => '<button type="button" class="btn small acc-fun' + (f.mine === up ? (up ? ' green' : ' red') : '') + '" data-acc="' + (up ? '1' : '0') + '" aria-pressed="' + (f.mine === up) + '" aria-label="' + label + '" title="' + label + '"' + (f.canVote ? '' : ' disabled') + '>' + emoji + ' <b>' + n + '</b></button>';
+  return '<div class="acc-fun-row" role="group" aria-label="Vicces volt a kör vádja? (pontot nem ad)"><span class="acc-fun-q">Vicces volt a vád?</span>' +
+    btn(true, '😂', f.yes, 'Vicces volt a vád') + btn(false, '👎', f.no, 'Nem volt vicces a vád') + '</div>';
+}
+document.addEventListener('click', (ev) => {
+  const b = ev.target && ev.target.closest ? ev.target.closest('.acc-fun') : null;
+  if (!b || b.disabled || !S || !S.accFun) return;
+  const up = b.dataset.acc === '1';
+  socket.emit('acc_fun_vote', { up: S.accFun.mine === up ? null : up }); // ugyanarra újra kattintva visszavonja
+});
+
 let vdOpen = false; // az ítélet-részletek lenyitva maradnak a state-frissítések közt
 let cvIdx = 0, cvCase = '', cvAdvance = false; // eskütt-mód: melyik kihívás látszik; az új ügynél az elsőre áll
 
@@ -2865,7 +2880,7 @@ function renderPhaseContent() {
           '<span class="' + (c.done ? 'ok' : 'no') + '">' + (c.done ? 'TELJESÍTETTE ✔ (+' + c.points + ' pont)' : 'NEM sikerült ✘') + '</span>' +
           (c.mode === 'judge' && c.judgeName ? ' <i>– bíró: ' + escapeHtml(c.judgeName) + '</i>' : ' (' + (c.yes || 0) + '/' + c.voterCount + ')') + '</div>'
         ).join('') + '</div>' : '';
-      const details = '<details class="vd-details"' + (vdOpen ? ' open' : '') + '><summary>RÉSZLETEK ▾</summary><div class="vd-body">' + votes + results + '</div></details>';
+      const details = '<details class="vd-details"' + (vdOpen ? ' open' : '') + '><summary>RÉSZLETEK ▾</summary><div class="vd-body">' + accFunHtml() + votes + results + '</div></details>';
       html = '<div class="vd-strip">' +
         '<span class="vd-word ' + (v.guilty ? 'guilty' : 'not-guilty') + '">' + (v.guilty ? 'BŰNÖS' : 'ÁRTATLAN') + '</span>' +
         '<div class="vd-mid"><div class="sentence-card" title="' + escapeHtml(v.sentence) + '">' + '<span class="sc-text" data-clamp="vd">' + escapeHtml(v.sentence) + '</span><span class="sentence-stamp">ÍTÉLET</span></div>' +
@@ -2898,6 +2913,7 @@ function renderPhaseContent() {
       if (r.favorite) {
         html += '<div class="favorite-note">Közönségkedvenc: ' + escapeHtml(r.favorite.name) + ' (' + r.favorite.laughs + ' nevetés) – bónusz pont!</div>';
       }
+      html += accFunHtml();
       html += revealedCardsHtml();
       html += '<div class="rr-board score-table compact">' + scores.map((p, i) => {
         const gain = gains[p.id] || 0, leader = topScore > 0 && p.score === topScore;

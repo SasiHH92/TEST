@@ -19,6 +19,7 @@ const QRCode = require('qrcode');
 const {createAuth,loadAuthEnvironment} = require('./auth');
 const {createShop} = require('./shop');
 const { createPacks, createPacksApi, CODE_RE: PACK_CODE_RE } = require('./packs');
+const { createCardFeedback } = require('./cardfeedback');
 const {createSocial} = require('./social');
 const {verifyLegendCode} = require('./legend-claims');
 const {createDms} = require('./dms');
@@ -154,6 +155,9 @@ const moderation = createModeration({ file: path.resolve(__dirname, process.env.
 // Közösségi kártyacsomagok (Kártyaműhely): fájlban él, és a külső adatbázisba is feltöltődik (lásd packs.js).
 const packs = createPacks({ file: path.resolve(__dirname, process.env.KB_PACKS_FILE || 'data/packs.json'), persist: () => storage.push('packs') });
 app.use('/api/packs', createPacksApi({ packs, auth: authApi, onError: reportError }).router);
+// Kártya-visszajelzés: a vádakra adott 😂/👎 szavazatok névtelen összesítése (fájlban él, és a külső adatbázisba is feltöltődik).
+const cardFeedback = createCardFeedback({ file: path.resolve(__dirname, process.env.KB_CARDFB_FILE || 'data/cardfeedback.json'), persist: () => storage.push('cardfeedback') });
+Game.setCardFeedback(cardFeedback);
 const socialApi = createSocial({
   auth: authApi,
   dms,
@@ -168,7 +172,7 @@ const socialApi = createSocial({
 app.use('/api/friends',socialApi.router);
 
 // Üzemeltetői felület: csak ADMIN_TOKEN (legalább 24 karakter) beállításakor él, egyébként 404 (lásd admin.js).
-const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, packs, legal: () => ({ missing: legal.missing(), version: legal.version, minAge: legal.minAge }), hideBoardMessage: (id) => hideBoardMessage(id) });
+const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, packs, cardFeedback, legal: () => ({ missing: legal.missing(), version: legal.version, minAge: legal.minAge }), hideBoardMessage: (id) => hideBoardMessage(id) });
 app.use('/api/admin', adminApi.router);
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
@@ -1513,6 +1517,14 @@ io.on('connection', (socket) => {
     if (game) game.funChallengeVote(sess.playerId, who, !!done);
   });
 
+  // A vád 😂/👎 értékelése az ítélet után / a kör végén (kártya-visszajelzés; pontot nem ad). up: true | false | null (visszavonás).
+  safeOn('acc_fun_vote', (payload) => {
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    const up = payload && typeof payload === 'object' ? payload.up : undefined;
+    if (game && (up === true || up === false || up === null)) game.accusationFunVote(sess.playerId, up);
+  });
+
   safeOn('proceed_after_verdict', () => {
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
@@ -1709,6 +1721,8 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
       dms.flush(); // a függő privát üzenetek is kiíródnak (és feltöltődnek)
       errors.flush();
       moderation.flush();
+      packs.flush(); // a Kártyaműhely függő módosításai is kiíródnak
+      cardFeedback.flush();
       await storage.flush();
     } catch (e) {
       console.error('Leállítás közbeni mentés sikertelen:', e.message);

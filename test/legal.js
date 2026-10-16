@@ -64,6 +64,19 @@ async function pages() {
       }
     });
 
+    // Az űrlap („Elmúltam 16 éves”) és a szöveg egyezik: 16 év alatt nincs fiók (nincs "szülői hozzájárulással regisztrálhat" út), a játék 16+ ajánlott, vendégként is.
+    await test('A: korhatár: az űrlap és a szabályzat egyezik – 16 év alatt nincs fiók, a játék 16 éven felülieknek ajánlott (vendégként is)', async () => {
+      const priv = text(await (await fetch(full.base + '/adatkezeles')).text()), terms = text(await (await fetch(full.base + '/felhasznalasi-feltetelek')).text());
+      assert.ok(priv.includes('fiókot nem hozhatnak létre'), 'adatkezelés: 16 alatt nincs fiók');
+      assert.ok(priv.includes('16 éven felülieknek ajánlott') && terms.includes('16 éven felülieknek ajánlott'), 'mindkét oldal kimondja az ajánlást');
+      assert.ok(terms.includes('vendégként is') && terms.includes('a Játék vendégként, fiók nélkül játszható'), 'feltételek: a vendég-játék és a 16 alatti helyzet');
+      assert.ok(!/szülői felügyeletet gyakorló személy hozzájárulásával/.test(priv + terms), 'nincs régi "szülői hozzájárulással regisztrálhat" szöveg');
+      assert.ok(!/hozzájárulásával és tudtával engedett/.test(priv + terms));
+      assert.ok(priv.includes('a fiókot és az adatait töröljük'), 'a szülő jelezheti a fiatalabb regisztrációt, a fiók törlődik');
+      assert.ok(terms.includes('Ha kiderül, hogy a fiókot ennél fiatalabb hozta létre, a fiókot töröljük'));
+      assert.ok(terms.includes('Közösségi viselkedési szabályokat'), 'a feltételek az ajánlásnál a szabályokra hivatkoznak');
+    });
+
     await test('A: a felhasználási feltételek és játékszabályok: játék, fiók, szabályok, kiskorúak védelme, moderáció, szankciók, támogatás, felelősség, jog', async () => {
       const html = await (await fetch(full.base + '/felhasznalasi-feltetelek')).text(); const t = text(html);
       for (const piece of ['Játékszabályok', 'béta állapotú', 'nincs pénzbeli értékük', 'legalább 16 éves', 'A játék fikció', 'Kiskorúak védelme', 'Személyes adatok', 'figyelmeztetés → némítás → kitiltás',

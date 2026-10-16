@@ -15,7 +15,7 @@
     {
       "heading": "MI EZ A JÁTÉK?",
       "body": [
-        "A Kamu Bíróság egy online party játék, amit Discordon, hangban játszotok. A játék a böngészőben/telefonon csak levezeti a tárgyalást: kiosztja a szerepeket és a titkos kártyákat, méri az időt, és lebonyolítja a szavazást. Minden körben valakit egy abszurd, vicces bűnnel vádolnak. Ti élőszóban érveltek, védekeztek, hazudtok és röhögtök, a többiek pedig eldöntik, bűnös-e. 3–12 játékos kell hozzá."
+        "A Kamu Bíróság egy online party játék, amit Discordon, hangban játszotok. A játék a böngészőben/telefonon csak levezeti a tárgyalást: kiosztja a szerepeket és a titkos kártyákat, méri az időt, és lebonyolítja a szavazást. Minden körben valakit egy abszurd, vicces bűnnel vádolnak. Ti élőszóban érveltek, védekeztek, hazudtok és röhögtök, a többiek pedig eldöntik, bűnös-e. 3–12 játékos kell hozzá. A játék 16 éven felülieknek ajánlott."
       ]
     },
     {
@@ -69,6 +69,7 @@
       "list": [
         "TILTAKOZOM!: az ügyész a vádlott/védő, a vádlott és a védő az ügyész beszéde közben használhatja; játékosonként beszédfázisonként egyszer, körönként legfeljebb kétszer. A beszédóra megáll. A megtámadott beszélő 20 másodpercig védekezhet, majd a bíró 15 másodpercen belül dönt. A bíró fixen 15 másodperc alatt dönt. JOGOS: a tiltakozó mindig +30 másodpercet kap a következő saját beszédéhez. NEM JOGOS vagy döntési időtúllépés: a tiltakozó a következő saját beszédének 30%-át elveszíti. Ha a tiltakozónak nincs több beszéde, nincs hatása; a megszakított beszélő ideje nem változik.",
         "Reakciók (😂 💀 🤡 🔥 👏): bárki dobhat, a legtöbb 😂-t kapó beszélő bónuszt kap.",
+        "😂 / 👎 a vád alatt: az ítélet után és a kör végén értékelheted a kör vádját. Pontot nem ad; névtelenül gyűjtjük, hogy a gyenge kártyákat lecseréljük.",
         "Rendet a teremben!: kizárólag az adott kör bírójának, ha túl nagy a káosz.",
         "Hang és mozgás: a 🔊 némít, a 🏃/🐢 „kevesebb mozgás\" kapcsoló a játékban az info-sávban, a névválasztón, menün és lobbin a bal felső sarokban van. Az ítélethirdetés külön hangot kap (bűnös: lehangoló akkord és rázkódás, felmentés: csillogó futam és szálló galambok); a kevesebb mozgás kikapcsolja a rázkódást, galambokat és konfettit, a hang marad."
       ]

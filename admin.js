@@ -32,7 +32,7 @@ const MIN_TOKEN = 24;
 const FAIL_LIMIT = 10;
 const FAIL_WINDOW_MS = 10 * 60 * 1000;
 
-function createAdmin({ token = '', errors, storage, auth, moderation, packs = null, legal: legalInfo = null, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
+function createAdmin({ token = '', errors, storage, auth, moderation, packs = null, cardFeedback = null, legal: legalInfo = null, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
   const router = express.Router();
   const enabled = typeof token === 'string' && token.length >= MIN_TOKEN;
   const expected = enabled ? crypto.createHash('sha256').update(token).digest() : null;
@@ -146,6 +146,19 @@ function createAdmin({ token = '', errors, storage, auth, moderation, packs = nu
   router.post('/packs/hide', wrap((req, res) => { packFound(packs && packs.adminHide(packCode(req))); res.json({ ok: true }); }));
   router.post('/packs/unhide', wrap((req, res) => { packFound(packs && packs.adminUnhide(packCode(req))); res.json({ ok: true }); }));
   router.post('/packs/delete', wrap((req, res) => { packFound(packs && packs.adminDelete(packCode(req))); res.json({ ok: true }); }));
+
+  // ---- Kártya-visszajelzés: a vádak 😂/👎 összesítése (a leggyengébbek elöl); egy kártya szavazatainak törlése lecserélés után ----
+  router.get('/cardfeedback', (req, res) => {
+    const sort = ['worst', 'best', 'votes'].includes(req.query.sort) ? req.query.sort : 'worst';
+    const min = Math.max(1, Math.min(1000, parseInt(req.query.min, 10) || 1));
+    res.json({ summary: cardFeedback ? cardFeedback.summary() : { cards: 0, votes: 0 }, sort, min, cards: cardFeedback ? cardFeedback.list({ min, sort, limit: 100 }) : [] });
+  });
+  router.post('/cardfeedback/clear', wrap((req, res) => {
+    const key = String(req.body && req.body.key || '');
+    if (!/^[a-z0-9]{2,16}\|[0-9a-f]{12}$/.test(key)) { const e = new Error('Hibás kártya-azonosító.'); e.status = 400; throw e; }
+    if (!cardFeedback || !cardFeedback.clear(key)) { const e = new Error('Nincs ilyen kártya.'); e.status = 404; throw e; }
+    res.json({ ok: true });
+  }));
 
   // ---- Fiókok: lista, létrehozás (ideiglenes jelszóval), új ideiglenes jelszó ----
   const MAX_BULK = 40;

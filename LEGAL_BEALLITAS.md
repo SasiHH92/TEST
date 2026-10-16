@@ -35,7 +35,7 @@ A Resend csak **küld**, fogadni nem tud. Ehhez a legegyszerűbb a Cloudflare in
 
 ## 2. Döntések, amelyeket neked kell meghoznod
 
-1. **Korhatár.** Az alapérték **16 év** (a magyar digitális hozzájárulási korhatár is 16): 16 év alatt csak a szülő hozzájárulásával lehet regisztrálni (a szülő az üzemeltetőt keresi az e-mail-címen). A vendég-játék fiók és e-mail nélkül mindenkinek elérhető. Ha szigorúbban akarod (pl. 18), állítsd a `LEGAL_MIN_AGE`-et; a regisztrációs felirat, a hibaüzenet és az oldalak mind követik.
+1. **Korhatár.** Az alapérték **16 év** (a magyar digitális hozzájárulási korhatár is 16): 16 év alatt fiók nem hozható létre (a regisztrációkor a jelölőnégyzettel meg kell erősíteni, hogy a felhasználó elmúlt 16 éves; ha egy szülő azt jelzi, hogy a gyermeke fiatalabban regisztrált, a fiókot töröljük). A vendég-játék fiók és e-mail nélkül elérhető, a játék **16 éven felülieknek ajánlott** (a feltételek és az adatkezelési tájékoztató is ezt mondja), mert humoros, olykor felnőttes témájú elemeket (pl. bulira, alkoholra utaló vádak) tartalmaz, a közösségi csomagok és a csevegés pedig nem előre ellenőrzött. Ha szigorúbban akarod (pl. 18), állítsd a `LEGAL_MIN_AGE`-et; a regisztrációs felirat, a hibaüzenet és az oldalak mind követik.
 2. **Ki az üzemeltető.** Magánszemélyként, egyéni vállalkozóként vagy cégként üzemelteted? Ez határozza meg, mit kell megadni (ha van adószám / cégjegyzékszám, add meg).
 3. **Moderáció.** A szabályok szerint figyelmeztetés → némítás → kitiltás a lépcső. Az adatkezelési tájékoztató azt ígéri, hogy a jelentéseket (legutóbbi ~100) és a némításokat (legfeljebb 7 nap) a rendszer kezeli; ezt a kód teljesíti.
 

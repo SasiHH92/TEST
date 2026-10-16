@@ -22,7 +22,7 @@
 
 const express = require('express');
 
-const LEGAL_VERSION = '2026-10-15';
+const LEGAL_VERSION = '2026-10-16';
 const LEGAL_DATE_TEXT = '2026. október 15.';
 const SITE_NAME = 'Kamu Bíróság';
 
@@ -156,7 +156,7 @@ function privacy(cfg) {
       '<b>kb_oauth_*</b> (süti, pár percig): a Google / Discord belépés biztonságos lebonyolítása.',
       '<b>Böngészőtár (localStorage / sessionStorage)</b>: a játékos neve, szobakódja és ülésazonosítója (hogy F5 után visszatérj a szobádba), avatár, hangbeállítások, a súgó láttatása. Ezek nem hagyják el a böngésződet, kivéve a szobába visszatéréshez szükséges azonosítókat, amelyeket a játék szervere ellenőriz.'
     ]) + '<p>Harmadik féltől a betűtípusokat töltjük be (Google Fonts); ez a böngésződ IP-címét a Google felé továbbítja.</p>') +
-    sec('gyerekek', '6. Gyermekek és fiatalok', '<p>A fiókos regisztrációhoz legalább <b>' + cfg.minAge + ' évesnek</b> kell lenni. A ' + cfg.minAge + ' évnél fiatalabbak számára a regisztráció csak a szülői felügyeletet gyakorló személy hozzájárulásával és tudtával engedett; ebben az esetben a szülő vagy gondviselő keresse az üzemeltetőt a(z) ' + mail(cfg) + ' címen. A szülő bármikor kérheti a gyermek fiókjának és adatainak törlését.</p><p>A játék <b>vendégként, fiók és e-mail-cím nélkül</b> is játszható, ilyenkor csak a beírt játékosnevet (és az eredményeit név szerint) kezeljük. A játékosoknak nem kérünk valódi nevet, címet vagy telefonszámot, és kérjük, hogy ilyet ne is adjanak meg a játékban. A játék és a közösségi szerver szabályai tiltják a felnőtt tartalmat és a kiskorúak zaklatását; lásd a <a href="/felhasznalasi-feltetelek#viselkedes">Felhasználási feltételeket</a>.</p>') +
+    sec('gyerekek', '6. Gyermekek és fiatalok', '<p>A fiókos regisztrációhoz legalább <b>' + cfg.minAge + ' évesnek</b> kell lenni, és ezt a regisztrációkor meg kell erősíteni; a ' + cfg.minAge + ' évnél fiatalabbak fiókot nem hozhatnak létre. Ha a szülő vagy gondviselő azt tapasztalja, hogy a gyermeke ennél fiatalabban regisztrált, keresse az üzemeltetőt a(z) ' + mail(cfg) + ' címen: a fiókot és az adatait töröljük. A szülő bármikor kérheti a gyermek adatainak törlését.</p><p>A Játék <b>' + cfg.minAge + ' éven felülieknek ajánlott</b> (lásd a <a href="/felhasznalasi-feltetelek">Felhasználási feltételeket</a>).</p><p>A játék <b>vendégként, fiók és e-mail-cím nélkül</b> is játszható, ilyenkor csak a beírt játékosnevet (és az eredményeit név szerint) kezeljük. A játékosoknak nem kérünk valódi nevet, címet vagy telefonszámot, és kérjük, hogy ilyet ne is adjanak meg a játékban. A játék és a közösségi szerver szabályai tiltják a felnőtt tartalmat és a kiskorúak zaklatását; lásd a <a href="/felhasznalasi-feltetelek#viselkedes">Felhasználási feltételeket</a>.</p>') +
     sec('biztonsag', '7. Adatbiztonság', ul([
       'A kapcsolat titkosított (HTTPS).',
       'A jelszavak sózott scrypt-kivonatként tárolódnak; a munkamenet-, megerősítő és visszaállító tokenek csak lenyomatként; a megerősítő és visszaállító link lejáró és egyszer használható.',
@@ -190,12 +190,13 @@ function terms(cfg) {
     sec('elfogadas', '1. Elfogadás, hatály', '<p>A ' + SITE_NAME + ' (a „Játék”) használatával, illetve a regisztrációval elfogadod ezeket a feltételeket és az <a href="/adatkezeles">Adatkezelési tájékoztatót</a>. Ha nem értesz egyet velük, kérjük, ne használd a Játékot. A szolgáltató: ' + val(cfg.name, 'LEGAL_OPERATOR_NAME') + ' (lásd <a href="/impresszum">Impresszum</a>).</p>') +
     sec('szolgaltatas', '2. A szolgáltatás', ul([
       'A Játék <b>ingyenes</b> online party játék: valaki vádol, valaki védekezik, az esküdtek pedig ítélkeznek. Fiók nélkül, <b>vendégként</b> is játszható.',
+      'A Játék <b>' + cfg.minAge + ' éven felülieknek ajánlott</b>, vendégként is: humoros, olykor felnőttes témájú játékelemeket tartalmaz (pl. bulira, alkoholra utaló vádak), a játékosok által készített kártyacsomagok és a csevegés tartalmát pedig nem ellenőrizzük előre (lásd a <a href="#viselkedes">Közösségi viselkedési szabályokat</a>).',
       'Fiókkal további funkciók érhetők el (kártya, statisztika, ranglista, barátok, bolt, napi küldetések, Discord-összekötés).',
       'A Játék <b>béta állapotú</b>: hibák, szünetek és adatvesztés előfordulhatnak (pl. a szobák a szerver újraindításakor megszűnnek). Szolgáltatás-folytonosságot nem vállalunk.',
       'A játékon belüli <b>pogácsa</b> és a bolt tárgyai virtuális, szórakoztató elemek: <b>nincs pénzbeli értékük</b>, nem válthatók valódi pénzre, és valódi pénzzel nem vásárolhatók.'
     ])) +
     sec('fiok', '3. Regisztráció és fiók', ul([
-      'Fiókot legalább <b>' + cfg.minAge + ' éves</b> személy hozhat létre; ' + cfg.minAge + ' év alatt csak a szülői felügyeletet gyakorló személy hozzájárulásával (lásd az Adatkezelési tájékoztató „Gyermekek és fiatalok” részét).',
+      'Fiókot legalább <b>' + cfg.minAge + ' éves</b> személy hozhat létre, és ezt a regisztrációkor meg kell erősítenie; ' + cfg.minAge + ' év alatt a Játék vendégként, fiók nélkül játszható. Ha kiderül, hogy a fiókot ennél fiatalabb hozta létre, a fiókot töröljük (lásd az Adatkezelési tájékoztató „Gyermekek és fiatalok” részét).',
       'Valós, általad használt e-mail-címet adj meg; a regisztrációt e-mailben kell megerősítened.',
       'A jelszavadat tartsd titokban; a fiókod használatáért te felelsz. Ha gyanús mozgást látsz, azonnal váltass jelszót, és jelezd nekünk.',
       'A felhasználónév ne legyen megtévesztő, sértő, jogsértő, és ne mások (pl. az üzemeltetők, moderátorok, ismert személyek) nevében lépj fel.',

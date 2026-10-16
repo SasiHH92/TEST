@@ -4002,3 +4002,10 @@ body[data-screen="lobby"] .bug-fab { bottom: 52px; }
   /* a belépőoldalon a hibajelentő gomb a bal felső sarokban ül (az ⓘ gomb tükörpárja), így nem ütközik a lábléc sávjával */
   body:not([data-screen]) .bug-fab, body[data-screen="auth"] .bug-fab { top: 12px; left: 12px; bottom: auto; }
 }
+
+/* Kártya-visszajelzés: a kör vádjának 😂 / 👎 értékelése (kör vége képernyő, ítélet-részletek) */
+.acc-fun-row { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; font-size: 12px; color: #f0ead8; }
+.acc-fun-q { font-weight: 700; letter-spacing: .3px; opacity: .9; }
+.acc-fun-row .btn.small { min-height: 32px; padding: 2px 12px; }
+.acc-fun-row .btn.small b { font-weight: 800; }
+.vd-body .acc-fun-row { justify-content: flex-start; margin-top: 0; }

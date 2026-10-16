@@ -59,7 +59,9 @@
     "brand:images": "node scripts/make-brand-images.js",
     "test:packs": "node test/packs.js",
     "test:packs-ui": "node test/packs-ui.js",
-    "test:twelve": "node test/twelve-players.js"
+    "test:twelve": "node test/twelve-players.js",
+    "test:cardfb": "node test/card-feedback.js",
+    "test:cardfb-ui": "node test/card-feedback-ui.js"
   },
   "engines": {
     "node": ">=18"
