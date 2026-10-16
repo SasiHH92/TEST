@@ -268,7 +268,7 @@ async function main() {
       await pause(500);
       assert.equal(watcher.ads.length, 1);
       assert.deepEqual({ code: watcher.ads[0].code, name: watcher.ads[0].name, players: watcher.ads[0].players, max: watcher.ads[0].max, text: watcher.ads[0].text },
-        { code: created.code, name: 'Hirdeto Host', players: 1, max: 8, text: 'Keresek 3 embert! <b>PUBG</b>' });
+        { code: created.code, name: 'Hirdeto Host', players: 1, max: require('../limits').MAX_PLAYERS, text: 'Keresek 3 embert! <b>PUBG</b>' });
       assert.ok(!('owner' in watcher.ads[0]) && !('uid' in watcher.ads[0]));
       assert.ok(watcher.board.some((m) => m.kind === 'ad' && m.name === 'Hirdeto Host'), 'a közös csevegőben is megjelenik');
       assert.match((await emit(adv, 'board_ad', { text: 'még egy' })).error, /már van hirdetése/);
