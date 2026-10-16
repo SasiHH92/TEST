@@ -1848,7 +1848,6 @@ function posterHtml(p, idx) {
 
 // Lobbi-botok: csak ha a szerver engedi (élesen alapból nem; /api/config). Betöltésig rejtve, így nem villan fel.
 let LOBBY_BOTS = false;
-let BOTS_OK = false; // a bejelentkezett fiók kaphat botot (az identify válasza; élesen csak a kijelölt fiók)
 fetch('/api/config', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).then((c) => {
   LOBBY_BOTS = !!(c && c.lobbyBots);
   try { if (S && S.phase === 'lobby' && typeof renderLobby === 'function') renderLobby(); } catch (_) { /* a lobbi még nem épült fel */ }
@@ -1860,9 +1859,8 @@ function renderLobby() {
   $('#hostSettings').classList.toggle('hidden', !host);
   $('#nonHostNote').classList.toggle('hidden', host);
   $('#btnStartGame').classList.toggle('hidden', !host);
-  const botsOn = LOBBY_BOTS || BOTS_OK;
-  $('#btnAddBot').classList.toggle('hidden', !host || !botsOn);
-  $('#btnRemoveBot').classList.toggle('hidden', !host || !botsOn || !S.players.some((p) => p.isBot));
+  $('#btnAddBot').classList.toggle('hidden', !host || !LOBBY_BOTS);
+  $('#btnRemoveBot').classList.toggle('hidden', !host || !LOBBY_BOTS || !S.players.some((p) => p.isBot));
   const humans = S.players.filter((p) => p.connected && !p.isBot);
   const readyN = humans.filter((p) => p.ready).length;
   $('#lobbyHint').textContent = S.players.filter((p) => p.connected).length < 3
@@ -3489,16 +3487,7 @@ function identifySocket() {
       } catch (_) { /* a socket vendégként marad, a következő csatlakozáskor újrapróbáljuk */ }
     }
     if (seq !== identSeq || !socket.connected) return; // közben újabb azonosítás indult, vagy megszakadt a kapcsolat
-    await new Promise((resolve) => socket.timeout(5000).emit('identify', { ticket }, (err, res) => {
-      if (seq === identSeq) {
-        const bots = !err && !!(res && res.bots);
-        if (bots !== BOTS_OK) {
-          BOTS_OK = bots;
-          try { if (S && S.phase === 'lobby' && typeof renderLobby === 'function') renderLobby(); } catch (_) { /* a lobbi még nem épült fel */ }
-        }
-      }
-      resolve();
-    }));
+    await new Promise((resolve) => socket.timeout(5000).emit('identify', { ticket }, () => resolve()));
     if (seq === identSeq && window.kbFriends) window.kbFriends.refresh(true);
     if (seq === identSeq && window.kbChat) window.kbChat.resubscribe(); // a közös tér előzménye az új azonosítóval (letiltottak szűrése)
   })();

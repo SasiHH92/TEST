@@ -181,7 +181,6 @@ Egyedül is ki tudod próbálni a teljes játékot: a házigazda a lobbyban boto
 
 - **🤖 Bot hozzáadása** – a lobbyban, csak a házigazda láthatja (max. 12 fő összesen, beleértve téged is). A botok rendőrségi plakátot kapnak **„🤖 TESZT-BOT"** pecséttel: *Robi, a Robot*, *Géza, a Gép*, *Szintetikus Sári* és *Kábeles Károly*.
 - **🤖 Bot eltávolítása** – egyet kivesz a szobából (lobbi fázisban).
-- **Ki látja?** Helyben (nincs `RENDER` környezeti változó) mindenki, élesen (Render) alapból **csak a `SasiHH` fiók** (a szerver a bejelentkezett fiók neve alapján dönt, a vendég és más fiók nem kapja meg, és a szerver a kérést is elutasítja). Több fiók: `KB_BOT_USERS=Egyik,Másik` (kis/nagybetű nélkül, a lista felülírja az alapot); mindenkinek: `KB_LOBBY_BOTS=1`; senkinek élesen: `KB_BOT_USERS=-`.
 - A botok **mindent megcsinálnak helyetted**: felolvasják a vádat, tartják a beszédet, tiltakoznak, reagálnak, tanúnak állnak, szavaznak és leveszik a kihívás-szavazást is. Te csak nézed – vagy szólász be Discordon.
 - A botok **nem íródnak be a `data/stats.json`-be**, és nem rontják el a barátaid számaiét.
 - A botok szerveroldali játékosok: nem kell hozzájuk böngésző-ablak sem.

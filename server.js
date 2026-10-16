@@ -330,16 +330,6 @@ app.get('/api/media', (req, res) => {
 // Lobbi-botok (a házigazda "Bot hozzáadása" gombja): csak teszteléshez / helyi fejlesztéshez. Élesen (Render: RENDER=true) alapból KI van kapcsolva;
 // a KB_LOBBY_BOTS=1 / 0 felülírja. A kliens a /api/config-ból tudja, hogy mutassa-e a gombokat.
 const LOBBY_BOTS = process.env.KB_LOBBY_BOTS ? process.env.KB_LOBBY_BOTS === '1' : !process.env.RENDER;
-// Élesen a botokat csak a megnevezett fiókok látják és használhatják: a KB_BOT_USERS vesszővel elválasztott fióknevek (kis/nagybetű nélkül),
-// alapból a fejlesztő fiókja. A fiókot a szerver az identify-jegyből ismeri (vendég és más fiók nem kap botot). Kikapcsolás: a KB_BOT_USERS egy nem létező névre (pl. "-").
-const botKey = (v) => String(v == null ? '' : v).normalize('NFKC').trim().toLocaleLowerCase('hu-HU');
-const BOT_USERS = new Set((process.env.KB_BOT_USERS == null ? 'SasiHH' : process.env.KB_BOT_USERS).split(',').map(botKey).filter(Boolean));
-function botsAllowedFor(socket) {
-  if (LOBBY_BOTS) return true;
-  const userId = socialApi.userOf(socket.id);
-  const user = userId ? authApi.directory.byId(userId) : null;
-  return !!(user && BOT_USERS.has(botKey(user.username)));
-}
 app.get('/api/config', (req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.json({ lobbyBots: LOBBY_BOTS });
@@ -1017,7 +1007,7 @@ io.on('connection', (socket) => {
       if (prev) { socket.leave('u:' + prev); socialApi.disconnect(socket.id); }
       if (userId) { socket.join('u:' + userId); socialApi.connect(userId, socket.id); }
     }
-    if (typeof ack === 'function') ack({ ok: true, account: !!userId, bots: botsAllowedFor(socket) });
+    if (typeof ack === 'function') ack({ ok: true, account: !!userId });
   });
 
   // ---- Meghívás a saját szobámba (csak barátnak, csak lobbiból) ----
@@ -1376,7 +1366,7 @@ io.on('connection', (socket) => {
   const findAck = (args) => args.find((a) => typeof a === 'function');
   safeOn('add_bot', (...args) => {
     const ack = findAck(args);
-    if (!botsAllowedFor(socket)) return ack && ack({ error: 'A botok ezen a szerveren ki vannak kapcsolva.' });
+    if (!LOBBY_BOTS) return ack && ack({ error: 'A botok ezen a szerveren ki vannak kapcsolva.' });
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
     if (!game) return ack && ack({ error: 'Nincs szoba.' });
@@ -1388,7 +1378,7 @@ io.on('connection', (socket) => {
 
   safeOn('remove_bot', (...args) => {
     const ack = findAck(args);
-    if (!botsAllowedFor(socket)) return ack && ack({ error: 'A botok ezen a szerveren ki vannak kapcsolva.' });
+    if (!LOBBY_BOTS) return ack && ack({ error: 'A botok ezen a szerveren ki vannak kapcsolva.' });
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
     if (!game) return ack && ack({ error: 'Nincs szoba.' });
