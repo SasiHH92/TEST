@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.kamubirosag.app",
+      "sha256_cert_fingerprints": [
+        "4D:CD:E9:9F:F9:69:2E:FB:B5:4D:EC:54:35:25:E9:97:AF:EE:11:EE:98:D4:24:31:F9:F3:12:74:C2:22:13:0D"
+      ]
+    }
+  }
+]

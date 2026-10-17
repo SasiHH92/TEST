@@ -256,6 +256,17 @@ app.get(['/', '/index.html'], (req, res, next) => {
   res.type('html').send(html);
 });
 
+// Android-alkalmazás (TWA) azonosítása: az Android ebből ellenőrzi, hogy a com.kamubirosag.app csomag a mi oldalunkhoz tartozik, így
+// az alkalmazás teljes képernyőn nyílik, böngészősáv nélkül. Az express.static a ponttal kezdődő mappákat nem szolgálja ki, ezért külön útvonal.
+// A fájl a well-known/assetlinks.json: ide kerül az aláíró kulcs SHA-256 ujjlenyomata (a tesztelhető APK-é, később a Play-kiadásé is).
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.type('application/json');
+  res.sendFile(path.join(__dirname, 'well-known', 'assetlinks.json'), (err) => {
+    if (err && !res.headersSent) res.status(404).json([]);
+  });
+});
+
 // Statikus fájlok: a html/js/css ETag/Last-Modified fejléccel (nem cache-el hosszan),
 // a rajzok (assets/) hosszan cache-elhetők, mert ritkán változnak.
 app.use(express.static(path.join(__dirname, 'public'), { etag: true, lastModified: true, maxAge: 0 }));
