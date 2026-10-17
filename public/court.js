@@ -33,6 +33,7 @@
     witness:           { sub: 'A bíróság hallgat.',                       cam: 'witness' },
     final_prosecution: { sub: 'Utolsó érvek a vád oldaláról.',            cam: 'prosecutor' },
     final_defense:     { sub: 'Utolsó esély a vádlottnak.',               cam: 'defendant' },
+    jury_question:     { sub: 'Az esküdtek kérdeznek, a megszólított válaszol.', cam: 'wide' },
     objection:         { sub: 'A bíró dönt.',                             cam: 'judge' },
     verdict_vote:      { sub: 'Az esküdtszék dönt: bűnös vagy ártatlan?', cam: 'wide' },
     challenge_vote:    { sub: 'Teljesítették? Az esküdtszék dönt.',       cam: 'wide' },
@@ -42,7 +43,7 @@
     game_over:         { sub: 'Megszületett a végső rangsor.',            cam: 'wide' }
   };
   const ROLE_WORD = { prosecutor: 'ÜGYÉSZ', defendant: 'VÁDLOTT', defender: 'VÉDŐÜGYVÉD', witness: 'TANÚ', judge: 'BÍRÓ', juror: 'ESKÜDT' };
-  const TIMED = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'prep', 'verdict_vote', 'challenge_vote', 'objection'];
+  const TIMED = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'jury_question', 'prep', 'verdict_vote', 'challenge_vote', 'objection'];
 
   // A tiltakozás védekezés-szakaszában a megtámadott beszélőre fókuszál a kamera, a döntésnél a bíróra.
   function phaseUi(phase, snap) {
@@ -485,6 +486,7 @@
     witness:           { icon: '📜', text: 'TANÚKIHALLGATÁS', tone: 'green' },
     final_prosecution: { icon: '🔥', text: 'ZÁRÓBESZÉD – A VÁD', tone: 'red' },
     final_defense:     { icon: '⛓️', text: 'UTOLSÓ SZÓ A VÁDLOTTNAK', tone: 'amber' },
+    jury_question:     { icon: '❓', text: 'KERESZTKÉRDÉS', tone: 'purple' },
     verdict_vote:      { icon: '👥', text: 'AZ ESKÜDTSZÉK DÖNT', tone: 'purple' },
     challenge_review:  { icon: '⚔️', text: 'A BÍRÓ ELLENŐRZI A KIHÍVÁST', tone: 'gold' }
   };

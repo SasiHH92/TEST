@@ -24,6 +24,9 @@ function advance(ms) {
 function human(g) {
   const d=g.roundData;if(!d)return;
   const speakers={prosecution:d.prosecutorId,defense:d.defendantId,defender:d.defenderId,witness:d.witnessId,final_prosecution:d.prosecutorId,final_defense:d.defendantId};
+  // esküdt-kérdés (ha be van kapcsolva): az ember is feltesz egy kérdést a beszédek alatt, és válaszol, ha megszólítják
+  if(g.settings.juryQuestions&&speakers[g.phase]&&d.voters.includes('human')&&!d.questions.human)g.askJuryQuestion('human',Math.random()<.5?'prosecutor':'defendant','Miért pont így történt, kérdezem a nyilvánosságot?');
+  if(g.phase==='jury_question')g.juryAnswerDone('human');
   if(g.phase==='accusation'&&d.defendantId==='human')g.accusationRead();
   else if(speakers[g.phase]==='human')g.doneSpeaking('human');
   else if(g.phase==='objection') {
@@ -36,6 +39,7 @@ function human(g) {
     const ch=g.currentChallenge();if(ch&&d.challengeDecisions[ch.who]===undefined)g.resolveChallenge('human',ch.who,true);
   }
 }
+let juryRuns=0; // hány futásban volt KERESZTKÉRDÉS fázis
 try {
   const total=parseInt(process.argv[2],10)||ALL_MODES.length; // alapból módonként egy futás (a lista a cards.json-ból jön)
   for(let run=0;run<total;run++) {
@@ -44,7 +48,7 @@ try {
     const g=new Game('BOT'+run,{to:()=>({emit:()=>{}})});
     g.addPlayer('human','Ember','paróka',true);
     for(let k=1;k<count;k++)g.addBot();
-    g.startGame({modes:[mode],rounds:3,speechSeconds:15,defenderSeconds:15,prepSeconds:10,witnessSeconds:10,closingSeconds:10,challengeMode:run%2?'jury':'judge',autoNextRound:true,autoNewGame:false},'human');
+    g.startGame({modes:[mode],rounds:3,speechSeconds:15,defenderSeconds:15,prepSeconds:10,witnessSeconds:10,closingSeconds:10,juryQuestions:run%3===0,questionSeconds:10,challengeMode:run%2?'jury':'judge',autoNextRound:true,autoNewGame:false},'human');
     const start=now, phases=new Set(),judges=new Map();
     let objections=0,lastPhase='';
     while(g.phase!=='game_over'&&now-start<600000) {
@@ -64,12 +68,16 @@ try {
     assert.equal(g.round,3);assert.equal(judges.size,3);
     assert.notEqual(judges.get(1),judges.get(2));assert.notEqual(judges.get(2),judges.get(3));
     assert(phases.has('verdict_vote')&&phases.has('round_results'));
+    if(!g.settings.juryQuestions)assert(!phases.has('jury_question'),'esküdt-kérdés nélkül nincs KERESZTKÉRDÉS fázis');
+    if(phases.has('jury_question'))juryRuns++;
     assert(phases.has(run%2?'challenge_vote':'challenge_review'));
     assert.equal(g.finalResults().ranking.length,count);
     if(count>=5)assert(phases.has('defender'));
     console.log('PASS '+count+' játékos, '+mode+', 3 kör, '+((now-start)/1000).toFixed(1)+' virtuális mp, '+objections+' tiltakozás');
     g.dispose();assert.equal(timers.size,0,'no abandoned timers');
   }
+  if(total>=4)assert(juryRuns>=1,'a bekapcsolt esküdt-kérdéssel legalább egy futásban lefutott a KERESZTKÉRDÉS');
+  console.log('KERESZTKÉRDÉS fázis '+juryRuns+' futásban');
   console.log('HIBÁS: 0/'+total);
 } finally {
   Date.now=original.now;Math.random=original.random;global.setTimeout=original.setTimeout;global.clearTimeout=original.clearTimeout;

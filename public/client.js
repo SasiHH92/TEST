@@ -1042,6 +1042,7 @@ const JUDGE_LINES = {
   witness: 'Meglepetés tanú a podon!',
   final_prosecution: 'Zárószó: az ügyészé.',
   final_defense: 'Zárószó: a vádlotté.',
+  jury_question: 'Keresztkérdés! Az esküdtek kérdeznek.',
   verdict_vote: 'Esküdttanács, ti döntötök!',
   challenge_vote: 'Ellenőrzésem a kihívásokról…',
   challenge_review: 'Most ellenőrzöm a titkos kihívásokat…',
@@ -1711,6 +1712,8 @@ function collectLobbySettings() {
     challengesEnabled: $('#setChallengesOn').checked,
     autoNextRound: $('#setAutoRound').checked,
     autoNewGame: $('#setAutoGame').checked,
+    juryQuestions: $('#setJuryQuestions').checked,
+    questionSeconds: +$('#setQuestionSeconds').value || 20,
     challengeMode: (document.querySelector('input[name="challengeMode"]:checked') || {}).value === 'jury' ? 'jury' : 'judge',
     modes: $$('#modeGrid .case-tab[data-mode]')
       .filter((c) => c.classList.contains('active-case'))
@@ -1999,6 +2002,8 @@ function renderLobby() {
     $('#setChallengesOn').checked = S.settings.challengesEnabled;
     $('#setAutoRound').checked = S.settings.autoNextRound !== false;
     $('#setAutoGame').checked = S.settings.autoNewGame !== false;
+    $('#setJuryQuestions').checked = !!S.settings.juryQuestions;
+    $('#setQuestionSeconds').value = S.settings.questionSeconds || 20;
     const cm = S.settings.challengeMode === 'jury' ? 'jury' : 'judge';
     $('#setChallengeJudge').checked = cm === 'judge';
     $('#setChallengeJury').checked = cm === 'jury';
@@ -2007,7 +2012,7 @@ function renderLobby() {
 
 // GYORS JÁTÉK: alap szabályok, minden ügytípus keverve (a szerver ezt is ellenőrzi / korlátozza, mint a kézi beállítást).
 const QUICK_DEFAULTS = { speechSeconds: 60, defenderSeconds: 45, prepSeconds: 30, witnessSeconds: 30, closingSeconds: 20, rounds: 3,
-  witnessEnabled: true, challengesEnabled: true, autoNextRound: true, autoNewGame: true, challengeMode: 'judge', customAccusations: [] };
+  witnessEnabled: true, challengesEnabled: true, autoNextRound: true, autoNewGame: true, juryQuestions: false, challengeMode: 'judge', customAccusations: [] };
 let lobbyQuick = LS.getItem('kb_lobby_mode') !== 'custom';
 function quickSettings() { return { ...QUICK_DEFAULTS, modes: (S.modes || []).filter((m) => !m.pack).map((m) => m.key) }; } // a gyors játék a beépített témákat használja, a közösségi csomagokat a házigazda külön jelöli ki
 function applyLobbyMode() {
@@ -2073,7 +2078,7 @@ $('#btnRemoveBot').addEventListener('click', () => {
 // a kliensre sem érkezik meg, így a DOM-ban sincs. A kliens nem dönt a láthatóságról, csak megjeleníti, amit kapott.
 // Az ügyész a bizonyítékait, a vádlott az alibijét, a védőügyvéd az ügyész bizonyítékait és a trükkjeit, a tanú a tanúkártyáját, a szereplők a kihívásukat látják.
 // ============================================================
-const CARD_VISIBLE_PHASES = ['prep', 'prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'verdict_vote', 'verdict', 'objection', 'challenge_review'];
+const CARD_VISIBLE_PHASES = ['prep', 'prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'jury_question', 'verdict_vote', 'verdict', 'objection', 'challenge_review'];
 function hashStr(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
 function myCardList() {
   if (!S || !CARD_VISIBLE_PHASES.includes(S.phase)) return [];
@@ -2565,9 +2570,68 @@ function inlineActions() {
     if (sp.opps.includes(role)) {
       return '<div class="inline-actions"><button class="btn big red" id="iaObject">TILTAKOZOM!</button></div>';
     }
+    return askButtonHtml(); // esküdt-kérdés (ha a házigazda bekapcsolta)
   }
   return '';
 }
+
+// Esküdt-kérdés: a kérdezhető esküdt gombja a beszédfázisokban; a beküldés után csak egy jelzés.
+function askButtonHtml() {
+  const qi = S.questionInfo;
+  if (!qi) return '';
+  if (qi.canAsk) return '<div class="inline-actions"><button class="btn big ghost" id="iaAsk">❓ KÉRDÉST TESZEK FEL</button></div>';
+  if (qi.asked) return '<div class="inline-actions"><span class="jq-sent">❓ A kérdésed beküldve – a zárószavak után hangzik el, ha kiválasztják.</span></div>';
+  return '';
+}
+
+// Kérdés beküldése: kinek (ügyész / vádlott) + legfeljebb 100 karakter.
+function openJuryAsk() {
+  const qi = S.questionInfo;
+  if (!qi || !qi.canAsk) return;
+  let m = document.getElementById('juryAskModal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'juryAskModal';
+    m.className = 'confirm-modal';
+    m.innerHTML = '<div class="confirm-panel jq-panel" role="dialog" aria-modal="true" aria-labelledby="jqTitle">' +
+      '<div class="confirm-stamp">❓</div><div class="confirm-text" id="jqTitle">KÉRDÉS A VÁDLOTTNAK VAGY AZ ÜGYÉSZNEK</div>' +
+      '<div class="jq-to" role="radiogroup" aria-label="Kinek szól a kérdés?">' +
+      '<label><input type="radio" name="jqTo" value="prosecutor" checked> <span id="jqToPros"></span></label>' +
+      '<label><input type="radio" name="jqTo" value="defendant"> <span id="jqToDef"></span></label></div>' +
+      '<input type="text" id="jqText" maxlength="100" autocomplete="off" placeholder="Rövid kérdés (legfeljebb 100 karakter)" aria-label="A kérdés szövege">' +
+      '<div class="jq-count" id="jqCount" aria-live="polite">0 / 100</div><div class="jq-err" id="jqErr" role="alert"></div>' +
+      '<div class="confirm-actions"><button class="btn big" id="jqSend">ELKÜLDÖM</button><button class="btn big ghost" id="jqCancel">MÉGSE</button></div></div>';
+    document.body.appendChild(m);
+  }
+  const txt = m.querySelector('#jqText'), err = m.querySelector('#jqErr'), send = m.querySelector('#jqSend');
+  m.querySelector('#jqToPros').textContent = 'AZ ÜGYÉSZNEK (' + nameOf(S.prosecutorId) + ')';
+  m.querySelector('#jqToDef').textContent = 'A VÁDLOTTNAK (' + nameOf(S.defendantId) + ')';
+  txt.value = ''; err.textContent = ''; m.querySelector('#jqCount').textContent = '0 / 100'; send.disabled = false;
+  const close = () => { m.classList.remove('visible'); send.onclick = null; m.querySelector('#jqCancel').onclick = null; txt.oninput = null; txt.onkeydown = null; };
+  txt.oninput = () => { m.querySelector('#jqCount').textContent = txt.value.length + ' / 100'; err.textContent = ''; };
+  const submit = () => {
+    const to = (m.querySelector('input[name="jqTo"]:checked') || {}).value;
+    send.disabled = true;
+    socket.timeout(5000).emit('jury_ask', { to, text: txt.value }, (e, res) => {
+      send.disabled = false;
+      if (e || !res) { err.textContent = 'Nem sikerült elküldeni, próbáld újra.'; return; }
+      if (res.error) { err.textContent = res.error; return; }
+      close();
+      showToast('Kérdésed beküldve ✓');
+    });
+  };
+  send.onclick = submit;
+  txt.onkeydown = (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); submit(); } else if (ev.key === 'Escape') close(); };
+  m.querySelector('#jqCancel').onclick = close;
+  m.classList.add('visible');
+  txt.focus();
+}
+document.addEventListener('click', (ev) => {
+  const t = ev.target && ev.target.closest ? ev.target.closest('#iaAsk, #jqDone') : null;
+  if (!t) return;
+  if (t.id === 'iaAsk') openJuryAsk();
+  else socket.emit('jury_answer_done'); // a megszólított jelzi: válaszolt
+});
 
 function renderHeader() {
   $('#gameRound').textContent = S.phase === 'game_over'
@@ -2602,6 +2666,7 @@ function renderRoleBanner() {
     witness: ['A MEGLEPETÉS TANÚ BESZÉL', 'witness'],
     final_prosecution: ['ZÁRÓSZÓ – AZ ÜGYÉSZ', 'prosecutor'],
     final_defense: ['ZÁRÓSZÓ – A VÁDLOTT', 'defendant'],
+    jury_question: ['KERESZTKÉRDÉS', 'neutral'],
     objection: [(S.objectionData && S.objectionData.phase === 'defense') ? 'TILTAKOZÁS – VÉDEKEZÉS' : 'TILTAKOZÁS – DÖNTÉS', 'neutral'],
     verdict_vote: ['SZAVAZÁS!', 'neutral'],
     challenge_vote: ['KIHÍVÁS-ELLENŐRZÉS', 'neutral'],
@@ -2636,7 +2701,7 @@ function renderRoleBanner() {
     (ui && ui.sub ? '<div class="rb-sub">' + escapeHtml(ui.sub) + '</div>' : '') +
     (endsAt ? '<div class="rb-time" id="rbTime" role="timer" aria-label="Hátralévő idő">' + fmtTime(Math.max(0, endsAt - (Date.now() + serverOffset))) + '</div>' : '') + judgeLine;
 }
-const HUD_TIMED = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'prep', 'verdict_vote', 'challenge_vote'];
+const HUD_TIMED = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense', 'jury_question', 'prep', 'verdict_vote', 'challenge_vote'];
 
 // A HUD-ban mutatott lejárat (a SZERVER ideje): időzített fázisokban a phaseEndsAt, a tiltakozásnál a megfelelő szakasz lejárata. Más fázisban 0 (nincs idő).
 function hudEndsAt() {
@@ -2741,6 +2806,15 @@ function renderPhaseContent() {
     case 'final_defense': {
       // Beszédfázis: a cím, a beszélő és az idő a felső sávban; itt csak a saját gombom (VÉGEZTEM / TILTAKOZOM) látszik, ha van.
       html = inlineActions();
+      break;
+    }
+    case 'jury_question': {
+      // KERESZTKÉRDÉS: a kiválasztott esküdt-kérdések (legfeljebb 2); a megszólított élőszóban válaszol, és "VÁLASZOLTAM"-mal jelzi.
+      const jq = S.juryQuestion || { picks: [] };
+      html = '<div class="jq-box"><div class="jq-title">KERESZTKÉRDÉS</div>' + jq.picks.map((p) =>
+        '<div class="jq-item' + (p.done ? ' done' : '') + '"><div class="jq-ask"><b>' + escapeHtml(p.askerName) + '</b> kérdezi ' + (p.to === 'prosecutor' ? 'az ügyészt' : 'a vádlottat') + ' (<b>' + escapeHtml(p.targetName) + '</b>):</div>' +
+        '<div class="jq-text">„' + escapeHtml(p.text) + '”</div>' + (p.done ? '<span class="jq-done">✓ válaszolt</span>' : '') + '</div>').join('') +
+        (jq.canAnswer ? '<button class="btn big green" id="jqDone">VÁLASZOLTAM ✓</button>' : '<p class="next-step">Válaszoljatok a Discordon!</p>') + '</div>';
       break;
     }
     case 'verdict_vote': {

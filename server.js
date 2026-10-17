@@ -924,6 +924,8 @@ function sanitizeSettings(s, prev, extraModes = []) {
     challengesEnabled: bool('challengesEnabled'),
     autoNextRound: bool('autoNextRound'),
     autoNewGame: bool('autoNewGame'),
+    juryQuestions: bool('juryQuestions'), // esküdt-kérdés (keresztkérdés a zárószavak után)
+    questionSeconds: num('questionSeconds', 10, 40), // egy kérdésre adható válasz ideje
     challengeMode: s.challengeMode !== undefined ? (s.challengeMode === 'jury' ? 'jury' : 'judge') : prev.challengeMode, // 'judge' = bíró dönt, 'jury' = esküdtek szavaznak
     // Csak olyan módok maradhatnak, amelyekhez létezik pakli a cards.json-ben.
     modes: Array.isArray(s.modes)
@@ -1523,6 +1525,28 @@ io.on('connection', (socket) => {
     const game = sess && rooms.get(sess.code);
     const up = payload && typeof payload === 'object' ? payload.up : undefined;
     if (game && (up === true || up === false || up === null)) game.accusationFunVote(sess.playerId, up);
+  });
+
+  // Esküdt-kérdés beküldése a beszédek alatt: { to: 'prosecutor' | 'defendant', text }. A szöveg a csevegő szűrőjén megy át; a némított játékos nem kérdezhet.
+  safeOn('jury_ask', (payload, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    const player = game && game.getPlayer(sess.playerId);
+    if (!player) return reply({ error: 'Nincs szoba.' });
+    if (!payload || typeof payload !== 'object') return reply({ error: 'Érvénytelen kérés.' });
+    if (hostMuted(game, player)) return reply({ error: 'A házigazda elnémított ebben a szobában.' });
+    const mutedMs = adminMutedMs(socket);
+    if (mutedMs) return reply({ error: mutedText(mutedMs) });
+    const text = typeof payload.text === 'string' ? cleanChatText(payload.text) : '';
+    reply(game.askJuryQuestion(sess.playerId, payload.to, text));
+  });
+
+  // A KERESZTKÉRDÉS megszólítottja jelzi, hogy válaszolt.
+  safeOn('jury_answer_done', () => {
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    if (game) game.juryAnswerDone(sess.playerId);
   });
 
   safeOn('proceed_after_verdict', () => {

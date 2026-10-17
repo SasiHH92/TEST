@@ -37,7 +37,7 @@
         "3. Vádbeszéd: az ügyész elmondja a vádat, felhasználva a bizonyítékokat.",
         "4. Védekezés: a vádlott védekezik, felhasználva az alibit.",
         "5. Védőbeszéd és tanú (ha van).",
-        "6. Zárószó: először az ügyész, aztán a vádlott.",
+        "6. Zárószó: először az ügyész, aztán a vádlott. Ha a házigazda bekapcsolta az Esküdt-kérdést, az esküdtek a beszédek alatt a ❓ gombbal egy rövid kérdést tehetnek fel az ügyésznek vagy a vádlottnak; a zárószavak után legfeljebb kettő hangzik el (KERESZTKÉRDÉS), a megszólított élőszóban válaszol. Pontot nem ad.",
         "7. Ítélet: az esküdtek titokban szavaznak: BŰNÖS vagy ÁRTATLAN.",
         "8. Kihívás-ellenőrzés: a bíró eldönti, ki teljesítette a titkos kihívását.",
         "9. Büntetés: ha bűnös, a bíró vicces büntetést mond ki."

@@ -61,7 +61,9 @@
     "test:packs-ui": "node test/packs-ui.js",
     "test:twelve": "node test/twelve-players.js",
     "test:cardfb": "node test/card-feedback.js",
-    "test:cardfb-ui": "node test/card-feedback-ui.js"
+    "test:cardfb-ui": "node test/card-feedback-ui.js",
+    "test:jury": "node test/jury-question.js",
+    "test:jury-ui": "node test/jury-question-ui.js"
   },
   "engines": {
     "node": ">=18"

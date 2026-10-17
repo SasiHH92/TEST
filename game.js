@@ -25,6 +25,7 @@ const PHASES = {
   WITNESS: 'witness', // meglepetés tanú
   FINAL_PROSECUTION: 'final_prosecution', // zárószó ügyész
   FINAL_DEFENSE: 'final_defense', // zárószó vádlott
+  JURY_QUESTION: 'jury_question', // keresztkérdés: az esküdtek beküldött kérdései (opcionális, a zárószavak után)
   VERDICT_VOTE: 'verdict_vote', // esküdtek szavaznak
   CHALLENGE_VOTE: 'challenge_vote', // kihívás-teljesítés szavazás (esküdtek mód)
   VERDICT: 'verdict', // ítélet kihirdetése
@@ -47,8 +48,15 @@ const DEFAULT_SETTINGS = {
   modes: [], // kiválasztott játékmódok – start előtt KÖTELEZŐ (nincs csendes 'buli' visszaesés)
   autoNextRound: true,
   autoNewGame: true,
+  juryQuestions: false, // esküdt-kérdés: a beszédek alatt minden esküdt feltehet egy kérdést, a zárószavak után a KERESZTKÉRDÉS fázisban hangzik el (alapból ki)
+  questionSeconds: 20, // egy kérdésre adható válasz ideje (a fázis: kérdések száma × ennyi)
   customAccusations: []
 };
+
+// Az esküdt-kérdés beküldése ezekben a fázisokban lehetséges (a beszédek, a tanú és a tiltakozás alatt).
+const JURY_ASK_PHASES = [PHASES.PROSECUTION, PHASES.DEFENSE, PHASES.DEFENDER, PHASES.WITNESS, PHASES.FINAL_PROSECUTION, PHASES.FINAL_DEFENSE, PHASES.OBJECTION];
+const JURY_QUESTION_MIN = 3, JURY_QUESTION_MAX = 100; // karakter
+const JURY_QUESTIONS_PER_ROUND = 2; // legfeljebb ennyi kérdés hangzik el egy körben
 
 // AFK-VÉDELEM: a "gombnyomásra váró" fázisoknak is van maximális ideje.
 // Lejáratkor a hiányzó akciók alapértelmezett kimenettel teljesülnek, így egy
@@ -502,6 +510,23 @@ class Game {
       };
     }
 
+    // Esküdt-kérdés: a beküldés előtt csak a darabszám és a saját állapotom látszik; a KERESZTKÉRDÉS fázisban a kiválasztott kérdések.
+    if (this.settings.juryQuestions) {
+      const qs = d.questions || {};
+      base.questionInfo = {
+        count: Object.keys(qs).length,
+        asked: !!(me && qs[me.id]),
+        canAsk: !!(me && !me.isBot && d.voters.includes(me.id) && !qs[me.id] && JURY_ASK_PHASES.includes(this.phase))
+      };
+      if (this.phase === PHASES.JURY_QUESTION) {
+        const picks = d.questionPicks || [];
+        base.juryQuestion = {
+          picks: picks.map((p) => ({ askerId: p.askerId, askerName: p.askerName, to: p.to, targetId: p.targetId, targetName: p.targetName, text: p.text, done: !!d.questionDone[p.targetId] })),
+          canAnswer: !!(me && picks.some((p) => p.targetId === me.id) && !d.questionDone[me.id])
+        };
+      }
+    }
+
     if (this.phase === PHASES.VERDICT_VOTE) {
       // A védőügyvéd (ha van) ITT NEM szavaz – ő a védelem része.
       const votersNow = d.defenderId ? d.voters.filter((v) => v !== d.defenderId) : d.voters;
@@ -823,6 +848,9 @@ class Game {
       // a vád sablonja a kártya-visszajelzéshez: csak a beépített témák kártyáinál (egyéni vád és közösségi csomag nem)
       accusationTemplate: (!isCustom && !String(mode).startsWith('pack:')) ? template : null,
       accFun: {}, // 😂/👎 a kihirdetett vádra (playerId -> bool)
+      questions: {}, // esküdt-kérdések: askerId -> { to: 'prosecutor' | 'defendant', text } (a KERESZTKÉRDÉS fázisig titkosak, csak a darabszám látszik)
+      questionPicks: [], // a kiválasztott (elhangzó) kérdések
+      questionDone: {}, // a megszólított játékos jelezte: válaszolt (playerId -> true)
       evidence: modeDecks.bizonyitekok.drawN(3),
       alibi: modeDecks.alibik.draw(),
       tricks: defenderId ? modeDecks.trukkok.drawN(2) : null,
@@ -988,8 +1016,78 @@ class Game {
     if (kind === 'final_prosecution') {
       this.runClosing('final_defense');
     } else {
-      this.startVerdictVote();
+      this.startJuryQuestion();
     }
+  }
+
+  // ---------- esküdt-kérdés (opcionális, a juryQuestions beállítással) ----------
+
+  // Egy esküdt egy kérdést küldhet be a beszédek alatt. Visszatér: { ok: true } vagy { error }.
+  askJuryQuestion(byId, to, text) {
+    const d = this.roundData, me = this.players.get(byId);
+    if (!this.settings.juryQuestions) return { error: 'Az esküdt-kérdés nincs bekapcsolva.' };
+    if (!d || !me || !me.connected) return { error: 'Most nem küldhetsz kérdést.' }; // a botok is kérdezhetnek (BotManager); az emberek a szerveren át, a saját játékosukkal
+    if (!JURY_ASK_PHASES.includes(this.phase)) return { error: 'Kérdést a beszédek alatt lehet beküldeni.' };
+    if (!d.voters.includes(byId)) return { error: 'Csak az esküdtek kérdezhetnek.' };
+    if (d.questions[byId]) return { error: 'Ebben a körben már feltettél egy kérdést.' };
+    if (to !== 'prosecutor' && to !== 'defendant') return { error: 'Válaszd ki, kinek szól a kérdés.' };
+    const clean = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+    if (clean.length < JURY_QUESTION_MIN) return { error: 'Írj egy rövid kérdést.' };
+    if (clean.length > JURY_QUESTION_MAX) return { error: 'A kérdés legfeljebb ' + JURY_QUESTION_MAX + ' karakter lehet.' };
+    const targetId = to === 'prosecutor' ? d.prosecutorId : d.defendantId;
+    if (!targetId || !this.players.has(targetId)) return { error: 'Ennek a szereplőnek most nem tehető fel kérdés.' };
+    d.questions[byId] = { to, text: clean };
+    this.broadcast();
+    return { ok: true };
+  }
+
+  // A beküldött kérdések közül legfeljebb kettő hangzik el: lehetőleg az ügyésznek is és a vádlottnak is egy-egy.
+  pickJuryQuestions() {
+    const d = this.roundData;
+    if (!d) return [];
+    const all = Object.entries(d.questions || {}).map(([askerId, q]) => {
+      const targetId = q.to === 'prosecutor' ? d.prosecutorId : d.defendantId;
+      const asker = this.players.get(askerId), target = this.players.get(targetId);
+      return asker && target && target.connected ? { askerId, askerName: asker.name, to: q.to, targetId, targetName: target.name, text: q.text } : null;
+    }).filter(Boolean);
+    if (!all.length) return [];
+    const mixed = shuffle(all.slice());
+    const picks = [mixed[0]];
+    const other = mixed.slice(1).find((q) => q.to !== mixed[0].to) || mixed[1];
+    if (other && JURY_QUESTIONS_PER_ROUND > 1) picks.push(other);
+    return picks.slice(0, JURY_QUESTIONS_PER_ROUND);
+  }
+
+  // A zárószavak után: ha vannak kérdések, jön a KERESZTKÉRDÉS (időzítővel, AFK-biztosan); ha nincsenek, rögtön a szavazás.
+  startJuryQuestion() {
+    const d = this.roundData;
+    if (!d) return;
+    const picks = this.settings.juryQuestions ? this.pickJuryQuestions() : [];
+    if (!picks.length) { this.startVerdictVote(); return; }
+    d.questionPicks = picks;
+    d.questionDone = {};
+    const per = Number(this.settings.questionSeconds);
+    this.setPhase(PHASES.JURY_QUESTION, Math.max(1, (per > 0 ? per : 20) * 1000 * picks.length), () => this.endJuryQuestion());
+  }
+
+  // A megszólított játékos jelzi, hogy válaszolt; ha mindenki, akit kérdeztek, kész, megy tovább a szavazás.
+  juryAnswerDone(byId) {
+    const d = this.roundData;
+    if (!d || this.phase !== PHASES.JURY_QUESTION) return false;
+    const targets = [...new Set(d.questionPicks.map((p) => p.targetId))];
+    if (!targets.includes(byId) || d.questionDone[byId]) return false;
+    d.questionDone[byId] = true;
+    if (targets.every((t) => d.questionDone[t] || !(this.players.get(t) && this.players.get(t).connected))) {
+      this.endJuryQuestion();
+    } else {
+      this.broadcast();
+    }
+    return true;
+  }
+
+  endJuryQuestion() {
+    if (this.phase !== PHASES.JURY_QUESTION) return;
+    this.startVerdictVote();
   }
 
   // ---------- szavazás ----------

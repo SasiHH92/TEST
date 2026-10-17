@@ -19,6 +19,7 @@ const PHASES = {
   WITNESS: 'witness',
   FINAL_PROSECUTION: 'final_prosecution',
   FINAL_DEFENSE: 'final_defense',
+  JURY_QUESTION: 'jury_question', // esküdt-kérdés (keresztkérdés)
   VERDICT_VOTE: 'verdict_vote',
   CHALLENGE_VOTE: 'challenge_vote',
   CHALLENGE_REVIEW: 'challenge_review', // bíró dönt a kihívásokról
@@ -30,6 +31,18 @@ const PHASES = {
 
 const BOT_NAMES = ['Robi, a Robot', 'Géza, a Gép', 'Szintetikus Sári', 'Kábeles Károly'];
 const BOT_AVATAR = 'bírói kalap';
+
+// A bot-esküdtek ilyen kérdéseket tesznek fel (esküdt-kérdés bekapcsolva).
+const BOT_QUESTIONS = [
+  'Miért pont akkor történt mindez?',
+  'Van erre tanú, vagy csak ennyit mondasz?',
+  'Mit szólna ehhez az anyukád?',
+  'Ugye ezt most nem gondolod komolyan?',
+  'Hol voltál valójában?',
+  'Mi a legnagyobb hazugság, amit most mondtál?',
+  'Ha ártatlan vagy, miért izzadsz?',
+  'Hányas számú lángosról van szó?'
+];
 
 // Mennyire "él a bot": 0.3 = lusta, 1 = hyperaktív.
 const ACTIVITY = 0.9;
@@ -94,6 +107,7 @@ class BotManager {
         }
         this.maybeObjection(d, 'defense', 'prosecution');
         this.maybeReactions('prosecutor');
+        this.maybeJuryQuestion(d, g.settings.speechSeconds);
         break;
       }
       case PHASES.DEFENSE: {
@@ -106,6 +120,7 @@ class BotManager {
         }
         this.maybeObjection(d, 'prosecution', 'defense');
         this.maybeReactions('defendant');
+        this.maybeJuryQuestion(d, g.settings.speechSeconds);
         break;
       }
       case PHASES.DEFENDER: {
@@ -157,6 +172,15 @@ class BotManager {
           if (judge && judge.isBot && judge.connected) this.schedule(() => {
             if (g.objectionData === od && od.phase === 'judge') g.objectionJudgeDecision(judge.id, Math.random() < 0.5);
           }, 3000 + Math.random() * 5000);
+        }
+        break;
+      }
+      case PHASES.JURY_QUESTION: {
+        // Ha a megszólított bot, rövid gondolkodás után "válaszol" (különben az időzítő viszi tovább).
+        for (const pick of (d.questionPicks || [])) {
+          const target = g.players.get(pick.targetId);
+          if (!target || !target.isBot || !target.connected) continue;
+          this.schedule(() => g.juryAnswerDone(target.id), rand(4000));
         }
         break;
       }
@@ -236,6 +260,21 @@ class BotManager {
     if (Math.random() > 0.35) return; // 35% esély a tiltakozásra
     const obj = objectors[Math.floor(Math.random() * objectors.length)];
     this.schedule(() => g.tryObjection(obj.id), rand(5000));
+  }
+
+  // Bekapcsolt esküdt-kérdésnél a bot-esküdtek eséllyel (kb. 30%) feltesznek egy kérdést az ügyésznek vagy a vádlottnak.
+  maybeJuryQuestion(d, speechSeconds) {
+    const g = this.game;
+    if (!g.settings.juryQuestions) return;
+    for (const v of d.voters) {
+      const b = g.players.get(v);
+      if (!b || !b.isBot || !b.connected || (d.questions && d.questions[v])) continue;
+      if (Math.random() > 0.3) continue;
+      this.schedule(() => {
+        const to = Math.random() < 0.5 ? 'prosecutor' : 'defendant';
+        g.askJuryQuestion(b.id, to, BOT_QUESTIONS[Math.floor(Math.random() * BOT_QUESTIONS.length)]);
+      }, rand(speechSeconds * 400));
+    }
   }
 
   maybeReactions(side) {

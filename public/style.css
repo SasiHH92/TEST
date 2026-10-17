@@ -4009,3 +4009,19 @@ body[data-screen="lobby"] .bug-fab { bottom: 52px; }
 .acc-fun-row .btn.small { min-height: 32px; padding: 2px 12px; }
 .acc-fun-row .btn.small b { font-weight: 800; }
 .vd-body .acc-fun-row { justify-content: flex-start; margin-top: 0; }
+
+/* Esküdt-kérdés (keresztkérdés): kérdező ablak, a KERESZTKÉRDÉS panel és a beküldés jelzése */
+.jq-panel { max-width: min(92vw, 440px); width: min(92vw, 440px); }
+.jq-to { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; text-align: left; font-size: 14px; color: var(--ink); }
+.jq-to label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.jq-panel #jqText { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 16px; border: 2px solid var(--ink-soft); border-radius: 8px; background: #fffdf5; color: var(--ink); }
+.jq-count { font-size: 12px; color: var(--ink-soft); text-align: right; margin: 4px 0 6px; }
+.jq-err { min-height: 18px; font-size: 13px; font-weight: 700; color: #a3261c; margin-bottom: 8px; }
+.jq-box { display: flex; flex-direction: column; gap: 8px; align-items: stretch; max-width: 640px; margin: 0 auto; color: #f0ead8; }
+.jq-title { font: 800 13px var(--font-disp, inherit); letter-spacing: 2px; color: var(--gold); text-align: center; }
+.jq-item { background: rgba(10, 14, 24, 0.72); border: 1px solid rgba(242, 193, 78, 0.55); border-radius: 10px; padding: 8px 12px; text-align: left; }
+.jq-item.done { opacity: 0.65; }
+.jq-ask { font-size: 12px; color: #c9d0e0; }
+.jq-text { font-size: 17px; font-weight: 700; line-height: 1.3; margin-top: 2px; }
+.jq-done { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 800; color: #57d06b; }
+.jq-sent { font-size: 12px; color: #c9d0e0; text-align: center; }
