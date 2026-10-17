@@ -1,0 +1,86 @@
+/* ============================================================
+   KAMU BÍRÓSÁG – egyszeri bevezető (intro): 5 dia a meglévő szerep-képekkel és a tárgyalótermi háttérrel (nincs új grafika)
+   Telefon fekvőben az elsődleges (a szöveg bal, a figura jobb oldalon), álló telefonon és asztalin is rendben van. A biztonsági terület a phone.css --safe-* változóiból jön.
+   ============================================================ */
+.intro-overlay { display: none; }
+html.intro-pending body { overflow: hidden; }
+html.intro-pending .intro-overlay {
+  position: fixed; inset: 0; z-index: 10000; display: block; overflow: hidden; color: #f6efdc;
+  background: #0c0709; font-family: var(--font-body, system-ui, sans-serif);
+  animation: intro-in 0.35s ease both;
+}
+html.intro-pending .intro-overlay.leaving { animation: intro-out 0.35s ease both; pointer-events: none; }
+@keyframes intro-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes intro-out { from { opacity: 1; } to { opacity: 0; } }
+
+.intro-bg {
+  position: absolute; inset: -4%; z-index: 0; transform-origin: 65% 55%; animation: intro-zoom 26s ease-out both;
+  /* ugyanaz a magyar terem-kép és ugyanaz a kivágás, mint a játékban (style.css .auth-background): a tetején beégetett cím / tábla levágva */
+  background:
+    radial-gradient(ellipse at 70% 55%, rgba(120, 40, 30, 0.3), transparent 60%),
+    linear-gradient(180deg, rgba(8, 4, 5, 0.5), rgba(8, 4, 5, 0.84)),
+    url('/assets/terem-hatter.webp') center bottom / max(100vw, 266.67vh) auto no-repeat #120a06;
+}
+@keyframes intro-zoom { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+.intro-skip {
+  position: absolute; z-index: 5; top: calc(var(--safe-t, 0px) + 10px); right: calc(var(--safe-r, 0px) + 14px);
+  min-height: 40px; padding: 6px 14px; cursor: pointer; border-radius: 999px;
+  background: rgba(10, 6, 7, 0.55); color: #e8d9ad; border: 1px solid rgba(242, 193, 78, 0.5);
+  font: 800 12px var(--font-disp, inherit); letter-spacing: 2px;
+}
+.intro-skip:hover, .intro-skip:focus-visible { background: rgba(242, 193, 78, 0.18); outline: none; }
+.intro-skip[hidden] { display: none; }
+
+.intro-slide {
+  position: absolute; z-index: 2; inset: 0 0 calc(var(--safe-b, 0px) + 76px) 0;
+  display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); grid-template-rows: minmax(0, 1fr); align-items: center; gap: 12px;
+  padding: calc(var(--safe-t, 0px) + 40px) calc(var(--safe-r, 0px) + 40px) 4px calc(var(--safe-l, 0px) + 40px);
+  opacity: 0; visibility: hidden; transform: translateX(26px);
+  transition: opacity 0.4s ease, transform 0.45s ease, visibility 0s linear 0.45s;
+}
+.intro-slide.active { opacity: 1; visibility: visible; transform: none; transition: opacity 0.4s ease, transform 0.45s ease, visibility 0s; }
+.intro-text { min-width: 0; max-width: 560px; justify-self: end; text-align: left; }
+.intro-kicker { font: 800 clamp(11px, 3.4dvh, 15px) var(--font-disp, inherit); letter-spacing: 5px; color: #d8c08a; text-transform: uppercase; }
+.intro-title {
+  margin: 4px 0 8px; font: 900 clamp(26px, min(7vw, 13dvh), 66px) var(--font-disp, inherit); line-height: 1.04; letter-spacing: 3px; color: #f2c14e;
+  text-shadow: 0 0 30px rgba(242, 193, 78, 0.45), 0 4px 0 rgba(60, 38, 8, 0.8); overflow-wrap: anywhere;
+}
+.intro-logo { font-size: clamp(34px, min(10vw, 17dvh), 92px); letter-spacing: 5px; }
+.intro-sub, .intro-p { margin: 0; font-size: clamp(14px, 4.6dvh, 21px); line-height: 1.32; color: #f0e7d0; text-shadow: 0 2px 8px #000; }
+.intro-figure {
+  justify-self: center; align-self: end; height: 100%; max-height: 100%; width: auto; max-width: 100%; min-height: 0; object-fit: contain; object-position: 50% 100%;
+  filter: drop-shadow(0 0 24px rgba(242, 193, 78, 0.35)) drop-shadow(0 12px 22px rgba(0, 0, 0, 0.7));
+  opacity: 0; transform: translateY(18px) scale(0.96); transition: opacity 0.5s 0.1s ease, transform 0.55s 0.1s ease;
+}
+.intro-slide.active .intro-figure { opacity: 1; transform: none; }
+
+.intro-foot {
+  position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 10px calc(var(--safe-r, 0px) + 40px) calc(var(--safe-b, 0px) + 16px) calc(var(--safe-l, 0px) + 40px);
+}
+.intro-dots { display: flex; gap: 8px; }
+.intro-dot { width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 1px solid rgba(242, 193, 78, 0.8); background: transparent; cursor: pointer; transition: transform 0.2s, background 0.2s; }
+.intro-dot.on { background: #f2c14e; transform: scale(1.25); }
+.intro-dot:focus-visible { outline: 2px solid #fff3d0; outline-offset: 2px; }
+.intro-next { min-width: 150px; }
+
+/* álló nézet (telefon / keskeny ablak): a figura felül, a szöveg alatta */
+@media (orientation: portrait) {
+  .intro-slide { bottom: calc(var(--safe-b, 0px) + 96px); grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; align-items: end; gap: 6px; padding: calc(var(--safe-t, 0px) + 46px) calc(var(--safe-r, 0px) + 22px) 6px calc(var(--safe-l, 0px) + 22px); }
+  .intro-figure { grid-row: 1; height: 100%; max-height: 40dvh; align-self: end; }
+  .intro-text { grid-row: 2; justify-self: center; text-align: center; max-width: 520px; }
+  .intro-title { font-size: clamp(24px, 8vw, 46px); }
+  .intro-logo { font-size: clamp(32px, 12vw, 64px); }
+  .intro-sub, .intro-p { font-size: clamp(14px, 4vw, 18px); }
+  .intro-foot { padding-left: calc(var(--safe-l, 0px) + 22px); padding-right: calc(var(--safe-r, 0px) + 22px); }
+}
+/* nagyon alacsony fekvő képernyő: kisebb szegélyek */
+@media (orientation: landscape) and (max-height: 430px) {
+  .intro-slide { padding-top: calc(var(--safe-t, 0px) + 28px); padding-left: calc(var(--safe-l, 0px) + 28px); padding-right: calc(var(--safe-r, 0px) + 28px); bottom: calc(var(--safe-b, 0px) + 64px); }
+  .intro-foot { padding-bottom: calc(var(--safe-b, 0px) + 10px); padding-left: calc(var(--safe-l, 0px) + 28px); padding-right: calc(var(--safe-r, 0px) + 28px); }
+  .intro-next { min-height: 42px; padding: 6px 18px; font-size: 16px; }
+}
+/* mozgás-csökkentés */
+.reduced-motion .intro-bg, .reduced-motion .intro-slide, .reduced-motion .intro-figure, .reduced-motion .intro-overlay { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .intro-bg, .intro-slide, .intro-figure, .intro-overlay { animation: none !important; transition: none !important; } }

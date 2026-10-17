@@ -64,7 +64,8 @@
     "test:cardfb-ui": "node test/card-feedback-ui.js",
     "test:jury": "node test/jury-question.js",
     "test:jury-ui": "node test/jury-question-ui.js",
-    "test:landscape": "node test/landscape-phone.js"
+    "test:landscape": "node test/landscape-phone.js",
+    "test:intro": "node test/intro.js"
   },
   "engines": {
     "node": ">=18"

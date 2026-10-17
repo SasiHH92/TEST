@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="/courts.css">
   <link rel="stylesheet" href="/packs.css">
   <link rel="stylesheet" href="/phone.css">
+  <link rel="stylesheet" href="/intro.css">
+  <script src="/intro-boot.js"></script>
   <link rel="preload" href="/assets/terem-hatter.webp" as="image">
   <meta name="description" content="{{OG_DESC}}">
   <meta name="theme-color" content="#2a0b14">
@@ -42,6 +44,56 @@
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 </head>
 <body>
+  <!-- ===================== EGYSZERI BEVEZETŐ (intro.js, csak első indításkor) ===================== -->
+  <div id="introOverlay" class="intro-overlay" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <div class="intro-bg" aria-hidden="true"></div>
+    <button id="introSkip" type="button" class="intro-skip">KIHAGYOM</button>
+    <section class="intro-slide active" aria-hidden="false">
+      <div class="intro-text">
+        <div class="intro-kicker">Üdv a tárgyalóteremben!</div>
+        <h1 id="introTitle" class="intro-title intro-logo">KAMU BÍRÓSÁG</h1>
+        <p class="intro-sub">Az online party játék, ahol a barátaid a legabszurdabb bűnökkel állnak bíróság elé.</p>
+      </div>
+      <img class="intro-figure" src="/assets/roles/avatar_01_judge.webp" alt="" width="720" height="960" decoding="async">
+    </section>
+    <section class="intro-slide" aria-hidden="true">
+      <div class="intro-text">
+        <div class="intro-kicker">1. Vádolj</div>
+        <h2 class="intro-title">AZ ÜGYÉSZ ÉRVEL</h2>
+        <p class="intro-p">Minden körben valakit egy kitalált, nevetséges bűnnel vádolnak. Az ügyész titkos bizonyítékokból építi fel a vádat, és élőszóban győzi meg az esküdteket.</p>
+      </div>
+      <img class="intro-figure" src="/assets/roles/avatar_02_prosecutor.webp" alt="" width="720" height="960" loading="lazy" decoding="async">
+    </section>
+    <section class="intro-slide" aria-hidden="true">
+      <div class="intro-text">
+        <div class="intro-kicker">2. Védekezz</div>
+        <h2 class="intro-title">A VÁDLOTT KIBESZÉLI MAGÁT</h2>
+        <p class="intro-p">A vádlott titkos alibit kap, és hangosan védekezik. Hazudhat, tagadhat, nevethet, de vigyázat: tiltakozni is lehet!</p>
+      </div>
+      <img class="intro-figure" src="/assets/roles/avatar_03_defendant.webp" alt="" width="720" height="960" loading="lazy" decoding="async">
+    </section>
+    <section class="intro-slide" aria-hidden="true">
+      <div class="intro-text">
+        <div class="intro-kicker">3. Döntsetek</div>
+        <h2 class="intro-title">AZ ESKÜDTEK SZAVAZNAK</h2>
+        <p class="intro-p">Mindenki más esküdt: titokban szavaz, BŰNÖS vagy ÁRTATLAN. Az ítélettel egyező szavazat pontot ér, a kihívásokról és a büntetésről is ti döntetek.</p>
+      </div>
+      <img class="intro-figure" src="/assets/roles/avatar_04_juror.webp" alt="" width="720" height="960" loading="lazy" decoding="async">
+    </section>
+    <section class="intro-slide" aria-hidden="true">
+      <div class="intro-text">
+        <div class="intro-kicker">Hangban játszatok</div>
+        <h2 class="intro-title">3–12 JÁTÉKOS, EGY HÍVÁS</h2>
+        <p class="intro-p">Kell hozzá egy közös hangos beszélgetés (pl. Discord): az alkalmazás vezeti a tárgyalást, kiosztja a szerepeket és a titkos kártyákat. Ti élőszóban érveltek és röhögtök.</p>
+      </div>
+      <img class="intro-figure" src="/assets/roles/avatar_05_witness.webp" alt="" width="720" height="960" loading="lazy" decoding="async">
+    </section>
+    <div class="intro-foot">
+      <div id="introDots" class="intro-dots" role="tablist" aria-label="Diák"></div>
+      <button id="introNext" type="button" class="btn big intro-next">TOVÁBB ▸</button>
+    </div>
+  </div>
+
   <noscript><p style="margin:0;padding:16px;background:#2a0b14;color:#f3ece0;text-align:center;font-family:sans-serif">A Kamu Bíróság játékhoz JavaScript szükséges. Kapcsold be a böngésződben, majd töltsd újra az oldalt.</p></noscript>
   <!-- ===================== BELÉPÉS A TÁRGYALÓTEREMBE ===================== -->
   <main id="screen-auth" class="screen active auth-screen">
@@ -607,6 +659,7 @@
       <div class="help-head">
         <span class="help-stamp">ÜGYIRAT</span>
         <h2 id="helpTitle">Játékleírás</h2>
+        <button id="helpIntro" type="button" class="btn small ghost" title="A bevezető újra">▶ BEVEZETŐ</button>
         <button id="helpClose" class="btn small">BEZÁR</button>
       </div>
       <div id="helpBody" class="help-body"></div>
@@ -641,5 +694,6 @@
   <script src="/bugreport.js"></script>
   <script src="/invite-mail.js"></script>
   <script src="/boot-check.js"></script>
+  <script src="/intro.js"></script>
 </body>
 </html>
