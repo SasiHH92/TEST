@@ -809,6 +809,75 @@
       "Köteles minden csapattársának udvariasan megköszönni a közös meccset, a vesztesnek is."
     ]
   },
+  "halloween": {
+    "nev": "Halloween",
+    "vadak": [
+      "Csokit vagy csalunk akcióra indult, egy ház összes cukorkáját egyedül vitte el, és \"megosztottam\" felirattal fotózta le.",
+      "Szellemjelmezben ment buliba, egész este azt állította, hogy ő tényleg kísértet, és a számlát ezért nem fizette ki.",
+      "A kísértetházban a jelmezes szereplőket ijesztgette vissza, amíg ki nem küldték.",
+      "Egész éjjel vámpírnak adta ki magát, és hajnalban a fokhagymás kenyérnél feladta.",
+      "Három órán át szellemeket keresett egy horrorjátékban, és bizonyítéknak a saját mikrofonja zaját jelentette be.",
+      "A Halloween-bulin mindenkit megtévesztett: a \"véres\" ketchupot ő itta meg a pultnál.",
+      "Kigúnyolta [játékos] jelmezét, aztán kiderült, hogy ugyanazt az egyenruhát hordta, csak rosszabbul.",
+      "A boszorkánykonyhában megváltoztatta a \"varázsital\" receptjét, és a végén mindenkinek ananászos gyümölcslevet adott.",
+      "Ouija-táblával szellemet idézett, és az első kérdése az volt, hogy a szellem tud-e wifi-jelszót.",
+      "Zombinak öltözve vacsora közben végig ugyanazt ismételte: \"agyak\", és csak a desszertet kérte.",
+      "Hajnali háromkor lekapcsolta a lakás összes lámpáját \"a hangulatért\", és elfelejtette visszakapcsolni.",
+      "Ellopta [játékos] tökét a tökfaragó versenyen, és a sajátjaként nevezte be."
+    ],
+    "bizonyitekok": [
+      "Egy kifaragott tök, amelynek a mosolya feltűnően hasonlít a vádlott vigyorára.",
+      "A kísértetház kamerafelvétele, amelyen a vádlott a szörnyet vigasztalja.",
+      "Egy üres cukorkás zacskó, rajta a vádlott ujjlenyomataival és a felirattal: \"Csak egyet vettem el\".",
+      "A szellemvadász-napló: 40 perc \"mozgás\", amely valójában a hűtő zúgása volt.",
+      "Egy fotó, amelyen a vádlott vámpírfogakkal eszik pattogatott kukoricát, és a fogak a kukoricában ragadnak.",
+      "Egy Ouija-tábla, amelyen a mutató a vádlott nevére áll, \"teljesen véletlenül\".",
+      "Egy hangfelvétel, amelyen a vádlott mély, rejtélyes hangon még egy zacskó chipset kér.",
+      "A jelmezbolt visszaküldött csomagja, benne egy félig megevett gumipók."
+    ],
+    "alibik": [
+      "Épp tököt faragtál, és az első kör után a tök nyert.",
+      "Egész este a kanapé mögött bujkáltál, mert megijedtél a saját jelmezedtől.",
+      "Épp a boltban álltál sorban az utolsó csokiért, és az eladó ezt bármikor megerősíti.",
+      "Egy horrorfilmet néztél, és az utolsó húsz percet inkább a plafont bámulva töltötted.",
+      "Szellemnek öltöztél, de a lepedő az arcodra csúszott, ezért semmit sem láttál.",
+      "Fejhallgatóval zenét hallgattál, ezért a kísértetet sem hallottad."
+    ],
+    "trukkok": [
+      "Állítsd, hogy a vádlott csak jelmezben volt, és a jelmez egy szellem volt.",
+      "Kérd az esküdteket, hogy mondják el a legijesztőbb dolgot, amit valaha csináltak, és ezzel terelj.",
+      "Mutass rá egy esküdtre, és mondd, hogy ő a kísértet, mert túl csendes.",
+      "Hivatkozz egy ősi szokásra: \"Halloweenkor mindenki ártatlan, aki jelmezt visel\".",
+      "Add elő, hogy a vádlott csak ijedtében csinálta az egészet, és remegj hozzá.",
+      "Követeld, hogy a bíró idézze meg a szellemet tanúnak."
+    ],
+    "tanuk": [
+      "Te voltál a kísértetház szelleme, aki mindent látott, de csak huhogni tud.",
+      "Te voltál a tök a verandán, aki pontosan látta, ki nyúlt a cukorkához.",
+      "Te voltál a vámpír, aki hajnalig ébren volt, és mindenre emlékszik, főleg a fokhagymára.",
+      "Te voltál a szomszéd, aki csokit osztogatott, és egyedül ült a sötét ajtóban.",
+      "Te voltál a boszorkány macskája, aki mindent megfigyelt, de csak nyávogni tud.",
+      "Te voltál a zombi a sarokban, aki nagyon lassan, de mindent észrevett."
+    ],
+    "kihivasok": [
+      "Beszélj úgy, mint egy kísértet, akinek rosszul van beállítva a hangja, és folyton elveszíti.",
+      "Beszélj úgy, mint egy vámpír, aki túl udvarias, és minden mondat után bocsánatot kér.",
+      "Minden mondat végén huhogj egyet, mint egy bagoly.",
+      "Beszélj úgy, mint egy horrorfilm narrátora, és minden szót suttogj.",
+      "Minden mondatodban szerepeljen a \"tök\" szó.",
+      "Beszélj úgy, mint egy boszorkány, aki a receptet olvassa fel, és közben elszámolja magát."
+    ],
+    "buntetesek": [
+      "A következő héten minden Discord-üzenetét \"BUUU!\" kezdéssel kell írnia.",
+      "Köteles élőben egy tököt rajzolni a csapatnak, és a csapat szavaz, hogy mennyire ijesztő.",
+      "A következő meccsen szellemként kell játszania: csak suttogva beszélhet.",
+      "Egy hétig \"Szellemvadász\" a Discord-neve.",
+      "A következő közös estén olyan jelmezben jelenik meg, amit a csapat választ neki.",
+      "El kell mesélnie a legnagyobb félelmét, és minden mondatot huhogással kell zárnia.",
+      "A következő három meccs elején kísértetként kell bemutatkoznia.",
+      "Egy hétig minden üzenetére egy 🍬 emojit kell tennie annak, aki neki ír."
+    ]
+  },
   "altalanos": {
     "kihivasok": [
       "Beszélj úgy, mint egy sportkommentátor.",

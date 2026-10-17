@@ -50,7 +50,7 @@ A teljes tartalom (vádak, kártyák, kihívások, büntetések) a **[data/cards
 
 ### Játékmódok
 
-- **R.E.P.O.**, **CS:GO/CS2**, **PUBG**, **Minecraft**, **Roblox és ingyenes játékok**, **Buli**
+- **R.E.P.O.**, **CS:GO/CS2**, **PUBG**, **Minecraft**, **Roblox és ingyenes játékok**, **Buli**, **Goose Goose Duck**, **Among Us**, **Valorant**, **Fortnite**, **EA FC / FIFA**, **League of Legends**, **Halloween** (a témák a `data/cards.json` kulcsaiból jönnek, új téma felvétele ott történik); a játékosok saját csomagokat is készíthetnek (Kártyaműhely, lásd `KARTYAMUHELY.md`)
 - A házigazda a lobbyban több módot is bejelölhet, és van **VEGYES** gomb (mindet bejelöli) – több mód esetén körönként sorsolódik, melyik vezeti a tárgyalást.
 - A kiválasztott módon belül minden szerep csak az ahhoz a módhoz tartozó kártyákat kapja.
 - A **„Minden módban használható kihívások"** (`altalanos` blokk) bármelyik módhoz hozzákeverednek; a **nehezítések** ritkábban jönnek (kb. 20% eséllyel) és **dupla pontot** érnek.
