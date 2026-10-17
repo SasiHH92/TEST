@@ -1,0 +1,129 @@
+/* ============================================================
+   KAMU BÍRÓSÁG – TELEFON / ALKALMAZÁS NÉZET (utolsónak töltődik: minden más stíluslap után)
+   Cél: a játék Android telefonon (böngészőben és a Play Áruházas alkalmazásban, teljes képernyőn) rendben méreteződjön és igazodjon.
+   1) biztonsági terület (kameralyuk / lekerekített sarkok): a --safe-* változók; a tesztek a --force-safe-* értékkel tudják szimulálni
+   2) fekvő telefon (fekvő tájolás, legfeljebb 520 px magas képernyő): a fedvények (bevezető, szerep-felfedés, bizonyíték, kihívás, ítélet, győztes),
+      a KÁRTYÁIM pakli és az értesítés a kis képernyőhöz méretezve
+   A szabályok csak ebben a tájolásban / magasságban élnek, az asztali és az álló nézetet nem érintik (kivéve az 1. pont semleges alapértékeit).
+   ============================================================ */
+
+/* ---------------- 1) BIZTONSÁGI TERÜLET ---------------- */
+:root {
+  --safe-t: max(env(safe-area-inset-top, 0px), var(--force-safe-t, 0px));
+  --safe-r: max(env(safe-area-inset-right, 0px), var(--force-safe-r, 0px));
+  --safe-b: max(env(safe-area-inset-bottom, 0px), var(--force-safe-b, 0px));
+  --safe-l: max(env(safe-area-inset-left, 0px), var(--force-safe-l, 0px));
+}
+/* a háttér mindig sötét: nincs fehér sáv a kameralyuk / a lekerekített sarkok mellett, sem betöltés közben */
+html { background: #0c0709; }
+
+/* az oldal-szintű képernyők (belépés, névválasztó, menü, lobbi) a biztonsági területen belül kezdődnek; a háttér a teljes képernyőt kitölti */
+body { padding-left: var(--safe-l); padding-right: var(--safe-r); box-sizing: border-box; }
+/* a játékképernyő: a HUD, a pakli és a lebegő gombok a biztonsági területen belül */
+body.in-game #screen-game { margin-left: 0; margin-right: 0; }
+#screen-game .info-bar { margin-left: var(--safe-l); margin-right: var(--safe-r); }
+#screen-game .role-banner, #screen-game .accusation-ticker, #screen-game .judge-watch-bar { margin-left: var(--safe-l); margin-right: var(--safe-r); }
+.card-hand { left: calc(12px + var(--safe-l)); }
+@media (max-width: 700px) { .card-hand { left: calc(6px + var(--safe-l)); } } /* álló telefon: az eredeti 6 px + a biztonsági terület */
+.bug-fab { left: calc(10px + var(--safe-l)); }
+.chat-fab { right: calc(10px + var(--safe-r)); }
+.score-sidebar { padding-right: var(--safe-r); }
+
+/* ---------------- 2) FEKVŐ TELEFON ---------------- */
+@media (orientation: landscape) and (max-height: 520px) {
+  /* értesítés */
+  /* a jobb oldalon, a felső sávok alatt (ne takarja a gombokat és a HUD-ot) */
+  #toastBox { top: 100px; left: auto; right: calc(46px + var(--safe-r)); max-width: 46vw; transform: translateX(130%); padding: 7px 14px; font-size: 12px; }
+  #toastBox.visible { transform: none; }
+
+  /* a fedvények a felső sáv alatt kezdődnek, és elférnek a képernyőn */
+  .court-intro { padding-top: 46px; box-sizing: border-box; }
+  .court-intro-card { width: min(560px, 78vw); padding: 12px 24px 10px; max-height: calc(100dvh - 58px); overflow: hidden; }
+  .ci-kicker { font-size: 11px; letter-spacing: 3px; }
+  .ci-vs { margin: 3px 0; font-size: clamp(20px, 7.4dvh, 32px); }
+  .ci-label { margin-top: 2px; padding: 1px 10px; font-size: 10px; }
+  .ci-charge { margin: 6px auto 8px; max-width: 480px; font-size: clamp(13px, 4.6dvh, 18px); line-height: 1.2; }
+  .ci-role { margin: 0 0 4px; font-size: 11px; }
+  .court-intro-card .court-stamp { font-size: 13px; padding: 2px 10px; border-width: 3px; }
+  .ci-skip { display: none; }
+  .co-text { font-size: clamp(26px, 12dvh, 46px); letter-spacing: 3px; }
+
+  .court-evidence, .court-challenge { padding-top: 46px; box-sizing: border-box; }
+  .evidence-folder { width: min(470px, 72vw); min-height: 0; padding: 32px 22px 14px; max-height: calc(100dvh - 60px); overflow: hidden; }
+  .ev-tab { top: -17px; left: 16px; padding: 5px 14px; font-size: 11px; }
+  .ev-pin { width: 64px; height: 78px; margin: 0 14px 4px 0; border-width: 5px; font-size: 40px; }
+  .ev-text { padding-top: 6px; font-size: clamp(14px, 5dvh, 20px); }
+  .ev-list { gap: 5px; }
+  .ev-list li { gap: 8px; font-size: clamp(13px, 4.6dvh, 17px); }
+  .ev-list li b { font-size: 12px; padding: 1px 6px; }
+  .ev-stamp { right: 16px; bottom: 12px; font-size: 10px; }
+  .challenge-card { width: min(420px, 72vw); padding: 14px 20px 12px; }
+  .cc-title { margin: 3px 0 6px; font-size: clamp(20px, 7.6dvh, 30px); }
+  .cc-text, .cc-line { font-size: clamp(13px, 4.6dvh, 17px); }
+  .cc-kicker { font-size: 11px; }
+  .cc-kicker.cc-slam { font-size: clamp(22px, 8.4dvh, 34px); }
+  .cc-note { margin-top: 6px; font-size: 10px; }
+  .cc-stamp { margin-top: 8px; font-size: 13px; }
+
+  .court-verdict { padding-top: 46px; box-sizing: border-box; }
+  .verdict-card { width: min(500px, 76vw); padding: 8px 20px 10px; max-height: calc(100dvh - 60px); }
+  .verdict-kicker { font-size: 11px; }
+  .verdict-name { margin: 2px 0 4px; font-size: clamp(16px, 5.8dvh, 22px); }
+  .verdict-card .court-stamp { font-size: clamp(16px, 6.4dvh, 26px); border-width: 4px; padding: 2px 12px; }
+  .verdict-sub { margin-top: 4px; font-size: 11px; }
+  .vd-headline { margin: 0; font-size: clamp(30px, 12dvh, 52px); letter-spacing: 4px; }
+  .vd-ante-icon { font-size: clamp(34px, 13dvh, 56px); }
+  .vd-ante-text { font-size: clamp(14px, 5dvh, 22px); letter-spacing: 6px; }
+  .verdict-unanimous { margin-top: 6px; padding: 2px 12px; font-size: 12px; }
+
+  .rv-stage { padding-top: 46px; max-height: 100%; }
+  .rv-round { font-size: 10px; letter-spacing: 4px; }
+  .rv-kicker { font-size: clamp(12px, 4.4dvh, 18px); letter-spacing: 5px; }
+  .rv-title { font-size: clamp(26px, min(14dvh, calc(88cqw / (var(--len, 6) * 0.64))), 58px); letter-spacing: 3px; }
+  .rv-sprite { height: min(58%, 230px); }
+  .rv-portrait { width: clamp(88px, 28dvh, 140px); }
+  .rv-emoji { font-size: clamp(64px, 22dvh, 110px); }
+  .rv-skip { display: none; }
+
+  .court-stinger { top: 54px; }
+  .cs-card { min-width: min(420px, 82vw); padding: 5px 30px 5px 18px; gap: 10px; }
+  .cs-icon { font-size: clamp(20px, 7.4dvh, 30px); }
+  .cs-text { font-size: clamp(16px, 6.4dvh, 26px); letter-spacing: 2px; }
+  .cs-sub { font-size: 10px; }
+
+  .wn-stage { padding-top: 46px; }
+  .wn-title { font-size: clamp(26px, min(7.4vw, 11dvh), 56px); letter-spacing: 6px; }
+  .wn-kicker { font-size: 10px; letter-spacing: 4px; }
+  .wn-name { font-size: clamp(18px, min(5vw, 8dvh), 34px); }
+  .wn-crown { top: -22px; font-size: clamp(26px, 8dvh, 40px); }
+  .court-countdown { font-size: clamp(56px, 26dvh, 120px); }
+
+  /* a fedvény alatt a KÁRTYÁIM pakli és a nagyító elbújik (ne takarja a kártyát / a bevezetőt) */
+  body[data-court-major] .card-hand, body[data-court-major] .card-preview { visibility: hidden; }
+
+  /* KÁRTYÁIM: kis pakli a bal alsó sarokban → nyitva vízszintesen görgethető tálca → nagyító (a mobil nézet szabályai, fekvőre igazítva) */
+  .card-hand { --cw: 100px; --chh: 136px; --peek: 50px; left: calc(8px + var(--safe-l)); bottom: 8px; width: calc(var(--cw) + 44px); }
+  .court-card { padding: 11px 8px 7px; left: 14px; }
+  .cf-text { font-size: 12px; -webkit-line-clamp: 4; }
+  .cf-type { font-size: 10px; }
+  .cf-sub, .cf-foot, .cf-no { display: none; }
+  .cf-stamp { right: 4px; bottom: 6px; font-size: 8px; border-width: 2px; letter-spacing: 1px; }
+  .ch-toggle { left: 14px; height: 26px; font-size: 10px; letter-spacing: 1px; }
+  .card-hand[data-state="open"] {
+    left: var(--safe-l); right: calc(var(--rail, 0px) + var(--safe-r)); width: auto; height: 124px; bottom: 0; pointer-events: auto;
+    background: linear-gradient(180deg, rgba(42, 28, 18, 0.97), rgba(23, 17, 14, 0.98)); border-top: 2px solid var(--court-gold-dark, #8a6420); box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+  }
+  .card-hand[data-state="open"] .ch-stage { clip-path: none; display: flex; align-items: flex-end; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 8px 12px; pointer-events: auto; scroll-snap-type: x proximity; }
+  .card-hand[data-state="open"] .ch-stage .court-card { position: relative; left: auto; bottom: auto; flex: none; width: 150px; height: 106px; transform: none; scroll-snap-align: start; }
+  .card-hand[data-state="open"] .cf-text { font-size: 12.5px; -webkit-line-clamp: 5; }
+  .card-hand[data-state="open"] .ch-stage .court-card.sel { transform: translateY(-6px); box-shadow: 0 0 0 2px var(--court-gold, #f2c14e), 0 8px 18px rgba(0, 0, 0, 0.6); }
+  .card-hand[data-state="open"] .ch-stage .court-card[data-hide-open], .card-hand[data-state="open"] .ch-stage .court-card.more { display: flex; }
+  .card-hand[data-state="open"] .ch-stage .court-card.more { display: none; }
+  .card-hand[data-state="open"] .ch-toggle { left: auto; right: 8px; top: -2px; bottom: auto; transform: translateY(-100%); width: auto; padding: 0 12px; }
+  .card-hand[data-state="open"] .ch-toggle .ch-label::after { content: ' ▾'; }
+  .card-preview { position: fixed; left: calc(10px + var(--safe-l)); right: auto; bottom: 134px; width: min(340px, 46vw); max-height: calc(100dvh - 150px); }
+  body:has(.card-hand[data-state="open"]) .bug-fab { visibility: hidden; } /* a nyitott tálca fölött ne takarjon a Hibajelentés ikon */
+  .court-card.big { min-height: 0; padding: 12px 14px 10px; }
+  .court-card.big .cf-text { font-size: 15px; }
+  .court-card.big .cf-sub, .court-card.big .cf-foot, .court-card.big .cf-no { display: flex; }
+}

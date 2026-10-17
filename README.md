@@ -203,6 +203,10 @@ Ezután nyisd meg: **http://localhost:3000**
 
 A port átírható: `PORT=8080 npm start`
 
+### Telefon fekvő módban
+
+A játék Android / iPhone **fekvő** tájolásban is használható (800×360 – 932×430). A `public/style.css` végén a `@media (orientation: landscape) and (max-height: 520px)` blokkok gondoskodnak róla: a lebegő gombok (Hibajelentés, Csevegő) csak ikonok, a súgó kitölti a képernyőt (a lábléc-gomb rejtve), a KÖR VÉGE lista és a ponttábla sorai tömörek, a névválasztó és a lobbi kártyái kisebbek; 900 px alatt a ponttábla **jobbról becsúszó oldalfiók** (a lenti PONTOK-sáv helyett). A **`public/phone.css`** (utolsóként töltődik) a telefon / alkalmazás nézet külön rétege: (1) biztonsági terület (`--safe-t/r/b/l`, `viewport-fit=cover`; a tesztek a `--force-safe-l/r` értékkel szimulálják a kameralyukat; a `html` háttere sötét, így nincs fehér sáv), (2) fekvő telefonon a fedvények (szerep-felfedés, bevezető, bizonyíték, kihívás, ítélet, győztes), a KÁRTYÁIM pakli / tálca és az értesítés a kis képernyőhöz méretezve; a fedvény alatt a pakli elbújik. A `manifest.webmanifest` teljes képernyőt (`display_override`) és fekvő tájolást kér (telepített alkalmazásként). Teszt: `npm run test:landscape` (három méreten: asztali böngésző mobil-emulációval, kovácsolt játékállapotokkal; `LAND_SIZES=800x360,915x412`, képernyőképek: `LAND_SHOTS=<mappa>`). Valódi telefonon is érdemes végignézni.
+
 ### Tesztelés
 
 ```bash
