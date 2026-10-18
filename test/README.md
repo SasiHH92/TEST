@@ -25,17 +25,9 @@ A `test/layout.js` valódi böngészőben, 7 méreten (320×568-tól 1366×768-i
 - Képernyőképek: `LAYOUT_SHOTS=./QA_SCREENSHOTS npm run test:layout`.
 - A játékbeli mérés csak olyan hibát jelez, ami két egymás utáni mérésben is megvan (az átmeneti animációk nem), és a vád-sáv nyitó animációját szándékosan figyelmen kívül hagyja.
 
-A régebbi, részletesebb `test/browser-check.js` opcionális Playwrightot és Chromiumot igényel:
+A régebbi `test/browser-check.js` (`npm run test:browser`) a többi böngészős teszthez hasonlóan a `playwright-core`-t használja a gépen lévő Edge-dzsel / Chrome-mal (vagy `CHROMIUM_PATH`). Ellenőrzi a belépőoldalt 5 méreten (1366×768, 1643×600, 1920×1080, 390×844, 360×640), a regisztrációt (16+ elfogadással), a hibás / helyes jelszót, a megjegyzést, az újratöltést, a kijelentkezést, a vendég-belépést, a lobbit botokkal, az EGYÉNI JÁTÉK módválasztását, az indítást, a kilépést és az újratöltést, JavaScript- és képhiba nélkül. A teszt-szerver minden adatot ideiglenes fájlba ír (a `data/` mappát és az adatbázist nem érinti).
 
-A fiókteszt 31 HTTP-alapú esetet ellenőriz elkülönített, utána törölt fióktárban. A Google/Discord és a levélküldés teszt-transportot használ; éles bejelentkezéshez a saját beállítások szükségesek. A böngészőteszt belépési/regisztrációs utakat, tíz belépőoldali nézetet, a tárgyalási HUD-t és 25 képernyőképet is ellenőriz. A `QA_SCREENSHOTS` és `CHROMIUM_PATH` változók továbbra is használhatók.
-
-```bash
-npm install --no-save playwright
-npx playwright install chromium
-npm run test:browser
-```
-
-Ez a 12 névkártya, vendég/módválasztás/kilépés és 15 fázis × 5 képernyőméret ellenőrzésére szolgál: 1366×768, 1643×600, 1920×1080, 390×844 és 360×640. A 4. fázis végén a parancsot újra elindítottuk, de a Chromium futtatható fájlja hiányzott. A másik böngésző a helyi oldalt `ERR_BLOCKED_BY_CLIENT` hibával blokkolta. A méretek tényleges mérése ezért nem futott le; a teszt forrása nem jelent sikeres vizuális eredményt. `QA_SCREENSHOTS` megadásával képeket is menthet.
+A régi „15 fázis × 5 méret” elrendezés-mérése egy korábbi képernyőtervre épül, és sosem futott végig sikeresen; ezt ma a `test/layout.js`, a `test/cinema.js` és a `test/landscape-phone.js` méri a mai felületen. Alapból kimarad, `QA_LEGACY_LAYOUT=1` kapcsolja be (jelenleg a régi gombnevek miatt hibát jelez). `QA_SCREENSHOTS` megadásával képeket is menthet.
 
 A korábban készített, opcionális képfeldolgozó teszt szintetikus bemenetet használ. A csatolt v3 képeket változtatás nélkül használjuk; a játék futtatásához vagy a kész grafikák beépítéséhez ez a Python-teszt nem szükséges:
 
