@@ -57,6 +57,9 @@ const DEFAULT_SETTINGS = {
 const JURY_ASK_PHASES = [PHASES.PROSECUTION, PHASES.DEFENSE, PHASES.DEFENDER, PHASES.WITNESS, PHASES.FINAL_PROSECUTION, PHASES.FINAL_DEFENSE, PHASES.OBJECTION];
 const JURY_QUESTION_MIN = 3, JURY_QUESTION_MAX = 100; // karakter
 const JURY_QUESTIONS_PER_ROUND = 2; // legfeljebb ennyi kérdés hangzik el egy körben
+// A beszédek utáni fázisok: itt az ügyésznek / vádlottnak / védőnek / tanúnak már nincs teendője, ezért ha kiesik, NEM lép a helyére esküdt
+// (különben a beugró esküdt már leadott szavazata törlődne, és ő kapná a pontot egy beszédért, amit nem ő mondott), és a kör sem marad ki.
+const POST_SPEECH_PHASES = [PHASES.JURY_QUESTION, PHASES.VERDICT_VOTE, PHASES.CHALLENGE_VOTE, PHASES.VERDICT, PHASES.CHALLENGE_REVIEW, PHASES.ROUND_RESULTS];
 
 // AFK-VÉDELEM: a "gombnyomásra váró" fázisoknak is van maximális ideje.
 // Lejáratkor a hiányzó akciók alapértelmezett kimenettel teljesülnek, így egy
@@ -1077,11 +1080,17 @@ class Game {
     const targets = [...new Set(d.questionPicks.map((p) => p.targetId))];
     if (!targets.includes(byId) || d.questionDone[byId]) return false;
     d.questionDone[byId] = true;
-    if (targets.every((t) => d.questionDone[t] || !(this.players.get(t) && this.players.get(t).connected))) {
-      this.endJuryQuestion();
-    } else {
-      this.broadcast();
-    }
+    if (!this.checkJuryAnswersComplete()) this.broadcast();
+    return true;
+  }
+
+  // Ha minden megszólított válaszolt vagy kiesett, nem várunk tovább: jön a szavazás. Visszatér: továbbléptünk-e.
+  checkJuryAnswersComplete() {
+    const d = this.roundData;
+    if (!d || this.phase !== PHASES.JURY_QUESTION) return false;
+    const targets = [...new Set(d.questionPicks.map((p) => p.targetId))];
+    if (!targets.every((t) => d.questionDone[t] || !(this.players.get(t) && this.players.get(t).connected))) return false;
+    this.endJuryQuestion();
     return true;
   }
 
@@ -1122,7 +1131,9 @@ class Game {
     if (!d || this.phase !== PHASES.VERDICT_VOTE) return;
     const activeVoters = d.voters.filter((v) => this.players.has(v) && this.players.get(v).connected);
     if (activeVoters.length > 0 && activeVoters.every((v) => d.votes[v])) {
-      setTimeout(() => this.finishVerdictVote(), 1500);
+      // nyilvántartott időzítő: a clearTimers / dispose törli, és többszöri hívásnál sem fut le kétszer
+      clearTimeout(this.voteDoneTimer);
+      this.voteDoneTimer = setTimeout(() => this.finishVerdictVote(), 1500);
     }
   }
 
@@ -1296,7 +1307,10 @@ class Game {
     const voters = d.challengeVoters.filter((v) => this.players.has(v) && this.players.get(v).connected);
     const complete = voters.length > 0 && voters.every((v) =>
       d.challenges.every((c) => d.challengeVotes[v] && d.challengeVotes[v][c.who] !== undefined));
-    if (complete) setTimeout(() => this.revealVerdict(), 800);
+    if (complete) {
+      clearTimeout(this.voteDoneTimer);
+      this.voteDoneTimer = setTimeout(() => this.revealVerdict(), 800);
+    }
   }
 
   revealVerdict() {
@@ -1703,10 +1717,26 @@ class Game {
     if (this.phase === PHASES.VERDICT_VOTE && Array.isArray(d.voters) &&
         d.voters.includes(playerId) && !d.votes[playerId]) {
       d.voters = d.voters.filter((v) => v !== playerId);
+      (d.droppedVoters = d.droppedVoters || []).push(playerId); // ha még a szavazás alatt visszajön, újra szavazhat
     }
     if (this.phase === PHASES.CHALLENGE_VOTE && Array.isArray(d.challengeVoters) &&
         d.challengeVoters.includes(playerId) && !d.challengeVotes[playerId]) {
       d.challengeVoters = d.challengeVoters.filter((v) => v !== playerId);
+      (d.droppedChallengeVoters = d.droppedChallengeVoters || []).push(playerId);
+    }
+  }
+
+  // A szavazás alatt kiesett, majd visszatérő esküdt (frissítés, hálózatváltás telefonon) újra szavazhat, amíg tart a szavazás.
+  restoreDroppedVoter(playerId) {
+    const d = this.roundData;
+    if (!d || [d.prosecutorId, d.defendantId, d.defenderId, d.witnessId].includes(playerId)) return;
+    if (this.phase === PHASES.VERDICT_VOTE && (d.droppedVoters || []).includes(playerId) &&
+        !d.voters.includes(playerId) && !d.votes[playerId]) {
+      d.voters.push(playerId);
+    }
+    if (this.phase === PHASES.CHALLENGE_VOTE && (d.droppedChallengeVoters || []).includes(playerId) &&
+        !d.challengeVoters.includes(playerId)) {
+      d.challengeVoters.push(playerId);
     }
   }
 
@@ -1783,8 +1813,12 @@ class Game {
       this.abortToLobby(p.name + ' kilépett – kevesebb mint 3 játékos maradt, ezért vissza a lobbyba. A pontok megmaradtak!');
       return;
     }
-    this.removeFromVoters(playerId);
+    // A beszédek után a már leadott szavazat megmarad (a hálózati kiesés nem írja át az ítéletet); kilépésnél / kirúgásnál
+    // a handleLeave / kickPlayer előtte maga veszi ki a szavazót.
+    if (POST_SPEECH_PHASES.includes(this.phase)) this.removeUnvotedFromVoters(playerId);
+    else this.removeFromVoters(playerId);
     if (this.roundData && this.phase !== PHASES.ROUND_RESULTS) this.handoverRoles(playerId);
+    if (this.phase === PHASES.JURY_QUESTION) this.checkJuryAnswersComplete();
     if (this.phase === PHASES.VERDICT_VOTE) this.checkVerdictVotesComplete();
     if (this.phase === PHASES.CHALLENGE_VOTE) this.checkChallengeVotesComplete();
     this.broadcast();
@@ -1805,10 +1839,13 @@ class Game {
   handoverRoles(playerId) {
     const d = this.roundData;
     if (!d) return;
-    if (d.currentJudgeId === playerId && !this.reassignJudge(playerId, 'kiesett')) {
+    const postSpeech = POST_SPEECH_PHASES.includes(this.phase);
+    if (d.currentJudgeId === playerId && !this.reassignJudge(playerId, 'kiesett') && !postSpeech) {
       this.skipRoundDueToDeparture(this.players.get(playerId)?.name || '?', 'judge');
       return;
     }
+    // A beszédek után a kör bíró / beszélő nélkül is lezárul (a kihívás-ellenőrzésnél az időzítő dönt), ezért nincs átadás és kimaradás sem.
+    if (postSpeech) return;
     for (const slot of ['prosecutorId', 'defendantId', 'defenderId', 'witnessId']) {
       if (d[slot] === playerId) this.handoverSlot(slot, playerId);
     }
@@ -2015,6 +2052,7 @@ class Game {
     p.goneSince = null;
     p.roleExpired = false;
     this.clearDepartureTimers(playerId); // 20 mp-en belül visszajött: semmi nem történik
+    this.restoreDroppedVoter(playerId);
     if (p.roleTakenBy) {
       try {
         this.io.to(this.playerRoom(playerId)).emit('host_warning', {
@@ -2031,6 +2069,7 @@ class Game {
     clearTimeout(this.objectionTimer);
     clearTimeout(this.reviewTimer);
     clearTimeout(this.autoTimer);
+    clearTimeout(this.voteDoneTimer);
     this.autoAdvance = null;
     this.phaseEndsAt = 0;
     if (this.botManager) this.botManager.clearAll();

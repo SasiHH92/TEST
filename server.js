@@ -1003,7 +1003,9 @@ io.on('connection', (socket) => {
   // Minden eseménykezelő védve: egy hiba soha ne döntse le a szervert,
   // csak naplózzuk és szólunk a kliensnek. A rate limit is itt van bekötve.
   const safeOn = (evt, fn) => socket.on(evt, (...args) => {
-    if (isRateLimited(socket, evt)) return;
+    // A lecsatlakozás sosem eshet a korlát alá: különben aki egy másodpercen belül túl sok kérést küldött, majd kilépett,
+    // "szellemként" bent maradna a szobában (csatlakozottnak látszik, foglalja a helyet, a játék rá vár).
+    if (evt !== 'disconnect' && isRateLimited(socket, evt)) return;
     try {
       fn(...args);
     } catch (err) {

@@ -6,6 +6,8 @@
 // 3) A kilépő pontja megmarad, visszajövetelkor visszakapja
 // 4) 3-nál kevesebb játékos: vissza lobbyba + lobbyNotice
 // 5) A körbíró kiesése: új bíró sorsolódik (judge_changed esemény)
+// 6–8) A beszédek után nincs szerepátadás: a leadott szavazat megmarad, a kör nem marad ki; KERESZTKÉRDÉS: kilépő megszólított
+// 9) A szavazás késleltetett lezárása nem fut le a megszűnt szobán; 10) a szavazás alatt kiesett, visszatérő esküdt újra szavazhat
 // Futtatás: node test/leave-during-game.js
 // ============================================================
 
@@ -97,5 +99,75 @@ console.log('5) A körbíró kiesése: új bíró sorsolódik + judge_changed');
   ok(ev && ev.data.judgeId === g.roundData.currentJudgeId, 'az esemény az új bírót nevezi meg');
 }
 
-console.log(fails === 0 ? '\nÖSSZES ALTERSZT ZÖLD ✔' : '\n' + fails + ' TESZT PIROS ✘');
-process.exit(fails === 0 ? 0 : 1);
+console.log('6) A szavazás alatt kilépő ügyész helyére NEM lép esküdt: a leadott szavazat megmarad, a kör nem marad ki');
+{
+  emitted = [];
+  const g = mkGame(6, true);
+  g.startGame({ rounds: 2, witnessEnabled: false, challengesEnabled: false, modes: ['buli'] }, 'u0');
+  g.startVerdictVote();
+  const d = g.roundData, pros = d.prosecutorId, voter = d.voters[0];
+  g.castVerdictVote(voter, 'guilty');
+  g.handleLeave(pros);
+  ok(g.phase === 'verdict_vote', 'a szavazás folytatódik (fázis: ' + g.phase + ')');
+  ok(g.roundData === d && d.prosecutorId === pros, 'az ügyész-hely nem adódott át');
+  ok(d.voters.includes(voter) && d.votes[voter] && d.votes[voter].verdict === 'guilty', 'az esküdt szavazata megmaradt');
+  ok(!emitted.some((e) => e.ev === 'role_handed_over'), 'nincs szerepátadás a beszédek után');
+}
+
+console.log('7) Hálózati kiesés a szavazás után (lejárt kegyelem): a már leadott szavazat számít');
+{
+  const g = mkGame(6);
+  g.startGame({ rounds: 2, witnessEnabled: false, challengesEnabled: false, modes: ['buli'] }, 'u0');
+  g.startVerdictVote();
+  const d = g.roundData, [a, b] = d.voters;
+  g.castVerdictVote(a, 'not_guilty');
+  g.handleDisconnect(a);
+  g.afterDeparture(a, false); // a 20 mp-es kegyelem lejárta
+  ok(d.voters.includes(a) && d.votes[a], 'a kiesett esküdt szavazata megmaradt');
+  g.castVerdictVote(b, 'not_guilty');
+  for (const v of d.voters) if (!d.votes[v]) g.castVerdictVote(v, 'guilty');
+  g.finishVerdictVote();
+  ok(g.phase === 'verdict', 'ítélet');
+  ok(d.verdictResult.notGuiltyVotes >= 2, 'a kiesett esküdt szavazata is beszámított (nem bűnös: ' + d.verdictResult.notGuiltyVotes + ')');
+}
+
+console.log('8) KERESZTKÉRDÉS: ha a megszólított kilép, nem vár a játék, jön a szavazás');
+{
+  const g = mkGame(6);
+  g.startGame({ rounds: 2, witnessEnabled: false, challengesEnabled: false, juryQuestions: true, modes: ['buli'] }, 'u0');
+  g.accusationRead(); g.startSpeech('prosecution');
+  const d = g.roundData;
+  ok(g.askJuryQuestion(d.voters[0], 'defendant', 'Hol voltál tegnap este?').ok === true, 'kérdés beküldve');
+  g.startJuryQuestion();
+  ok(g.phase === 'jury_question', 'KERESZTKÉRDÉS fázis');
+  g.handleLeave(d.defendantId);
+  ok(g.phase === 'verdict_vote', 'a megszólított kilépett: rögtön jön a szavazás (fázis: ' + g.phase + ')');
+}
+
+console.log('10) A szavazás alatt rövid időre kiesett esküdt (frissítés / hálózatváltás) visszatérve újra szavazhat');
+{
+  const g = mkGame(6);
+  g.startGame({ rounds: 2, witnessEnabled: false, challengesEnabled: false, modes: ['buli'] }, 'u0');
+  g.startVerdictVote();
+  const d = g.roundData, juror = d.voters[0];
+  g.handleDisconnect(juror);
+  ok(!d.voters.includes(juror), 'kieséskor a szavazás nem vár rá');
+  g.handleReconnect(juror);
+  ok(g.publicState(juror).verdictVote.canVote === true, 'visszatérve újra szavazhat');
+  ok(g.castVerdictVote(juror, 'guilty') === true && d.votes[juror], 'a szavazata bekerült');
+  g.clearDepartureTimers(juror);
+}
+
+(async () => {
+  console.log('9) Minden szavazat leadva, majd a szoba megszűnik: a késleltetett lezárás nem fut le a megszűnt szobán');
+  const g = mkGame(4);
+  g.startGame({ rounds: 2, witnessEnabled: false, challengesEnabled: false, modes: ['buli'] }, 'u0');
+  g.startVerdictVote();
+  for (const v of g.roundData.voters) g.castVerdictVote(v, 'guilty');
+  g.dispose();
+  await new Promise((r) => setTimeout(r, 1700));
+  ok(g.phase === 'verdict_vote', 'a megszűnt szobában nem lépett tovább a fázis');
+
+  console.log(fails === 0 ? '\nÖSSZES ALTERSZT ZÖLD ✔' : '\n' + fails + ' TESZT PIROS ✘');
+  process.exit(fails === 0 ? 0 : 1);
+})();

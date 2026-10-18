@@ -66,7 +66,9 @@
     "test:jury-ui": "node test/jury-question-ui.js",
     "test:landscape": "node test/landscape-phone.js",
     "test:intro": "node test/intro.js",
-    "test:assetlinks": "node test/assetlinks.js"
+    "test:assetlinks": "node test/assetlinks.js",
+    "test:leave": "node test/leave-during-game.js",
+    "test:disconnect": "node test/disconnect-ratelimit.js"
   },
   "engines": {
     "node": ">=18"
