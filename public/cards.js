@@ -16,6 +16,7 @@
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const reduced = () => document.body.classList.contains('reduced-motion') || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   const play = (name) => { try { if (window.kbSound && window.kbSound.play) window.kbSound.play(name); } catch (_) { /* a hang nem kötelező */ } };
+  const shortLandscape = () => !!(window.matchMedia && matchMedia('(orientation: landscape) and (max-height: 520px)').matches); // fekvő telefon (a phone.css-szel azonos feltétel)
 
   const TYPES = {
     evidence:  { label: 'BIZONYÍTÉK',        stamp: 'AKTÁBA VÉVE', badge: '' },
@@ -202,6 +203,9 @@
     // a felkészülés elején a pakli magától kinyílik (olvasni kell a kártyákat); a felkészülés végén becsukódik, ha a játékos nem nyúlt hozzá
     if (st.phase === 'prep' && prevPhase !== 'prep') { st.touched = false; if (!st.open) { st.auto = true; open(false); } }
     else if (st.phase !== 'prep' && prevPhase === 'prep' && st.auto && !st.touched) { st.auto = false; close(false); }
+    // Fekvő telefonon a nyitott tálca a képernyő alját fedi, ott vannak a fő gombok (VÉGEZTEM, TILTAKOZOM, szavazás): fázisváltáskor
+    // (a felkészülés kivételével) akkor is becsukódik, ha a játékos kinyitotta. A KÁRTYÁIM gombbal bármikor újra nyitható.
+    if (st.open && prevPhase && st.phase !== prevPhase && st.phase !== 'prep' && shortLandscape()) { st.auto = false; close(false); }
     apply();
   }
 

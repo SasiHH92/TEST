@@ -217,5 +217,6 @@ function toVerdict(g) {
   });
 
   console.log('\nKártya-visszajelzés: ' + passed + ' sikeres, ' + failed + ' hibás teszt.');
-  process.exit(failed ? 1 : 0);
+  // kis várakozás a kilépés előtt: a még záródó kapcsolatok mellett az azonnali process.exit Windowson néha libuv-assertiont dob (az eredménytől független)
+  setTimeout(() => process.exit(failed ? 1 : 0), 300);
 })();

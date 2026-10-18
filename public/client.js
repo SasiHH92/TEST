@@ -208,10 +208,13 @@ function stopDrumroll() {
 // ============================================================
 
 function show(screen) {
+  const changed = document.body.dataset.screen !== screen;
   $$('.screen').forEach((el) => el.classList.remove('active'));
   $('#screen-' + screen).classList.add('active');
   document.body.classList.toggle('in-game', screen === 'game');
   document.body.dataset.screen = screen;
+  // Új képernyő mindig a tetején nyílik: telefonon különben a névválasztó / menü görgetése megmaradna, és a lobbi felső gombsora a sarok-kapcsolók alá csúszna.
+  if (changed) { try { window.scrollTo(0, 0); } catch (_) { /* */ } }
   if (screen === 'menu') renderMenuWho();
   document.dispatchEvent(new CustomEvent('kb:screen', {detail:screen}));
 }
