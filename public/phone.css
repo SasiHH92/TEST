@@ -125,6 +125,13 @@ body.in-game #screen-game { margin-left: 0; margin-right: 0; }
   .card-hand[data-state="open"] .ch-toggle .ch-label::after { content: ' ▾'; }
   .card-preview { position: fixed; left: calc(10px + var(--safe-l)); right: auto; bottom: 134px; width: min(340px, 46vw); max-height: calc(100dvh - 150px); }
   body:has(.card-hand[data-state="open"]) .bug-fab { visibility: hidden; } /* a nyitott tálca fölött ne takarjon a Hibajelentés ikon */
+  /* 🐞 Hibajelentés: a bal alsó sarokban a görgetett tartalomra (lobbi gombjai, belépőoldal) és a KÁRTYÁIM paklira lógna.
+     Belépőoldal: a bal felső sarok (mint 700 px fölött); névválasztó / menü / lobbi: a bal felső 🔊/🏃 sarok-kapcsolók mellett; játékban kártyákkal a pakli fölött. */
+  body:not([data-screen]) .bug-fab, body[data-screen="auth"] .bug-fab { top: 12px; left: calc(12px + var(--safe-l)); bottom: auto; }
+  body[data-screen="name"] .bug-fab, body[data-screen="menu"] .bug-fab, body[data-screen="lobby"] .bug-fab { top: 18px; left: calc(114px + var(--safe-l)); bottom: auto; }
+  body.in-game.has-hand .bug-fab { bottom: calc(84px + var(--safe-b)); }
+  /* a lobbi teteje a bal felső kapcsolók (🔊 🏃 🐞, ≈ 56 px) alatt kezdődik – 700 px alatt ez már így volt (66 px), fölötte 20 px-nél az ÜGYIRAT doboz alájuk csúszott */
+  #screen-lobby .lobby-wrap { padding-top: 62px; }
   .court-card.big { min-height: 0; padding: 12px 14px 10px; }
   .court-card.big .cf-text { font-size: 15px; }
   .court-card.big .cf-sub, .court-card.big .cf-foot, .court-card.big .cf-no { display: flex; }
@@ -175,7 +182,7 @@ body.in-game #screen-game { margin-left: 0; margin-right: 0; }
   #screen-game .info-bar { top: 6px; min-height: 32px; padding: 2px 6px; }
   #screen-game .info-bar .btn { min-width: 36px; min-height: 32px; }
   #screen-game .info-bar .info-btn { width: 32px; height: 32px; }
-  #screen-game .info-bar .round-badge { white-space: nowrap; }
+  #screen-game .info-bar .round-badge { white-space: nowrap; max-width: none; } /* egy sorban, és a doboz a szöveghez igazodik (az álló telefonos 70 px-es korlát nélkül) */
   #screen-game .role-banner { top: 42px; height: 26px; }
   #screen-game .accusation-ticker { top: 73px; padding: 6px 12px; font-size: 14px; line-height: 1.2; }
   #screen-game .charge-text { -webkit-line-clamp: 1; }

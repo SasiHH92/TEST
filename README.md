@@ -223,6 +223,7 @@ npm run test:rules        # 12 szabály- és időzítési tesztcsoport
 npm run test:rooms        # valódi Socket.io: jogosultságok, kirúgás, kilépés
 npm run test:leave        # kilépés / kiesés játék közben: szerepátadás, szavazat megtartása, visszatérő esküdt
 npm run test:disconnect   # a lecsatlakozás a kéréskorlát (20 esemény/mp) túllépése után is lefut (nincs "szellem" játékos)
+npm run test:text-fit     # a szövegek elférnek a dobozukban (jelvények, gombok, táblák): 9 méret (fekvő / álló telefon, tablet, gép), belépés, menü, lobbi, 20 játékállapot
 node test/e2e-bots.js     # 1 ember + 4 bot, 2 kör botokkal (22 ellenőrzés)
 node test/stress-bots.js  # 6 teljes, háromkörös botjáték virtuális órával (3–12 fő)
 npm run test:layout       # valódi böngésző (Playwright), 7 méret: átfedés, kilógás, hang/mozgás kapcsolók (kb. 2 perc)

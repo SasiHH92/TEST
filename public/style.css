@@ -2214,7 +2214,7 @@ body.in-game .screen.active { height: 100dvh; min-height: 0; }
   #screen-game .stage-plate.speaking .plate-person { display:flex; }
   #screen-game .judge-bubble { top:25.5%; max-width:40%; font-size:10px; padding:3px 6px; }
   #screen-game .info-bar { top:6px; min-height:48px; gap:4px; padding:4px 6px; }
-  #screen-game .info-bar .round-badge { font-size:10px; max-width:70px; white-space:normal; }
+  #screen-game .info-bar .round-badge { font-size:10px; max-width:100px; white-space:normal; } /* 100 px: a hosszú egyszavas felirat ("Végeredmény") is a dobozában marad */
   #screen-game .info-bar .code-badge, #screen-game .info-bar .volume { display:none; }
   #screen-game .info-bar .btn { min-height:40px; padding:4px 6px; font-size:10px; }
   #screen-game #btnReduceMotion { font-size:0; width:40px; }

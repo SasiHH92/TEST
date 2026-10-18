@@ -69,7 +69,8 @@
     "test:assetlinks": "node test/assetlinks.js",
     "test:leave": "node test/leave-during-game.js",
     "test:disconnect": "node test/disconnect-ratelimit.js",
-    "test:phone-game": "node test/phone-game.js"
+    "test:phone-game": "node test/phone-game.js",
+    "test:text-fit": "node test/text-fit.js"
   },
   "engines": {
     "node": ">=18"
