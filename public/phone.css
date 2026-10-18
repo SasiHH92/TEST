@@ -29,6 +29,9 @@ body.in-game #screen-game { margin-left: 0; margin-right: 0; }
 .chat-fab { right: calc(10px + var(--safe-r)); }
 .score-sidebar { padding-right: var(--safe-r); }
 
+/* Play-alkalmazásban (html.in-app, public/app-mode.js) az önkéntes támogatás (Ko-fi) linkjei nem látszanak – a Play fizetési szabályai miatt; a weben maradnak */
+html.in-app .support-link, html.in-app #btnSupportLobby, html.in-app #btnSupportOpen, html.in-app .go-support { display: none !important; }
+
 /* ---------------- 2) FEKVŐ TELEFON ---------------- */
 @media (orientation: landscape) and (max-height: 520px) {
   /* értesítés */
@@ -93,11 +96,11 @@ body.in-game #screen-game { margin-left: 0; margin-right: 0; }
   .cs-text { font-size: clamp(16px, 6.4dvh, 26px); letter-spacing: 2px; }
   .cs-sub { font-size: 10px; }
 
-  .wn-stage { padding-top: 46px; }
-  .wn-title { font-size: clamp(26px, min(7.4vw, 11dvh), 56px); letter-spacing: 6px; }
-  .wn-kicker { font-size: 10px; letter-spacing: 4px; }
-  .wn-name { font-size: clamp(18px, min(5vw, 8dvh), 34px); }
-  .wn-crown { top: -22px; font-size: clamp(26px, 8dvh, 40px); }
+  /* játék vége: a dobogós eredmény-panel a képernyő nagy részét kitölti (és koronával mutatja a győztest), ezért a győztes-rétegből csak a cím marad,
+     kisebben, a felső sáv és a panel között (a 220 px-es alsó határ fekvő telefonon a panel alá lógott; a "A TÁRGYALÁSOK VÉGE" a felső sávban már szerepel) */
+  .wn-stage { padding-top: 72px; height: auto; }
+  .wn-title { font-size: clamp(22px, 7dvh, 36px); letter-spacing: 6px; }
+  .wn-kicker, .wn-hero, .wn-name, .wn-score { display: none; }
   .court-countdown { font-size: clamp(56px, 26dvh, 120px); }
 
   /* a fedvény alatt a KÁRTYÁIM pakli és a nagyító elbújik (ne takarja a kártyát / a bevezetőt) */

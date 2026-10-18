@@ -213,6 +213,9 @@ A játék Android / iPhone **fekvő** tájolásban is használható (800×360 �
 
 ### Android-alkalmazás (Play Áruház)
 
+**Ébren tartás:** a `public/wakelock.js` a Screen Wake Lock API-val ébren tartja a képernyőt, amíg a játékos szobában van (lobbi / játék); háttérbe kerüléskor a böngésző elengedi, visszatéréskor újra kéri; a szobán kívül elengedi. Teszt: `npm run test:wakelock`.
+**Alkalmazás-mód:** a `public/app-mode.js` felismeri a Play-alkalmazást (a Chrome `android-app://com.kamubirosag.app` hivatkozója, vagy az alkalmazás indítócíme: `/?app=android`), és a munkamenetre `html.in-app` osztályt ad: ilyenkor az önkéntes támogatás (Ko-fi) linkjei nem látszanak, a `/tamogatas` oldal csak semleges üzenetet mutat (a Play fizetési szabályai miatt); a weben minden marad. Teszt: `npm run test:app-mode`. Áruházi képek: `node scripts/make-play-assets.js` → `play-assets/` (kiemelt grafika 1024×500, ikon, 6 fekvő telefonos képernyőkép 1708×960).
+
 Az alkalmazás egy **TWA** (Trusted Web Activity, Bubblewrap): ugyanezt az oldalt nyitja meg teljes képernyőn, fekvő tájolásban (csomagnév: `com.kamubirosag.app`). A projekt nem része a repónak (`F:\Android\kamu-twa`). A teljes képernyőhöz az Androidnak igazolnia kell, hogy az alkalmazás az oldalhoz tartozik: ezt a **`/.well-known/assetlinks.json`** végpont adja (forrás: `well-known/assetlinks.json`; az express.static a ponttal kezdődő mappát nem szolgálja ki, ezért külön útvonal van a `server.js`-ben). A fájl az aláíró kulcs **SHA-256 ujjlenyomatát** tartalmazza: a tesztelhető (debug-aláírású) APK-hoz a debug kulcsét; a Play-kiadáshoz a **Play App Signing** által használt kulcs ujjlenyomatát is ide kell venni (a Play Console „App-integritás” oldalán olvasható), a debugot pedig éles kiadás előtt el kell távolítani. Teszt: `npm run test:assetlinks`.
 
 ### Tesztelés

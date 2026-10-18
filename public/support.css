@@ -139,3 +139,9 @@ main { max-width: 1120px; margin: 0 auto; padding: 0 20px 40px; }
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* Play-alkalmazásban (html.in-app, /app-mode.js) a támogatási tartalom nem jelenik meg, csak egy semleges üzenet és a vissza gomb */
+.sp-inapp { display: none; padding: 48px 0; text-align: center; }
+html.in-app .sp-inapp { display: block; }
+html.in-app main > :not(.sp-inapp), html.in-app .sp-skip { display: none !important; }
+html.in-app .sp-inapp h1 { font-size: clamp(20px, 4vw, 30px); margin: 0 0 18px; }

@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#2a0b14">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❤️</text></svg>">
   <link rel="stylesheet" href="/support.css">
+  <script src="/app-mode.js"></script>
 </head>
 <body>
   <a class="sp-skip" href="#fo-gomb">Ugrás a támogatás gombjához</a>
@@ -17,6 +18,11 @@
   </header>
 
   <main>
+    <!-- Play-alkalmazásban (html.in-app) a támogatási tartalom helyett csak ez látszik (a Play fizetési szabályai miatt) -->
+    <section class="sp-inapp" aria-labelledby="sp-inapp-title">
+      <h1 id="sp-inapp-title">⚖️ Ez az oldal az alkalmazásban nem érhető el</h1>
+      <p><a class="sp-back" href="/">Vissza a játékba</a></p>
+    </section>
     <!-- HŐS -->
     <section class="sp-hero" aria-labelledby="sp-title">
       <div class="sp-hero-text">

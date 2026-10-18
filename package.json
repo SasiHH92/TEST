@@ -70,7 +70,10 @@
     "test:leave": "node test/leave-during-game.js",
     "test:disconnect": "node test/disconnect-ratelimit.js",
     "test:phone-game": "node test/phone-game.js",
-    "test:text-fit": "node test/text-fit.js"
+    "test:text-fit": "node test/text-fit.js",
+    "test:wakelock": "node test/wakelock.js",
+    "test:app-mode": "node test/app-mode.js",
+    "play:assets": "node scripts/make-play-assets.js"
   },
   "engines": {
     "node": ">=18"
