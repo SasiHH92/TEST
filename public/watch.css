@@ -1,0 +1,44 @@
+/* ============================================================
+   KAMU BÍRÓSÁG – NÉZŐ MÓD (/?watch=KÓD, public/watch-boot.js + watch.js)
+   A tárgyalás nézhető (stream nézői, OBS böngészőforrás), de semmi nem kezelhető: a belépés / névválasztó / menü, a lobbi és a játék kezelőgombjai,
+   a KÁRTYÁIM pakli, a csevegő, a reakciógombok és a lebegő gombok rejtve. A hang (🔊) és a súgó (i) gombja marad.
+   ============================================================ */
+html.watch-mode #screen-auth, html.watch-mode #screen-name, html.watch-mode #screen-menu { display: none !important; }
+
+/* lobbi: csak az ügyszám, a plakátfal és a várakozás szövege */
+body.watch-mode #screen-lobby .casefile-header > :not(.casefile-box),
+body.watch-mode #hostSettings, body.watch-mode #btnStartGame, body.watch-mode #btnLeaveLobby, body.watch-mode #btnReady,
+body.watch-mode #screen-lobby button, body.watch-mode #screen-lobby a.btn, body.watch-mode #courtPanel { display: none !important; }
+body.watch-mode #screen-lobby .casefile-box { cursor: default; pointer-events: none; }
+
+/* lebegő és fiókos elemek mindenhol */
+body.watch-mode #comfortDock, body.watch-mode #accountDock, body.watch-mode .bug-fab, body.watch-mode #chatFab, body.watch-mode #chatPanel,
+body.watch-mode #friendsFab, body.watch-mode .friends-panel, body.watch-mode .invite-card { display: none !important; }
+
+/* játék: a terem, a felső sávok, a fázispanel szövege és a ponttábla látszik; a kezelők nem */
+body.watch-mode #screen-game .card-hand, body.watch-mode #screen-game .card-preview,
+body.watch-mode #screen-game #scenePanel button, body.watch-mode #screen-game .inline-actions, body.watch-mode #screen-game .fixed-actions,
+body.watch-mode #screen-game .react-btn, body.watch-mode #screen-game .react-bar, body.watch-mode #screen-game .sb-kick, body.watch-mode #screen-game #sbTabChat,
+body.watch-mode #screen-game #btnLeaveGame, body.watch-mode #screen-game #btnReduceMotion, body.watch-mode #screen-game .info-bar .volume,
+body.watch-mode #screen-game .vd-details, body.watch-mode #screen-game .acc-fun-row,
+body.watch-mode #judgeWatchBar, body.watch-mode #screen-game .sb-tabs { display: none !important; }
+
+/* jelvény (felül középen) és üzenetsáv */
+.watch-badge { display: none; }
+body.watch-mode .watch-badge {
+  display: block; position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 400; pointer-events: none;
+  padding: 4px 14px; border-radius: 999px; font: 800 12px var(--font-disp, sans-serif); letter-spacing: 2px; white-space: nowrap;
+  color: #ffe3a5; background: rgba(42, 11, 20, 0.9); border: 1px solid rgba(242, 193, 78, 0.7); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+.watch-note[hidden] { display: none !important; }
+.watch-note {
+  position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 400; max-width: min(560px, 90vw);
+  padding: 14px 22px; border-radius: 12px; text-align: center; font: 700 18px/1.35 var(--font-body, sans-serif);
+  color: #f6efdc; background: rgba(9, 12, 20, 0.92); border: 1px solid rgba(242, 193, 78, 0.6); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+body:not(.watch-mode) .watch-note { display: none !important; }
+
+/* a játékosoknak: hány néző követi a tárgyalást (lobbi és a játék felső sávja) */
+.spectator-chip { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font: 800 11px var(--font-disp, sans-serif); letter-spacing: 1px; white-space: nowrap;
+  color: #ffe3a5; background: rgba(42, 11, 20, 0.85); border: 1px solid rgba(242, 193, 78, 0.55); }
+.spectator-chip.hidden { display: none; }

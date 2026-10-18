@@ -555,6 +555,12 @@ const GUEST_PRIORS = PLAYER_DB.vendeg_priuszok || ['Előélete tiszta. Túl tisz
 
 const rooms = new Map(); // code -> Game
 const sockets = new Map(); // socketId -> { code, playerId }
+// NÉZŐ MÓD (/?watch=KÓD; stream, OBS): a néző NEM játékos – nincs a players között (nem foglal helyet), nincs munkamenete (játékbeli eseményt nem küldhet),
+// a 'watch_state' eseményben a nyilvános állapotot kapja (publicState(null)). Szobánként legfeljebb MAX_WATCHERS néző.
+const MAX_WATCHERS = Math.max(1, parseInt(process.env.KB_MAX_WATCHERS, 10) || 40);
+const watchers = new Map(); // socketId -> szobakód
+const watcherCount = (code) => { let n = 0; for (const c of watchers.values()) if (c === code) n++; return n; };
+function syncWatchers(code) { const g = rooms.get(code); if (!g) return; g.watchers = watcherCount(code); g.broadcast(); }
 
 // ---------- Discord-összekötés: tárgyalás-munkamenetek (courts.js) ----------
 // A munkamenetek tárolása a többi adathoz hasonló (fájl + külső adatbázis). A szoba a motor igazsága a játék indulásáról/végéről,
@@ -704,6 +710,13 @@ Game.setLifecycleHook((game, event) => {
     else if (event === 'finished') courts.roomFinished(game.code);
     else if (event === 'aborted' || event === 'disposed') courts.roomGone(game.code);
   } catch (e) { reportError('court-lifecycle', e); }
+  // megszűnt szoba: a nézők kikerülnek (a Game.dispose 'watch_closed' üzenetet küld nekik), hogy egy később azonos kóddal nyíló szoba ne jusson el hozzájuk
+  if (event === 'disposed') {
+    try {
+      for (const [sid, c] of watchers) if (c === game.code) watchers.delete(sid);
+      io.in('w:' + game.code).socketsLeave('w:' + game.code);
+    } catch (e) { reportError('watch-cleanup', e); }
+  }
 });
 setInterval(() => { try { courts.expireStale(); } catch (e) { reportError('court-expire', e); } }, 30 * 60 * 1000).unref();
 
@@ -1208,6 +1221,32 @@ io.on('connection', (socket) => {
     reply({ ok: true, code: sess.code });
   });
 
+  // ---- NÉZŐ MÓD: egy szoba nézése játékos nélkül (stream, OBS) – a nyilvános állapot a 'watch_state' eseményben jön ----
+  function stopWatching() {
+    const code = watchers.get(socket.id);
+    if (!code) return;
+    watchers.delete(socket.id);
+    socket.leave('w:' + code);
+    syncWatchers(code);
+  }
+  safeOn('watch_room', ({ code } = {}, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const norm = String(code || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{4}$/.test(norm)) return reply({ error: 'Érvénytelen szobakód.' });
+    if (sockets.has(socket.id)) return reply({ error: 'Játékosként nem lehetsz egyszerre néző is.' });
+    const game = rooms.get(norm);
+    if (!game) return reply({ error: 'Ez a szoba nem létezik, vagy már bezárult.' });
+    if (watchers.get(socket.id) !== norm) {
+      if (watcherCount(norm) >= MAX_WATCHERS) return reply({ error: 'Ennek a tárgyalásnak most túl sok nézője van – próbáld később.' });
+      stopWatching();
+      watchers.set(socket.id, norm);
+      socket.join('w:' + norm);
+    }
+    game.watchers = watcherCount(norm);
+    reply({ ok: true, state: game.publicState(null) });
+    game.broadcast(); // a játékosok látják a nézőszámot
+  });
+
   // ---- Közös tér: a saját hirdetés visszavonása (a szoba bármelyik tagja) ----
   safeOn('board_ad_remove', (_payload, ack) => {
     const sess = sockets.get(socket.id);
@@ -1279,6 +1318,7 @@ io.on('connection', (socket) => {
 
   // ---- Szoba létrehozása ----
   safeOn('create_room', ({ name, avatar, playerId, profile }, ack) => {
+    stopWatching(); // aki eddig nézett, az játékosként már nem néző
     if (rooms.size >= MAX_ROOMS) return ack && ack({ error: 'A szerver jelenleg betelt – próbálj meg később csatlakozni!' });
     // Egy címről egyszerre csak néhány szoba: egyetlen kapcsolat se tölthesse meg az összes helyet.
     // (A szándékosan elhagyott üres lobbi-szoba azonnal megszűnik, ezért a normál játék ezt nem éri el.)
@@ -1316,6 +1356,7 @@ io.on('connection', (socket) => {
 
   // ---- Csatlakozás kóddal (visszacsatlakozás is ez) ----
   safeOn('join_room', ({ code, name, avatar, playerId, profile, sessionToken, resume }, ack) => {
+    stopWatching(); // aki eddig nézett, az játékosként már nem néző
     const norm = String(code || '').trim().toUpperCase();
     const game = rooms.get(norm);
     if (!game) {
@@ -1675,6 +1716,7 @@ io.on('connection', (socket) => {
     ack && ack({ ok: true });
   });
   safeOn('disconnect', () => {
+    stopWatching(); // néző: a nézőszám csökken
     rateWindows.delete(socket.id); // rate-limit ablak felszabadítása
     avatarSavedAt.delete(socket.id);
     chatTimes.delete(socket.id);

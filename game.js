@@ -388,7 +388,8 @@ class Game {
       phaseEndsAt: this.phaseEndsAt || null,
       autoAdvance: this.autoAdvance ? {...this.autoAdvance} : null,
       autoStopped: this.autoStopped,
-      objectionPending: this.objectionPending
+      objectionPending: this.objectionPending,
+      spectators: this.watchers || 0 // NÉZŐ MÓD: hányan nézik a szobát (a szerver tartja nyilván)
     };
 
     if (this.phase === PHASES.GAME_OVER) base.gameOver = this.finalResults();
@@ -564,13 +565,19 @@ class Game {
     for (const id of this.players.keys()) {
       this.io.to(this.playerRoom(id)).emit('state', this.publicState(id));
     }
+    // NÉZŐ MÓD: a nézők a nyilvános állapotot kapják (publicState(null): titkos kártya, saját kihívás, bírói figyelő nélkül)
+    if (this.watchers > 0) this.io.to(this.watchRoom()).emit('watch_state', this.publicState(null));
   }
 
   playerRoom(id) { return 'p:' + this.code + ':' + id; }
+  watchRoom() { return 'w:' + this.code; }
 
   broadcastAll(event, payload) {
     this.io.to(this.code).emit(event, payload);
+    // a nézők a látványos, nyilvános eseményeket is megkapják (a házigazdának / játékosnak szóló figyelmeztetéseket nem)
+    if (this.watchers > 0 && Game.WATCH_EVENTS.has(event)) this.io.to(this.watchRoom()).emit(event, payload);
   }
+  static WATCH_EVENTS = new Set(['objection_started', 'objection_ruling', 'judge_changed', 'role_handed_over', 'order_in_court']);
 
   // ---------- fázisvezérlés ----------
 
@@ -1673,6 +1680,7 @@ class Game {
       for (const id of this.players.keys()) {
         this.io.to(this.playerRoom(id)).emit('reaction', { emoji, target, by: byId });
       }
+      if (this.watchers > 0) this.io.to(this.watchRoom()).emit('reaction', { emoji, target, by: byId });
     } catch (e) {
       // A reakció kozmetikai elem – soha ne döntse el a játék folyamatát.
       console.error('Reakció hiba:', e.message);
@@ -2079,6 +2087,8 @@ class Game {
   }
 
   dispose() {
+    // a nézők előbb kapják meg a bezárást, mint hogy a szerver (lifecycle 'disposed') kivezeti őket a szobából
+    try { if (this.watchers > 0) this.io.to(this.watchRoom()).emit('watch_closed', { code: this.code }); } catch (e) { /* */ }
     this.emitLifecycle('disposed');
     this.clearTimers();
     for (const id of Array.from(this.departureTimers.keys())) this.clearDepartureTimers(id);

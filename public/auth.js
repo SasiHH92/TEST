@@ -508,5 +508,5 @@
     finally {setTimeout(()=>{button.disabled=false;},5000);}
   });
   $('#authRetry').addEventListener('click',initialize);
-  initialize();
+  if(!window.KB_WATCH) initialize(); // néző módban (/?watch=KÓD) nincs belépés: a public/watch.js kapcsolódik
 })();

@@ -6,7 +6,7 @@
   try {
     var q = location.search || '';
     var force = /[?&]intro=1(&|$)/.test(q);
-    var link = /[?&](room|court)=/.test(q);
+    var link = /[?&](room|court|watch)=/.test(q); // a nézőnek (watch) sem
     // automatizált böngészőben (tesztek, Playwright / Selenium: navigator.webdriver) nem jelenik meg magától – a valódi játékosokat ez nem érinti; a ?intro=1 ettől függetlenül kényszeríti
     var bot = !!navigator.webdriver;
     var ls = window.localStorage;

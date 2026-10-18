@@ -1686,6 +1686,25 @@ $('#btnCopyLink').addEventListener('click', () => {
   });
 });
 
+// NÉZŐI LINK: a tárgyalás játékos nélkül nézhető (stream nézői, OBS böngészőforrás) – /?watch=KÓD
+$('#btnCopyWatch').addEventListener('click', () => {
+  const url = location.origin + '/?watch=' + MY.code;
+  const done = () => { showToast('📺 Nézői link kimásolva – a stream nézői (vagy az OBS) ezzel nézhetik a tárgyalást.'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => showToast('📺 Nézői link: ' + url));
+  else showToast('📺 Nézői link: ' + url);
+});
+// a nézők száma (a szerver számolja): a lobbiban és a játék felső sávjában
+function updateSpectatorChips() {
+  const n = (S && S.spectators) || 0;
+  for (const id of ['spectatorChip', 'spectatorChipGame']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.classList.toggle('hidden', !n);
+    el.textContent = n ? '📺 ' + n + ' néző' : '';
+    el.title = n ? n + ' néző követi a tárgyalást (nézői link)' : '';
+  }
+}
+
 $('#btnLeaveLobby').addEventListener('click', async () => {
   const ok = await confirmDialog('Biztosan kilépsz a szobából?');
   if (ok) leaveToMenu();
@@ -2108,7 +2127,8 @@ function courtSnapshot() {
   const od = S.objectionData;
   return {
     phase: S.phase, round: S.round || 1, totalRounds: S.totalRounds || 1, caseNo: S.caseNo || '',
-    accusationText: S.accusationText || '', meId: MY.playerId, myRole: myRole(), myAvatar: (me() || {}).avatar || MY.avatar || '',
+    // néző módban (window.KB_WATCH) nincs saját szerep: a felfedés ("TE VAGY A …") nem jelenik meg
+    accusationText: S.accusationText || '', meId: MY.playerId, myRole: window.KB_WATCH ? '' : myRole(), myAvatar: (me() || {}).avatar || MY.avatar || '',
     names: { prosecutor: who(S.prosecutorId), defendant: who(S.defendantId), defender: who(S.defenderId), witness: who(S.witnessId), judge: who(S.currentJudgeId) },
     ids: { judge: S.currentJudgeId || '' },
     evidence: Array.isArray(S.evidence) ? S.evidence : null, myChallenge: S.myChallenge || null,
@@ -3654,6 +3674,7 @@ socket.on('state', (state) => {
     // nem vagyunk benne a szobában
     return;
   }
+  updateSpectatorChips();
   startGoneTimers();
   if (state.phase === 'lobby') {
     show('lobby');

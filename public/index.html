@@ -14,8 +14,10 @@
   <link rel="stylesheet" href="/courts.css">
   <link rel="stylesheet" href="/packs.css">
   <link rel="stylesheet" href="/phone.css">
+  <link rel="stylesheet" href="/watch.css">
   <link rel="stylesheet" href="/intro.css">
   <script src="/app-mode.js"></script>
+  <script src="/watch-boot.js"></script>
   <script src="/intro-boot.js"></script>
   <link rel="preload" href="/assets/terem-hatter.webp" as="image">
   <meta name="description" content="{{OG_DESC}}">
@@ -479,6 +481,8 @@
           <span class="qr-label">📞 Olvasd be – csatlakozás</span>
         </div>
         <button id="btnCopyLink" class="btn police">Link másolása Discordra</button>
+        <button id="btnCopyWatch" type="button" class="btn small ghost" title="Nézői link: a tárgyalás játékos nélkül nézhető (stream, OBS böngészőforrás)">📺 Nézői link</button>
+        <span id="spectatorChip" class="spectator-chip hidden" aria-live="polite"></span>
         <button id="btnReady" type="button" class="btn small hidden" aria-pressed="false">KÉSZEN ÁLLOK</button>
         <button id="btnAddBot" class="btn small hidden">Bot hozzáadása</button>
         <button id="btnRemoveBot" class="btn small hidden">Bot eltávolítása</button>
@@ -610,6 +614,7 @@
       <div class="info-bar">
         <span id="gameRound" class="round-badge">1. tárgyalás</span>
         <span id="gameCode" class="code-badge"></span>
+        <span id="spectatorChipGame" class="spectator-chip hidden" aria-live="polite"></span>
       <button id="btnMute" class="btn tiny">🔊</button>
       <input type="range" id="volume" min="0" max="100" value="70" class="volume">
       <button id="btnReduceMotion" class="btn tiny" title="Mozgás csökkentése" aria-label="Mozgás csökkentése" aria-pressed="false">🏃 Mozgás: TELJES</button>
@@ -697,5 +702,6 @@
   <script src="/boot-check.js"></script>
   <script src="/intro.js"></script>
   <script src="/wakelock.js"></script>
+  <script src="/watch.js"></script>
 </body>
 </html>

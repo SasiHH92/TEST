@@ -73,6 +73,7 @@
     "test:text-fit": "node test/text-fit.js",
     "test:wakelock": "node test/wakelock.js",
     "test:app-mode": "node test/app-mode.js",
+    "test:watch": "node test/watch-mode.js",
     "play:assets": "node scripts/make-play-assets.js"
   },
   "engines": {
