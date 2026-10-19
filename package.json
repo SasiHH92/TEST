@@ -77,6 +77,8 @@
     "test:turn": "node test/turn-share.js",
     "test:voice": "node test/voice.js",
     "test:badges": "node test/badges.js",
+    "test:profile": "node test/profile-dash.js",
+    "test:menu": "node test/menu-wow.js",
     "play:assets": "node scripts/make-play-assets.js"
   },
   "engines": {

@@ -1,0 +1,236 @@
+/* ============================================================
+   SAJÁT PROFIL – "bűnügyi akta" (client.js renderProfileStats, badges.js profileHtml)
+   Fejléc + pecsét, nagy számok (számlálással), szerep-kártyák (a saját avatár szerep-képeivel), ítélet-mérleg, jelvény-érmék, műveletek.
+   A belépő animáció a .pd-anim osztállyal fut (képernyőnként egyszer); --pd-el: az eddig eltelt idő, így az újrarajzolás ugyanott folytatja.
+   ============================================================ */
+@property --pdp { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+.profile-stats { display: flex; flex-direction: column; gap: 16px; min-width: 0; container: pd / inline-size; }
+/* két oszlopnál a bal oldali kártya görgetéskor a helyén marad (a jobb oldali akta hosszabb) */
+@media (min-width: 761px) { .profile-card-slot { position: sticky; top: 72px; align-self: start; } }
+
+/* ---- fejléc: cím, ügyszám, pecsét ---- */
+.pd-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 14px; }
+.pd-title { min-width: 0; }
+.pd-head h3 { font-family: var(--font-disp); font-weight: 500; font-size: 24px; letter-spacing: 4px; color: #ffe08a; text-shadow: 0 2px 14px rgba(242, 193, 78, 0.35); }
+.pd-case {
+  display: inline-block; margin-top: 4px; padding: 2px 9px; border-radius: 4px;
+  font: 500 11px var(--font-disp); letter-spacing: 2px; color: #c9a85c; border: 1px dashed rgba(201, 168, 92, 0.6);
+}
+.pd-head .ps-sub { flex-basis: 100%; display: block; font-size: 13px; color: #cdbd96; }
+.pd-stamp {
+  flex: none; margin: 4px 6px 0 0; padding: 8px 14px 7px; border-radius: 7px; transform: rotate(-7deg);
+  font: 700 16px/1.05 var(--font-disp); letter-spacing: 2.5px; text-align: center; white-space: nowrap;
+  color: #63dc8f; border: 3px double currentColor; background: rgba(8, 32, 16, 0.4);
+  box-shadow: 0 0 22px rgba(99, 220, 143, 0.18), inset 0 0 12px rgba(99, 220, 143, 0.12);
+  text-shadow: 0 0 8px rgba(99, 220, 143, 0.35);
+}
+.pd-stamp small { display: block; margin-top: 3px; font: 600 10px var(--font-body); letter-spacing: 1px; opacity: 0.85; }
+.pd-stamp.bad { color: #ff6355; background: rgba(42, 8, 6, 0.4); box-shadow: 0 0 22px rgba(255, 99, 85, 0.2), inset 0 0 12px rgba(255, 99, 85, 0.12); text-shadow: 0 0 8px rgba(255, 99, 85, 0.35); }
+.pd-stamp.new { color: #f2c14e; background: rgba(42, 30, 6, 0.4); box-shadow: 0 0 22px rgba(242, 193, 78, 0.2), inset 0 0 12px rgba(242, 193, 78, 0.12); text-shadow: 0 0 8px rgba(242, 193, 78, 0.35); }
+
+/* ---- nagy számok ---- */
+.pd-hero { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pd-big {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
+  padding: 14px 10px 12px; border-radius: 16px; min-width: 0;
+  background: radial-gradient(120% 90% at 50% 0%, rgba(242, 193, 78, 0.18), transparent 62%), linear-gradient(180deg, rgba(94, 64, 32, 0.62), rgba(30, 20, 9, 0.9));
+  border: 1px solid rgba(242, 193, 78, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 10px 20px rgba(0, 0, 0, 0.42);
+}
+.pd-big > i { font-style: normal; font-size: 28px; line-height: 1; height: 44px; display: grid; place-items: center; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55)); }
+.pd-big b { font-family: var(--font-disp); font-weight: 500; font-size: 42px; line-height: 1.05; color: #fff3d0; font-variant-numeric: tabular-nums; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5); }
+.pd-big span { font: 500 12.5px var(--font-disp); letter-spacing: 2px; text-transform: uppercase; color: #ecd9a6; }
+.pd-big small { font-size: 11.5px; color: #b6a780; }
+.pd-big.gold { border-color: var(--gold); box-shadow: 0 0 24px rgba(242, 193, 78, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 20px rgba(0, 0, 0, 0.42); }
+.pd-big.gold b { color: var(--gold); text-shadow: 0 0 18px rgba(242, 193, 78, 0.45); }
+.pd-big.gold > i { animation: pd-wobble 5s ease-in-out infinite; }
+/* fényvillanás a csempéken (lassú, ritka) */
+.pd-big::after, .pd-act::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 244, 210, 0.2) 50%, transparent 62%);
+  transform: translateX(-130%); animation: pd-shine 8s ease-in-out infinite; animation-delay: calc(var(--i, 1) * 1.3s + 2.2s);
+}
+/* győzelmi arány: gyűrű a kupa körül */
+.pd-ring {
+  position: relative; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--gold) calc(var(--pdp) * 1%), rgba(255, 255, 255, 0.1) 0);
+}
+.pd-ring::before { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #2a1b0b; box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6); }
+.pd-ring i { position: relative; font-style: normal; font-size: 20px; line-height: 1; }
+
+/* ---- apró számok ---- */
+.pd-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pd-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 8px; border-radius: 999px;
+  font-size: 12.5px; color: #e8dcbc; background: rgba(8, 12, 22, 0.55); border: 1px solid rgba(242, 193, 78, 0.28);
+}
+.pd-chip i { font-style: normal; }
+.pd-chip b { font-family: var(--font-disp); font-weight: 500; font-size: 17px; color: #fff3d0; font-variant-numeric: tabular-nums; }
+
+/* ---- szakaszcímek ---- */
+.pd-sec h4, .ps-badges h4 {
+  display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px;
+  font: 500 15px var(--font-disp); letter-spacing: 3px; color: #ffe08a;
+}
+.pd-sec h4 small, .ps-badges h4 small { font: 500 12px var(--font-body); letter-spacing: 0.5px; color: #b6a780; }
+
+/* ---- szerep-kártyák ---- */
+.pd-roles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.pd-role {
+  position: relative; isolation: isolate; overflow: hidden; aspect-ratio: 4 / 5; border-radius: 14px;
+  background: var(--rbg); border: 1px solid rgba(242, 193, 78, 0.5);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s;
+}
+.pd-role img {
+  position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 4%;
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s;
+}
+.pd-role::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 48%, rgba(10, 6, 2, 0.94) 84%); }
+.pd-role-n {
+  position: absolute; top: 7px; right: 7px; padding: 1px 9px; border-radius: 999px;
+  font: 500 15px var(--font-disp); color: #241a06; background: linear-gradient(180deg, #ffe08a, #d99a2b);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+.pd-role-n b { font: inherit; color: inherit; }
+.pd-role-cap { position: absolute; left: 4px; right: 4px; bottom: 6px; display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; }
+.pd-role-name { font: 500 15px var(--font-disp); letter-spacing: 2.5px; text-transform: uppercase; color: #fff3d0; text-shadow: 0 2px 6px #000; }
+.pd-role small { font-size: 10.5px; line-height: 1.2; color: #d6c59a; text-shadow: 0 1px 3px #000; }
+.pd-role:hover { transform: translateY(-4px); box-shadow: 0 14px 24px rgba(0, 0, 0, 0.55), 0 0 20px rgba(242, 193, 78, 0.3); }
+.pd-role:hover img { transform: scale(1.07); }
+/* a saját avatár szerep-képe (720 × 960, derékig): nagyítva, hogy az arc akkora legyen, mint az alapfiguráké */
+.pd-role img.sp { transform: scale(1.32); transform-origin: 50% 16%; }
+.pd-role:hover img.sp { transform: scale(1.4); }
+.pd-role.zero { border-color: rgba(201, 168, 92, 0.25); }
+.pd-role.zero img { filter: grayscale(1) brightness(0.5); }
+.pd-role.zero .pd-role-n { background: rgba(0, 0, 0, 0.6); color: #a8996f; box-shadow: none; }
+.pd-role.zero small { color: #8f8466; font-style: italic; }
+.r-defendant { --rbg: radial-gradient(90% 70% at 50% 28%, #d3772a, #3c1b08 78%); }
+.r-prosecutor { --rbg: radial-gradient(90% 70% at 50% 28%, #b8343a, #2e0b0c 78%); }
+.r-defender { --rbg: radial-gradient(90% 70% at 50% 28%, #3a6db8, #0c1a33 78%); }
+.r-judge { --rbg: radial-gradient(90% 70% at 50% 28%, #8a6a35, #1c130a 78%); }
+.r-witness { --rbg: radial-gradient(90% 70% at 50% 28%, #5c8a43, #152210 78%); }
+
+/* ---- ítélet-mérleg (vádlottként) ---- */
+.pd-verdict { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.pd-verdict.empty { justify-content: center; padding: 7px 10px; font-size: 12.5px; color: #b6a780; border: 1px dashed rgba(201, 168, 92, 0.35); border-radius: 10px; }
+.pdv-tag { flex: none; padding: 3px 9px; border: 2px solid currentColor; border-radius: 5px; font: 700 12px var(--font-disp); letter-spacing: 2px; transform: rotate(-3deg); }
+.pdv-tag b { font-size: 15px; }
+.pdv-tag.bad { color: #ff6b5e; }
+.pdv-tag.good { color: #6fe39a; transform: rotate(3deg); }
+.pdv-bar { flex: 1; display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6); transform-origin: 50% 50%; }
+.pdv-bar span { flex-basis: 0; }
+.pdv-bar .bad { background: linear-gradient(180deg, #ff8174, #b8251c); }
+.pdv-bar .good { background: linear-gradient(180deg, #95f2b6, #21a356); }
+
+/* ---- jelvények (badges.js) ---- */
+.pb-next {
+  display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 10px 16px; border-radius: 12px;
+  background: linear-gradient(90deg, rgba(242, 193, 78, 0.16), rgba(242, 193, 78, 0.03)); border: 1px solid rgba(242, 193, 78, 0.38);
+}
+.pb-next > i { font-style: normal; font-size: 30px; line-height: 1; filter: drop-shadow(0 0 10px rgba(242, 193, 78, 0.55)); animation: pd-bob 2.8s ease-in-out infinite; }
+.pb-next > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.pb-next b { font: 500 15px var(--font-disp); letter-spacing: 1.5px; color: #ffe08a; }
+.pb-next span { font-size: 12px; color: #cdbd96; }
+.pb-bar { display: block; height: 8px; border-radius: 999px; overflow: hidden; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6); }
+.pb-bar > span { display: block; height: 100%; min-width: 4px; border-radius: inherit; background: linear-gradient(90deg, #d99a2b, #ffe08a); box-shadow: 0 0 10px rgba(242, 193, 78, 0.6); }
+.pb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 12px 6px; }
+.pb { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; text-align: center; cursor: default; }
+.pb-m {
+  position: relative; width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(rgba(201, 168, 92, 0.75) calc(var(--pdp) * 1%), rgba(255, 255, 255, 0.08) 0);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.pb-m::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #33240f, #120c05 72%); box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7); }
+.pb-m i { position: relative; font-style: normal; font-size: 23px; line-height: 1; filter: grayscale(1); opacity: 0.4; }
+.pb b { font-size: 11px; font-weight: 700; line-height: 1.2; color: #a99c78; min-width: 0; overflow-wrap: anywhere; }
+.pb small { font-size: 10px; color: #8f8466; font-variant-numeric: tabular-nums; }
+.pb.got .pb-m { background: linear-gradient(180deg, #ffe9a6, #c98a22); box-shadow: 0 0 16px rgba(242, 193, 78, 0.45), 0 4px 8px rgba(0, 0, 0, 0.5); }
+.pb.got .pb-m::before { background: radial-gradient(circle at 50% 30%, #5b3d12, #241706 75%); }
+.pb.got .pb-m i { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); opacity: 1; }
+.pb.got b { color: #fff0c4; }
+.pb:hover .pb-m { transform: scale(1.12) rotate(-4deg); }
+
+/* ---- műveletek ---- */
+.pd-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.pd-act {
+  position: relative; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-width: 0; padding: 12px 8px 11px; border-radius: 14px; font: inherit; color: #241a06; text-align: center;
+  background: linear-gradient(180deg, #ffe39a 0%, #f2c14e 48%, #c98a22 100%); border: 1px solid #fff0b8;
+  box-shadow: 0 5px 0 #7a5212, 0 10px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.pd-act > i { font-style: normal; font-size: 27px; line-height: 1; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.pd-act b { font: 600 14px var(--font-disp); letter-spacing: 2px; line-height: 1.15; }
+.pd-act small { font-size: 11px; font-weight: 700; color: #5c3e0b; line-height: 1.2; }
+.pd-act .shop-badge { margin-left: 4px; vertical-align: 2px; }
+.pd-act:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 7px 0 #7a5212, 0 14px 24px rgba(0, 0, 0, 0.5), 0 0 24px rgba(242, 193, 78, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.75); }
+.pd-act:hover > i { transform: scale(1.2) rotate(-7deg); }
+.pd-act:active { transform: translateY(4px); box-shadow: 0 1px 0 #7a5212, 0 4px 10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
+.pd-act:focus-visible { outline: 3px solid #fff3d0; outline-offset: 3px; }
+.pd-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pd-links .ps-logout { margin-left: auto; }
+.pd-links a.btn { text-decoration: none; }
+
+/* ---- belépő animáció ---- */
+.pd-anim .pd-head, .pd-anim .pd-big, .pd-anim .pd-chips, .pd-anim .pd-sec, .pd-anim .pd-actions, .pd-anim .pd-links {
+  animation: pd-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 90ms - var(--pd-el, 0ms));
+}
+.pd-anim .pd-role { animation: pd-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(480ms + var(--j, 0) * 85ms - var(--pd-el, 0ms)); }
+.pd-anim .pd-stamp { animation: pd-stamp 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both; animation-delay: calc(950ms - var(--pd-el, 0ms)); }
+.pd-anim .pd-ring { animation: pd-fill 1.1s ease-out both; animation-delay: calc(330ms - var(--pd-el, 0ms)); }
+.pd-anim .pb-m { animation: pd-fill 1s ease-out both; animation-delay: calc(700ms - var(--pd-el, 0ms)); }
+.pd-anim .pb-bar > span { animation: pd-bar 1s ease-out both; animation-delay: calc(800ms - var(--pd-el, 0ms)); }
+.pd-anim .pdv-bar { animation: pd-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(700ms - var(--pd-el, 0ms)); }
+@keyframes pd-in { from { opacity: 0; transform: translateY(14px); } }
+@keyframes pd-pop { from { opacity: 0; transform: translateY(20px) scale(0.9); } }
+@keyframes pd-stamp { 0% { opacity: 0; transform: rotate(-7deg) scale(2.3); } 60% { opacity: 1; transform: rotate(-7deg) scale(0.92); } 100% { opacity: 1; transform: rotate(-7deg) scale(1); } }
+@keyframes pd-fill { from { --pdp: 0; } }
+@keyframes pd-bar { from { width: 0; } }
+@keyframes pd-grow { from { transform: scaleX(0); } }
+@keyframes pd-shine { 0%, 72% { transform: translateX(-130%); } 88%, 100% { transform: translateX(130%); } }
+@keyframes pd-wobble { 0%, 86%, 100% { transform: rotate(0); } 90% { transform: rotate(-12deg) scale(1.08); } 95% { transform: rotate(9deg) scale(1.08); } }
+@keyframes pd-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .pd-big::after, .pd-act::after, .pd-big.gold > i, .pb-next > i { animation: none; }
+  .pd-role, .pd-role img, .pd-act, .pd-act > i, .pb-m { transition: none; }
+}
+
+/* ---- keskeny akta (a jobb oldali oszlop szélessége szerint: konténer-lekérdezés) ---- */
+@media (max-width: 1100px) { .pd-big b { font-size: 36px; } }
+@container pd (max-width: 640px) {
+  .pd-hero { gap: 8px; }
+  .pd-big { padding: 10px 4px 9px; border-radius: 13px; }
+  .pd-big > i { font-size: 22px; height: 36px; }
+  .pd-ring { width: 36px; height: 36px; }
+  .pd-ring i { font-size: 16px; }
+  .pd-big b { font-size: 30px; }
+  .pd-big span { font-size: 11px; letter-spacing: 1px; }
+  .pd-big small { font-size: 10.5px; }
+  .pd-roles { gap: 7px; }
+  .pd-role-name { font-size: 12.5px; letter-spacing: 1.5px; }
+  .pd-role small { font-size: 9.5px; }
+  .pd-act b { font-size: 12.5px; letter-spacing: 1.2px; }
+  .pd-links .ps-logout { margin-left: 0; }
+}
+@container pd (max-width: 520px) {
+  .pd-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .pd-act b { font-size: 14px; letter-spacing: 2px; }
+}
+@container pd (max-width: 440px) {
+  .pd-head h3 { font-size: 19px; letter-spacing: 2.5px; }
+  .pd-stamp { font-size: 11px; letter-spacing: 1px; padding: 5px 7px 4px; margin: 2px 2px 0 0; }
+  .pd-stamp small { font-size: 9px; }
+  /* a szerep-kártyák soronként hárman (az utolsó sor középre), hogy a név és a felirat elférjen */
+  .pd-roles { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .pd-role { flex: 0 0 calc((100% - 16px) / 3); }
+  .pd-role-name { font-size: 13px; letter-spacing: 1.5px; }
+  .pd-role small { font-size: 10px; }
+  .pd-verdict { gap: 8px; }
+  .pdv-tag { font-size: 10.5px; letter-spacing: 1px; padding: 2px 6px; }
+  .pb-grid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 10px 4px; }
+  .pb-m { width: 44px; height: 44px; }
+  .pb-m i { font-size: 20px; }
+  .pb b { font-size: 10.5px; }
+}

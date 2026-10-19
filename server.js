@@ -355,6 +355,24 @@ app.get('/api/config', (req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.json({ lobbyBots: LOBBY_BOTS, voice: VOICE_ENABLED });
 });
+// ÉLŐ számok a főmenühöz: csak összesítés (folyó tárgyalások, gyülekező szobák, kapcsolódó játékosok – botok nélkül), név / kód nélkül; 5 mp-es gyorsítótár
+let liveCache = { at: 0, data: null };
+app.get('/api/live', (req, res) => {
+  const now = Date.now();
+  if (!liveCache.data || now - liveCache.at > 5000) {
+    let playing = 0, lobbies = 0, players = 0;
+    for (const g of rooms.values()) {
+      let humans = 0;
+      for (const p of g.players.values()) if (!p.isBot && p.connected) humans++;
+      if (!humans) continue;
+      players += humans;
+      if (g.phase === 'lobby') lobbies++; else playing++;
+    }
+    liveCache = { at: now, data: { playing, lobbies, players } };
+  }
+  res.set('Cache-Control', 'no-cache');
+  res.json(liveCache.data);
+});
 app.get('/api/role-sprites', (req, res) => {
   const now = Date.now();
   if (!roleSpriteCache.data || now - roleSpriteCache.at > 60 * 1000) roleSpriteCache = { at: now, data: scanRoleSprites() };

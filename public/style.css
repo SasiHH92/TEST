@@ -2895,43 +2895,13 @@ svg.pin-threads path { stroke: #b3353a; opacity: 0.7; }
 }
 .card-links .account-connections button { border-radius: 999px; padding: 5px 11px; min-height: 0; }
 .card-links .account-connections button:hover { border-color: var(--gold); color: #ffe08a; }
-.ps-logout { margin-left: auto; }
 .profile-card-slot .mug-card { width: 100%; max-width: 270px; }
-
-.profile-stats { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.ps-head h3 { font-family: var(--font-disp); font-weight: 500; font-size: 20px; letter-spacing: 3px; color: #ffe08a; }
-.ps-sub { display: block; font-size: 13px; color: #cdbd96; margin-top: 2px; }
-.st-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 10px; }
-.st-tile {
-  display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;
-  padding: 12px 8px 10px; border-radius: 13px;
-  background: linear-gradient(180deg, rgba(94, 64, 32, 0.55), rgba(40, 26, 12, 0.75));
-  border: 1px solid rgba(242, 193, 78, 0.4);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(0, 0, 0, 0.35);
-}
-.st-tile i { font-style: normal; font-size: 20px; line-height: 1; }
-.st-tile b { font-family: var(--font-disp); font-weight: 500; font-size: 30px; line-height: 1.1; color: #fff3d0; }
-.st-tile b small { font-size: 13px; color: #cdbd96; font-weight: 400; }
-.st-tile span { font-size: 11.5px; letter-spacing: 0.4px; color: #cdbd96; line-height: 1.25; }
-.st-tile.gold { border-color: var(--gold); box-shadow: 0 0 16px rgba(242, 193, 78, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
-.st-tile.gold b { color: var(--gold); }
-.st-tile.bad b { color: #ffb9b4; }
-.st-tile.good b { color: #aef2c0; }
-.ps-roles { display: flex; flex-wrap: wrap; gap: 8px; }
-.ps-role {
-  font-size: 12.5px; color: #e8dcbc; padding: 5px 12px; border-radius: 999px;
-  background: rgba(8, 12, 22, 0.55); border: 1px solid rgba(242, 193, 78, 0.28);
-}
-.ps-role b { color: #fff3d0; }
-.ps-role small { color: #b6a780; }
-.ps-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; }
+/* a jobb oldali akta (statisztika, szerepek, jelvények, műveletek): public/profile.css */
 
 @media (max-width: 760px) {
   .profile-dash { grid-template-columns: 1fr; padding: 14px; }
   .profile-card-slot .mug-card { max-width: 300px; }
   .card-links { max-width: 300px; }
-  .ps-logout { margin-left: 0; }
-  .st-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .section-title { letter-spacing: 2px; gap: 10px; }
 }
 
@@ -4107,13 +4077,4 @@ body[data-screen="lobby"] .bug-fab { bottom: 52px; }
 .kb-badge { font-size: 15px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); cursor: default; }
 .kb-badge-more { font: 800 10px var(--font-disp, sans-serif); color: #e8d5a2; padding: 1px 5px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); }
 .mug-badges { display: flex; justify-content: center; margin: 2px 0 0; }
-.ps-badges { margin: 12px 0 4px; }
-.ps-badges h4 { margin: 0 0 6px; font: 800 13px var(--font-disp, sans-serif); letter-spacing: 2px; color: var(--gold, #f2c14e); }
-.ps-badges h4 small { color: #c9b98f; letter-spacing: 1px; }
-.pb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-.pb { display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 6px; align-items: center; padding: 5px 8px; border-radius: 8px;
-  background: rgba(9, 12, 20, 0.45); border: 1px solid rgba(214, 184, 115, 0.25); opacity: 0.45; filter: grayscale(1); }
-.pb.got { opacity: 1; filter: none; border-color: rgba(242, 193, 78, 0.7); background: rgba(60, 40, 12, 0.55); }
-.pb i { grid-row: 1 / span 2; font-style: normal; font-size: 20px; text-align: center; }
-.pb b { font-size: 12px; color: #fff3d6; min-width: 0; overflow-wrap: anywhere; }
-.pb span { font-size: 10.5px; color: #c9c2ad; min-width: 0; overflow-wrap: anywhere; }
+

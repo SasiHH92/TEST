@@ -255,7 +255,7 @@
   function renderAccount() {
     const dock=$('#accountDock'),screen=document.body.dataset.screen;
     const target=screen==='name'?document.querySelector('.station-header'):
-      screen==='menu'?document.querySelector('#screen-menu .wood-panel'):null;
+      screen==='menu'?document.querySelector('#screen-menu .mm-account'):null;
     // A sáv csak a vendégnek kell (Bejelentkezés); a fiókos játékos a profiljánál találja a Kijelentkezést.
     dock.classList.toggle('hidden',!target||!!account);
     if(target&&dock.parentNode!==target) target.appendChild(dock);

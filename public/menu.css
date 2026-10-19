@@ -1,0 +1,423 @@
+/* ============================================================
+   FŐMENÜ – "a tárgyalóterem előcsarnoka" (index.html #screen-menu, public/menu.js)
+   Háttér: a terem képe (a beégetett felirat nélkül: a kép felső ~32%-a a képernyőn kívül, mint a játékban), lassú ráközelítés, fénysugarak, szálló por, vignetta.
+   Bal oldal: cím (aranyfény), szlogen, "belépsz mint" + ÉLŐ sáv, RENDKÍVÜLI hírszalag, nagy kártyák (új tárgyalás, csatlakozás, kártyaműhely, szabályok), linkek.
+   Jobb oldal: színpad – a saját figura reflektorfényben, váltakozó szerepekben, névtáblával.
+   Belépő (.mm-enter, képernyőnként egyszer) + kalapácsütés (.mm-thud); egérrel 3D-dőlés (.tilt). Csökkentett mozgásnál nincs animáció.
+   ============================================================ */
+#screen-menu.mm.active { display: block; padding: 0; background: #0b0604; }
+.mm { position: relative; min-height: 100dvh; overflow-x: hidden; isolation: isolate; }
+.mm .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- háttér ---- */
+.mm-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: #0b0604; }
+/* a kép 1672 × 941; a felső 300 px-ben a beégetett cím: a kép magassága a képernyő 147%-a, alulra igazítva (261vh = 1,47 × 1672 / 941 × 100vh) */
+.mm-bg-img {
+  position: absolute; left: 50%; bottom: 0; width: max(100vw, 261vh); height: auto; max-width: none;
+  transform: translateX(-50%); transform-origin: 50% 100%; filter: blur(1.5px) saturate(1.05);
+  animation: mm-drift 36s ease-in-out infinite alternate;
+}
+.mm-vignette {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(90% 80% at 72% 42%, transparent 0%, rgba(8, 4, 2, 0.3) 46%, rgba(6, 3, 1, 0.9) 100%),
+    linear-gradient(90deg, rgba(8, 4, 2, 0.88) 0%, rgba(8, 4, 2, 0.55) 38%, rgba(8, 4, 2, 0.12) 70%, rgba(8, 4, 2, 0.35) 100%),
+    linear-gradient(180deg, rgba(8, 4, 2, 0.5) 0%, transparent 25%, transparent 70%, rgba(8, 4, 2, 0.75) 100%);
+}
+.mm-rays {
+  position: absolute; left: 72%; top: -12%; width: 1400px; height: 1400px; transform: translateX(-50%); transform-origin: 50% 0;
+  background: repeating-conic-gradient(from 150deg at 50% 0%, rgba(255, 214, 140, 0.09) 0deg 3deg, transparent 3deg 11deg);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 72%); mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 72%);
+  mix-blend-mode: screen; animation: mm-sway 16s ease-in-out infinite alternate;
+}
+.mm-dust {
+  position: absolute; inset: 0; opacity: 0.7;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 22%, rgba(255, 232, 170, 0.9), transparent 70%),
+    radial-gradient(1.2px 1.2px at 34% 68%, rgba(255, 232, 170, 0.8), transparent 70%),
+    radial-gradient(2px 2px at 58% 38%, rgba(255, 220, 150, 0.7), transparent 70%),
+    radial-gradient(1.3px 1.3px at 76% 82%, rgba(255, 240, 200, 0.85), transparent 70%),
+    radial-gradient(1.8px 1.8px at 90% 14%, rgba(255, 226, 160, 0.75), transparent 70%);
+  background-size: 420px 420px; animation: mm-dust 46s linear infinite;
+}
+.mm-dust.b { opacity: 0.45; background-size: 260px 260px; animation-duration: 30s; filter: blur(0.6px); }
+
+/* ---- elrendezés ---- */
+.mm-wrap {
+  position: relative; display: grid; align-content: center; column-gap: 44px; row-gap: 14px;
+  grid-template-columns: minmax(420px, 580px) minmax(300px, 1fr);
+  grid-template-areas: "head stage" "news stage" "acts stage" "side stage";
+  max-width: 1280px; min-height: 100dvh; margin: 0 auto; padding: 72px 40px 26px;
+}
+.mm-head { grid-area: head; min-width: 0; }
+.mm-news { grid-area: news; }
+.mm-actions { grid-area: acts; }
+.mm-side { grid-area: side; }
+.mm-stage { grid-area: stage; }
+
+/* ---- fejléc ---- */
+.mm .mm-logo {
+  font-size: clamp(46px, 5.4vw, 78px); line-height: 1.16; letter-spacing: 6px; text-shadow: none;
+  padding: 0.2em 0; margin: -0.2em 0 0; /* (a betűk teljes magassága – ékezetek, ív – a dobozban: a háttér-kivágás a dobozon kívül levágná őket) */
+  transform-origin: 0 0; /* a belépő nagyítása a cím tetejétől: a teteje nem mozdul (telefonon az ⓘ gomb alá érne) */
+  background: linear-gradient(100deg, #b8862b 0%, #ffe9a8 20%, #f2c14e 38%, #fff7da 50%, #d99a2b 62%, #ffe39a 80%, #b8862b 100%);
+  background-size: 260% 100%; -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 3px 0 #4a3410) drop-shadow(0 12px 26px rgba(0, 0, 0, 0.65));
+  animation: mm-gold 7s linear infinite;
+}
+.mm-tag { margin: 0; font-size: 15.5px; letter-spacing: 0.4px; color: #eadbb4; text-shadow: 0 2px 8px #000; }
+.mm-who-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 14px; }
+.mm .menu-who { width: auto; max-width: 100%; margin: 0; padding: 6px 18px 6px 6px; border-radius: 999px; background: rgba(20, 12, 6, 0.74); backdrop-filter: blur(6px); }
+.mm .menu-who .mw-av { width: 46px; height: 46px; }
+.mm-live {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 6px 14px; border-radius: 999px;
+  font-size: 12.5px; color: #f3e3c0; background: rgba(12, 8, 6, 0.74); border: 1px solid rgba(255, 96, 84, 0.5); backdrop-filter: blur(6px);
+}
+.mm-live b { font: 500 13px var(--font-disp); letter-spacing: 2px; color: #ff6b5e; }
+.mm-live-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: #ff4b3e; animation: mm-pulse 1.6s ease-out infinite; }
+
+/* ---- hírszalag ---- */
+.mm-news { display: flex; align-items: center; height: 36px; border-radius: 10px; overflow: hidden; background: rgba(10, 6, 4, 0.8); border: 1px solid rgba(242, 193, 78, 0.35); }
+.mm-news-label { flex: none; align-self: stretch; display: grid; place-items: center; padding: 0 14px; font: 500 13px var(--font-disp); letter-spacing: 3px; color: #fff; background: linear-gradient(180deg, #d8352a, #9e1e16); }
+.mm-news-track { position: relative; flex: 1; align-self: stretch; overflow: hidden; }
+.mm-news-txt { position: absolute; left: 100%; top: 50%; white-space: nowrap; font-size: 14px; font-weight: 600; color: #f3e3c0; transform: translateY(-50%); animation: mm-news 16s linear infinite; }
+
+/* ---- kártyák ---- */
+.mm-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; perspective: 1100px; }
+.mm-card {
+  --rx: 0deg; --ry: 0deg;
+  position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; padding: 16px 18px; border-radius: 18px;
+  font: inherit; text-align: left; color: #fff3d0; cursor: pointer;
+  background: linear-gradient(135deg, rgba(60, 40, 18, 0.95), rgba(22, 14, 7, 0.96)); border: 1px solid rgba(242, 193, 78, 0.55);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: rotateX(var(--rx)) rotateY(var(--ry)); transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.mm-card.tilt { transition: transform 0.08s linear, box-shadow 0.3s ease, border-color 0.3s ease; }
+.mm-card::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
+  background: radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 244, 210, 0.26), transparent 62%);
+}
+.mm-card.tilt::after { opacity: 1; }
+.mm-card:hover { border-color: #ffe08a; box-shadow: 0 22px 42px rgba(0, 0, 0, 0.6), 0 0 28px rgba(242, 193, 78, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+.mm-card:focus-visible { outline: 3px solid #fff3d0; outline-offset: 3px; }
+.mm-txt { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mm-txt small { font: 500 11.5px var(--font-disp); letter-spacing: 3px; color: #d9b25a; }
+.mm-txt b { font: 500 26px/1.05 var(--font-disp); letter-spacing: 3px; }
+.mm-txt i { font-style: normal; font-size: 13px; line-height: 1.3; color: #e2d3ac; }
+.mm-art { position: absolute; bottom: 0; pointer-events: none; z-index: 0; }
+.mm-art img { position: absolute; bottom: 0; width: auto; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5)); transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* új tárgyalás: arany, a szereplők kilógnak a kártya tetején */
+.mm-create {
+  grid-column: 1 / -1; min-height: 132px; padding: 18px 292px 18px 24px; color: #241a06;
+  background: linear-gradient(180deg, #ffe8a6 0%, #f2c14e 46%, #c98a22 100%); border: 1px solid #fff0b8;
+  box-shadow: 0 7px 0 #7a5212, 0 18px 34px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  animation: mm-glow 2.8s ease-in-out infinite;
+}
+.mm-create::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%) no-repeat; background-size: 250% 100%;
+  animation: mm-sheen 5.5s ease-in-out infinite 2s;
+}
+.mm-create:hover { border-color: #fff6d2; }
+.mm-create .mm-txt small { color: #6b4710; }
+.mm-create .mm-txt b { font-size: 40px; color: #241a06; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55); }
+.mm-create .mm-txt i { color: #4a3109; font-weight: 600; }
+.mm-cast { right: 62px; height: 168px; width: 220px; }
+.mm-cast img:nth-child(1) { right: 0; height: 82%; }
+.mm-cast img:nth-child(2) { right: 64px; height: 100%; z-index: 2; }
+.mm-cast img:nth-child(3) { right: 132px; height: 88%; }
+.mm-create:hover .mm-cast img:nth-child(1) { transform: translateX(8px) rotate(3deg); }
+.mm-create:hover .mm-cast img:nth-child(2) { transform: translateY(-6px) scale(1.04); }
+.mm-create:hover .mm-cast img:nth-child(3) { transform: translateX(-8px) rotate(-3deg); }
+.mm-go {
+  position: absolute; right: 16px; top: 50%; z-index: 3; width: 42px; height: 42px; margin-top: -21px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 18px; color: #ffe08a; background: #241a06; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mm-create:hover .mm-go { transform: translateX(4px) scale(1.1); }
+
+/* csatlakozás: kód + gomb, a tanú jelentkezik */
+.mm-join { grid-column: 1 / -1; flex-wrap: wrap; column-gap: 18px; row-gap: 8px; padding: 16px 150px 16px 22px; cursor: default; }
+.mm-join .mm-txt b { font-size: 26px; }
+.mm-witness { right: 18px; width: 120px; height: 150px; }
+.mm-witness img { right: 0; height: 100%; }
+.mm-join:hover .mm-witness img { transform: translateY(-5px) rotate(-2deg); }
+.mm-code { display: flex; flex: 1 1 280px; gap: 10px; min-width: 0; position: relative; z-index: 1; }
+.mm #codeInput {
+  width: 136px; flex: none; min-height: 50px; padding: 6px 0 6px 12px; border-radius: 12px; text-align: center;
+  font: 500 26px var(--font-disp); letter-spacing: 12px; color: #ffe08a;
+  background: rgba(6, 4, 2, 0.7); border: 2px dashed rgba(242, 193, 78, 0.7); box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.mm #codeInput::placeholder { color: rgba(242, 193, 78, 0.45); letter-spacing: 6px; }
+.mm #codeInput:focus { outline: none; border-style: solid; border-color: #ffe08a; box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(242, 193, 78, 0.25); }
+.mm-join-btn {
+  flex: 1; min-width: 0; min-height: 50px; padding: 0 12px; border-radius: 12px; cursor: pointer;
+  font: 600 15px var(--font-disp); letter-spacing: 2px; color: #241a06;
+  background: linear-gradient(180deg, #ffe39a, #f2c14e 48%, #c98a22); border: 1px solid #fff0b8; box-shadow: 0 4px 0 #7a5212, 0 8px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s ease;
+}
+.mm-join-btn:hover { filter: brightness(1.07); }
+.mm-join-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #7a5212, 0 4px 8px rgba(0, 0, 0, 0.4); }
+.mm-join-btn::after { content: ' ▸'; }
+.mm-join-btn.ready { animation: mm-ready 1.1s ease-in-out infinite; }
+.mm-join .error { flex-basis: 100%; margin: 0; min-height: 0; position: relative; z-index: 1; }
+.mm-join .error:empty { display: none; }
+
+/* kártyaműhely + szabályok */
+.mm-small { min-height: 104px; }
+.mm-fan { position: relative; flex: none; width: 92px; height: 78px; }
+.mm-mini {
+  position: absolute; left: 18px; top: 2px; width: 56px; height: 74px; padding: 5px 5px 4px; border-radius: 6px; overflow: hidden;
+  font: 700 7.5px/1.2 var(--font-body); color: #3a2a14; background: linear-gradient(180deg, #f8ebc8, #e6cf98);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45); transform-origin: 50% 110%; transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mm-mini small { display: block; margin-bottom: 3px; padding-bottom: 2px; font: 600 6.5px var(--font-disp); letter-spacing: 1px; border-bottom: 1px solid currentColor; }
+.mm-mini.ev small { color: #b3261e; }
+.mm-mini.ch { background: repeating-linear-gradient(-45deg, #d8352a 0 4px, #f2c14e 4px 8px) top / 100% 6px no-repeat, linear-gradient(180deg, #f8ebc8, #e6cf98); padding-top: 9px; }
+.mm-mini.ch small { color: #9e1e16; }
+.mm-mini.al small { color: #7a4a12; }
+.mm-mini.ev { transform: rotate(-16deg) translateX(-10px); }
+.mm-mini.ch { transform: rotate(0deg); z-index: 2; }
+.mm-mini.al { transform: rotate(16deg) translateX(10px); }
+.mm-packs:hover .mm-mini.ev { transform: rotate(-24deg) translateX(-16px) translateY(-4px); }
+.mm-packs:hover .mm-mini.ch { transform: translateY(-8px); }
+.mm-packs:hover .mm-mini.al { transform: rotate(24deg) translateX(16px) translateY(-4px); }
+.mm-q {
+  flex: none; width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 36px var(--font-disp); color: #241a06; background: radial-gradient(circle at 35% 30%, #fff1c2, #f2c14e 55%, #b07a1f);
+  box-shadow: 0 0 0 4px rgba(242, 193, 78, 0.22), 0 8px 18px rgba(0, 0, 0, 0.5); animation: mm-bob 3.2s ease-in-out infinite;
+}
+.mm-small .mm-txt b { font-size: 19px; letter-spacing: 2px; }
+.mm-howto.first-visit { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(242, 193, 78, 0.35), 0 14px 30px rgba(0, 0, 0, 0.55); }
+
+/* a 🐞 Hibajelentés a menüben a bal felső kapcsolók (🔊 🏃) mellett: lent a kártyákra / a linkekre esne */
+body[data-screen="menu"] .bug-fab { top: 12px; bottom: auto; left: calc(118px + var(--safe-l, 0px)); }
+@media (max-width: 520px) { body[data-screen="menu"] .bug-fab { top: 10px; left: calc(104px + var(--safe-l, 0px)); } }
+
+/* linkek */
+.mm-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mm-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mm-links .btn { text-decoration: none; background: rgba(14, 9, 5, 0.7); backdrop-filter: blur(4px); }
+.mm-links .account-dock { margin: 0; }
+.mm-hint { margin: 0; font-size: 12px; color: #bba985; text-shadow: 0 1px 4px #000; }
+.mm .discord-link-box { margin: 0; }
+
+/* ---- színpad ---- */
+.mm-stage { position: relative; min-height: 540px; align-self: stretch; }
+.mm-spot {
+  position: absolute; left: 50%; top: -90px; bottom: 40px; width: 640px; transform: translateX(-50%); pointer-events: none;
+  background: conic-gradient(from 180deg at 50% 0%, rgba(255, 236, 190, 0.34) 0deg, rgba(255, 226, 160, 0.16) 11deg, transparent 21deg, transparent 339deg, rgba(255, 226, 160, 0.16) 349deg, rgba(255, 236, 190, 0.34) 360deg);
+  -webkit-mask-image: linear-gradient(180deg, #000 35%, transparent 100%); mask-image: linear-gradient(180deg, #000 35%, transparent 100%);
+  filter: blur(4px); mix-blend-mode: screen; animation: mm-flicker 9s linear infinite;
+}
+.mm-floor { position: absolute; left: 50%; bottom: 26px; width: 440px; height: 80px; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(255, 214, 140, 0.5), transparent); filter: blur(3px); }
+.mm-hero {
+  position: absolute; left: 50%; bottom: 36px; height: min(70vh, 620px); width: auto; max-width: 100%; opacity: 0;
+  transform: translateX(-50%) translateY(16px) scale(0.97);
+  -webkit-mask-image: linear-gradient(180deg, #000 80%, transparent 100%); mask-image: linear-gradient(180deg, #000 80%, transparent 100%);
+  filter: drop-shadow(0 22px 30px rgba(0, 0, 0, 0.6));
+  transition: opacity 0.38s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1); /* rövid áttűnés: a két szerep-kép ne lebegjen sokáig egymáson */
+}
+.mm-hero:not(.sprite) { height: min(50vh, 430px); bottom: 60px; } /* az alapfigurák kisebb felbontásúak */
+.mm-hero.on { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); animation: mm-breathe 4.6s ease-in-out 1s infinite alternate; }
+.mm-plate {
+  position: absolute; left: 50%; bottom: 0; z-index: 2; min-width: 290px; padding: 9px 26px 11px; transform: translateX(-50%); text-align: center; perspective: 400px;
+  border-radius: 14px; background: linear-gradient(180deg, rgba(42, 27, 12, 0.96), rgba(20, 13, 6, 0.97)); border: 1px solid var(--gold);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6), 0 0 24px rgba(242, 193, 78, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.mm-plate small { display: block; font: 500 11px var(--font-disp); letter-spacing: 3px; color: #c9a85c; }
+.mm-role { display: block; font: 500 34px/1.05 var(--font-disp); letter-spacing: 7px; color: #ffe08a; text-shadow: 0 0 18px rgba(242, 193, 78, 0.5); }
+.mm-role-sub { display: block; font-style: normal; font-size: 12.5px; color: #e2d3ac; }
+.mm-plate.flip .mm-role, .mm-plate.flip .mm-role-sub { animation: mm-flip 0.6s cubic-bezier(0.2, 1.4, 0.4, 1); }
+
+/* ---- belépő ---- */
+.mm-enter .mm-bg-img { animation: mm-zoom 2s cubic-bezier(0.22, 1, 0.36, 1) both, mm-drift 36s ease-in-out 2s infinite alternate; }
+.mm-enter .mm-logo { animation: mm-drop 0.55s cubic-bezier(0.55, 0, 0.75, 0.2) 0.15s both, mm-gold 7s linear infinite; }
+.mm-enter .mm-tag { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.8s both; }
+.mm-enter .mm-who-row { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.9s both; }
+.mm-enter .mm-news { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1s both; }
+.mm-enter .mm-stage { animation: mm-rise 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both; }
+.mm-enter .mm-spot { animation: mm-spot-on 1.3s linear 0.3s both, mm-flicker 9s linear 1.6s infinite; }
+.mm-enter .mm-card { animation: mm-fly 0.75s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(0.6s + var(--k, 0) * 0.1s); }
+.mm-enter .mm-create { animation: mm-fly 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.6s both, mm-glow 2.8s ease-in-out 1.4s infinite; }
+.mm-join { --k: 1; }
+.mm-packs { --k: 2; }
+.mm-howto { --k: 3; }
+.mm-enter .mm-side { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.15s both; }
+.mm-thud .mm-wrap { animation: mm-shake 0.34s linear; }
+.mm-thud .mm-head { animation: mm-flash 0.5s ease-out; } /* (a cím saját animációját nem cseréljük: a .mm-thud levételekor újraindulna a belépő) */
+
+@keyframes mm-drift { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-51.2%) scale(1.05); } }
+@keyframes mm-zoom { from { transform: translateX(-50%) scale(1.16); filter: blur(1.5px) brightness(0.25); } to { transform: translateX(-50%) scale(1); filter: blur(1.5px) saturate(1.05); } }
+@keyframes mm-sway { from { transform: translateX(-50%) rotate(-4deg); } to { transform: translateX(-50%) rotate(4deg); } }
+@keyframes mm-dust { to { background-position: 60px -840px, -40px -840px, 30px -840px, -60px -840px, 20px -840px; } }
+@keyframes mm-gold { from { background-position: 100% 0; } to { background-position: -160% 0; } }
+@keyframes mm-pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 75, 62, 0.7); } 100% { box-shadow: 0 0 0 9px rgba(255, 75, 62, 0); } }
+@keyframes mm-news { from { left: 100%; transform: translate(0, -50%); } to { left: 0; transform: translate(-100%, -50%); } }
+@keyframes mm-glow {
+  0%, 100% { box-shadow: 0 7px 0 #7a5212, 0 18px 34px rgba(0, 0, 0, 0.55), 0 0 0 0 rgba(242, 193, 78, 0), inset 0 1px 0 rgba(255, 255, 255, 0.8); }
+  50% { box-shadow: 0 7px 0 #7a5212, 0 18px 34px rgba(0, 0, 0, 0.55), 0 0 36px 6px rgba(242, 193, 78, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.8); }
+}
+@keyframes mm-sheen { 0%, 60% { background-position: 160% 0; } 85%, 100% { background-position: -60% 0; } }
+@keyframes mm-ready { 0%, 100% { box-shadow: 0 4px 0 #7a5212, 0 8px 14px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(242, 193, 78, 0.6); } 50% { box-shadow: 0 4px 0 #7a5212, 0 8px 14px rgba(0, 0, 0, 0.4), 0 0 0 7px rgba(242, 193, 78, 0); } }
+@keyframes mm-bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-4px) rotate(-6deg); } }
+@keyframes mm-flicker { 0%, 100% { opacity: 1; } 46% { opacity: 1; } 47% { opacity: 0.82; } 48% { opacity: 1; } 71% { opacity: 0.92; } 72% { opacity: 1; } }
+@keyframes mm-breathe { from { transform: translateX(-50%) translateY(0) scale(1); } to { transform: translateX(-50%) translateY(-5px) scale(1.012); } }
+@keyframes mm-flip { from { transform: rotateX(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mm-drop { 0% { opacity: 0; transform: scale(1.18); } 70% { opacity: 1; } 100% { opacity: 1; transform: none; } } /* (csak nagyítás: telefonon fentről esve az ⓘ gomb alá csúszna) */
+@keyframes mm-up { from { opacity: 0; transform: translateY(16px); } }
+@keyframes mm-rise { from { opacity: 0; transform: translateY(70px); } }
+@keyframes mm-spot-on { 0% { opacity: 0; } 20% { opacity: 0.8; } 26% { opacity: 0.1; } 40% { opacity: 1; } 46% { opacity: 0.4; } 60%, 100% { opacity: 1; } }
+@keyframes mm-fly { from { opacity: 0; transform: translateX(60px) rotateY(-20deg); } }
+@keyframes mm-shake { 0%, 100% { transform: none; } 20% { transform: translate(-3px, 2px); } 40% { transform: translate(3px, -2px); } 60% { transform: translate(-2px, 1px); } 80% { transform: translate(2px, 0); } }
+@keyframes mm-flash { 0% { filter: brightness(1.7); } 100% { filter: brightness(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mm *, .mm *::before, .mm *::after { animation: none !important; transition: none !important; }
+  .mm-hero.on { transform: translateX(-50%); }
+}
+
+/* ---- gépen, alacsonyabb képernyőn (1536 × 864, 1366 × 768, 1280 × 720): tömörebb, hogy egy képernyőre férjen ---- */
+@media (min-width: 1000px) and (max-height: 900px) {
+  .mm-wrap { padding: 60px 40px 10px; row-gap: 10px; }
+  .mm .mm-logo { font-size: clamp(42px, 4.4vw, 56px); }
+  .mm-tag { font-size: 14.5px; }
+  .mm-who-row { margin-top: 10px; }
+  .mm .menu-who .mw-av { width: 40px; height: 40px; }
+  .mm-news { height: 32px; }
+  .mm-actions { gap: 12px; }
+  .mm-create { min-height: 108px; padding-top: 14px; padding-bottom: 14px; }
+  .mm-create .mm-txt b { font-size: 36px; }
+  .mm-cast { height: 146px; width: 200px; }
+  .mm-cast img:nth-child(2) { right: 58px; }
+  .mm-cast img:nth-child(3) { right: 118px; }
+  .mm-join { padding-top: 11px; padding-bottom: 12px; row-gap: 6px; }
+  .mm-join .mm-txt b { font-size: 23px; }
+  .mm-witness { height: 130px; }
+  .mm #codeInput, .mm-join-btn { min-height: 44px; }
+  .mm-small { min-height: 84px; padding-top: 12px; padding-bottom: 12px; }
+  .mm-hint { display: none; }
+  .mm-hero { height: min(66vh, 560px); }
+  .mm-links .btn { padding: 7px 12px; font-size: 12px; }
+}
+@media (min-width: 1000px) and (max-height: 760px) {
+  .mm-wrap { padding-top: 56px; row-gap: 9px; }
+  .mm .mm-logo { font-size: clamp(40px, 4vw, 48px); }
+  .mm-who-row { margin-top: 7px; }
+  .mm .menu-who { padding: 3px 14px 3px 3px; }
+  .mm .menu-who .mw-av { width: 36px; height: 36px; }
+  .mm-news { height: 28px; }
+  .mm-create { min-height: 96px; padding-top: 11px; padding-bottom: 11px; }
+  .mm-create .mm-txt b { font-size: 32px; }
+  .mm-cast { height: 130px; }
+  .mm-join { padding-top: 9px; padding-bottom: 10px; }
+  .mm-join .mm-txt b { font-size: 21px; }
+  .mm-witness { height: 116px; }
+  .mm #codeInput, .mm-join-btn { min-height: 40px; }
+  .mm #codeInput { font-size: 22px; }
+  .mm-small { min-height: 74px; padding-top: 9px; padding-bottom: 9px; }
+  .mm-fan { height: 66px; }
+  .mm-mini { height: 64px; }
+  .mm-q { width: 50px; height: 50px; font-size: 28px; }
+}
+
+/* ---- tablet / álló telefon: egy oszlop (a színpad a cím alatt) ---- */
+@media (max-width: 999px) {
+  .mm-wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "stage" "news" "acts" "side"; max-width: 640px; padding: 70px 18px 24px; row-gap: 14px; align-content: start; }
+  .mm-head { text-align: center; }
+  .mm .mm-logo { transform-origin: 50% 0; }
+  .mm-who-row { justify-content: center; }
+  .mm-vignette { background: radial-gradient(110% 70% at 50% 30%, transparent 0%, rgba(8, 4, 2, 0.45) 55%, rgba(6, 3, 1, 0.92) 100%), linear-gradient(180deg, rgba(8, 4, 2, 0.35), rgba(8, 4, 2, 0.75) 60%, rgba(8, 4, 2, 0.92)); }
+  .mm-rays { left: 50%; }
+  .mm-stage { min-height: 330px; }
+  .mm-spot { width: 420px; top: -40px; bottom: 30px; }
+  .mm-floor { width: 320px; bottom: 22px; }
+  .mm-hero { height: 300px; bottom: 30px; }
+  .mm-hero:not(.sprite) { height: 250px; bottom: 44px; }
+}
+@media (max-width: 560px) {
+  .mm-wrap { padding: 66px 14px 22px; row-gap: 12px; }
+  .mm .mm-logo { font-size: 40px; letter-spacing: 4px; }
+  .mm-tag { font-size: 13.5px; }
+  .mm-stage { min-height: 290px; }
+  .mm-hero { height: 262px; }
+  .mm-hero:not(.sprite) { height: 220px; }
+  .mm-plate { min-width: 230px; padding: 7px 18px 9px; }
+  .mm-role { font-size: 26px; letter-spacing: 5px; }
+  .mm-role-sub { font-size: 11.5px; }
+  .mm-actions { gap: 12px; }
+  /* telefonon két figura (vádlott + védő) fér el a felirat mellett */
+  .mm-create { min-height: 116px; padding: 16px 166px 16px 18px; }
+  .mm-create .mm-txt b { font-size: 27px; letter-spacing: 1.5px; }
+  .mm-create .mm-txt i { font-size: 12px; }
+  .mm-cast { right: 50px; width: 116px; height: 128px; }
+  .mm-cast img:nth-child(2) { right: 38px; }
+  .mm-cast img:nth-child(3) { display: none; }
+  .mm-go { right: 10px; width: 36px; height: 36px; margin-top: -18px; font-size: 16px; }
+  .mm-join { padding: 14px 16px; }
+  .mm-join .mm-txt { padding-right: 96px; }
+  .mm-witness { right: 10px; top: -22px; bottom: auto; width: 92px; height: 116px; }
+  .mm-code { flex-basis: 100%; }
+  .mm-join-btn { white-space: nowrap; font-size: 14px; letter-spacing: 1px; padding: 0 8px; }
+  .mm-small { flex-direction: column; justify-content: center; gap: 8px; text-align: center; padding: 14px 10px; min-height: 0; }
+  .mm-small .mm-txt { align-items: center; }
+  .mm-small .mm-txt b { font-size: 15px; letter-spacing: 1.2px; }
+  .mm-small .mm-txt i { font-size: 11.5px; }
+  .mm-fan { width: 84px; height: 70px; }
+  .mm-mini { left: 14px; width: 50px; height: 66px; }
+  .mm-q { width: 52px; height: 52px; font-size: 30px; }
+  .mm-links { justify-content: center; }
+  .mm-hint { text-align: center; }
+}
+
+/* ---- fekvő telefon: két oszlop, kisebb színpad ---- */
+@media (orientation: landscape) and (max-height: 520px) {
+  .mm-wrap {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr); grid-template-areas: "head stage" "news stage" "acts stage" "side stage";
+    max-width: none; padding: 56px calc(16px + var(--safe-r, 0px)) 16px calc(16px + var(--safe-l, 0px)); column-gap: 16px; row-gap: 10px; align-content: start;
+  }
+  .mm-head { text-align: left; }
+  .mm .mm-logo { transform-origin: 0 0; }
+  .mm-who-row { justify-content: flex-start; margin-top: 8px; }
+  .mm .mm-logo { font-size: 34px; letter-spacing: 4px; }
+  .mm-tag { font-size: 12.5px; }
+  .mm .menu-who { padding: 3px 12px 3px 3px; }
+  .mm .menu-who .mw-av { width: 34px; height: 34px; }
+  .mm-stage { position: sticky; top: 0; min-height: 0; height: calc(100dvh - 20px); }
+  .mm-spot { width: 300px; top: -60px; }
+  .mm-floor { width: 220px; bottom: 30px; }
+  .mm-hero, .mm-hero:not(.sprite) { height: calc(100dvh - 110px); bottom: 44px; }
+  .mm-plate { min-width: 0; width: 100%; padding: 5px 8px 6px; }
+  .mm-plate small { font-size: 9px; letter-spacing: 1.5px; }
+  .mm-role { font-size: 20px; letter-spacing: 3px; }
+  .mm-role-sub { display: none; }
+  .mm-actions { gap: 10px; }
+  .mm-create { min-height: 92px; padding: 12px 190px 12px 16px; }
+  .mm-create .mm-txt b { font-size: 28px; }
+  .mm-cast { right: 56px; width: 160px; height: 118px; }
+  .mm-cast img:nth-child(2) { right: 46px; }
+  .mm-cast img:nth-child(3) { right: 94px; }
+  .mm-join { padding: 10px 110px 10px 16px; }
+  .mm-join .mm-txt b { font-size: 22px; }
+  .mm-witness { width: 84px; height: 110px; right: 12px; }
+  .mm #codeInput, .mm-join-btn { min-height: 44px; }
+  .mm-small { min-height: 72px; padding: 10px 12px; gap: 10px; }
+  .mm-small .mm-txt b { font-size: 15px; letter-spacing: 1.2px; }
+  .mm-small .mm-txt i { font-size: 11px; }
+  .mm-fan { width: 70px; height: 58px; }
+  .mm-mini { left: 12px; width: 42px; height: 56px; font-size: 6px; }
+  .mm-q { width: 44px; height: 44px; font-size: 26px; }
+  .mm-news { height: 30px; }
+  .mm-news-txt { font-size: 12.5px; }
+  .mm-hint { display: none; }
+}
+/* kis fekvő telefon (640–760 px széles): két figura a felirat mellett */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 760px) {
+  .mm-create { padding-right: 172px; }
+  .mm-create .mm-txt b { font-size: 25px; letter-spacing: 1.5px; }
+  .mm-cast { width: 116px; }
+  .mm-cast img:nth-child(2) { right: 38px; }
+  .mm-cast img:nth-child(3) { display: none; }
+}

@@ -1400,57 +1400,86 @@ function renderMugGrid() {
   observeMotion(grid);
 }
 
-// Profil-statisztika: a saját számok csempékben + szerepek szerinti bontás + a profil módosítása.
-function statTile(icon, label, value, cls) {
-  return '<div class="st-tile' + (cls ? ' ' + cls : '') + '"><i aria-hidden="true">' + icon + '</i><b>' + value + '</b><span>' + label + '</span></div>';
+// SAJÁT PROFIL – "bűnügyi akta": pecsét, nagy számok, szerep-képek (a saját avatár szerep-képei, ennek hiányában a szerepek alapfigurái),
+// ítélet-mérleg, jelvények, műveletek. A belépő animáció képernyőnként egyszer fut; a gyakori újrarajzolás (statisztika, pénztárca, barátkérés)
+// nem indítja újra, hanem ugyanazon az órán folytatja (--pd-el: az eltelt idő, a számlálók is ebből számolnak).
+const PROFILE_FX = { name: '', start: 0, raf: 0 };
+const PD_FX_MS = 1700;
+document.addEventListener('kb:screen', (e) => { if (e.detail !== 'name') PROFILE_FX.name = ''; });
+const PD_ROLES = [
+  { key: 'vadlott', role: 'defendant', img: 'vadlott.png', name: 'Vádlott', sub: (v) => v('artatlan') + ' felmentve · ' + v('bunos') + ' elítélve' },
+  { key: 'ugyesz', role: 'prosecutor', img: 'ugyesz.png', name: 'Ügyész', sub: (v) => v('ugyeszSiker') + ' elítélést ért el' },
+  { key: 'vedo', role: 'defender', img: 'vedougyved.png', name: 'Védő', sub: (v) => v('vedoSiker') + ' felmentést ért el' },
+  { key: 'biro', role: 'judge', img: 'biro.png', name: 'Bíró', sub: () => 'a kalapács ura' },
+  { key: 'tanu', role: 'witness', img: 'tanu.png', name: 'Tanú', sub: () => 'eskü alatt vallott' }
+];
+// a szerep képe: a saját avatár szerep-képe, ha van (asset-first), különben a szerep alapfigurája
+function pdRoleImg(avatar, r) {
+  const sp = window.kbAvatarRoles && AVATARS.includes(avatar) ? window.kbAvatarRoles.spriteFor(avatar, r.role) : null;
+  return sp ? '<img class="sp" src="' + sp + '" alt="" loading="lazy" decoding="async">' : '<img src="/assets/' + r.img + '" alt="" loading="lazy" decoding="async">';
 }
+// a számláló: a végérték a szövegben (animáció nélkül is helyes), data-count = cél, data-d = késleltetés (ms)
+const pdNum = (n, d) => '<b data-count="' + n + '" data-d="' + (d || 0) + '">' + n + '</b>';
 
 function renderProfileStats(me) {
   const box = $('#profileStats');
   if (!box) return;
   const s = PERSONAL_STATS.name === me.nev ? PERSONAL_STATS.stats : null;
   const v = (k) => (s && typeof s[k] === 'number' ? s[k] : 0);
-  const pct = (a, b) => (b ? Math.round((100 * a) / b) + '%' : '–');
+  const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
   const played = v('jatek') > 0 || v('korok') > 0;
   const shopState = window.kbShop ? window.kbShop.state() : null;
   const ready = window.kbShop ? window.kbShop.readyCount() : 0;
   const friendReq = window.kbFriends ? window.kbFriends.requestCount() : 0;
   if (window.kbShop) window.kbShop.refresh(); // (a névválasztó megnyitásakor frissíti a pénztárcát és a küldetéseket)
+  let h = 0; for (const ch of me.nev) h = (h * 31 + ch.codePointAt(0)) % 9000;
+  const stamp = !played ? { cls: 'new', t: 'ÚJ GYANÚSÍTOTT' }
+    : v('bunos') ? { cls: 'bad', t: 'BÜNTETETT ELŐÉLETŰ', sub: v('bunos') + '× elítélve' } : { cls: 'good', t: 'BÜNTETLEN ELŐÉLETŰ', sub: 'egyelőre…' };
+  const winP = pct(v('gyozelem'), v('jatek'));
+  const wallet = shopState ? shopState.wallet : null;
+  const verdicts = v('bunos') + v('artatlan');
   box.innerHTML =
-    '<div class="ps-head"><h3>STATISZTIKA</h3>' +
-      '<span class="ps-sub">' + (played ? 'A bűnügyi nyilvántartás szerint ennyit tettél eddig.' : 'Még nem játszottál végig egy játékot – az első után itt megjelennek a számaid.') + '</span></div>' +
-    '<div class="st-grid">' +
-      statTile('🎮', 'Lejátszott játék', v('jatek')) +
-      statTile('🏆', 'Győzelem', v('gyozelem') + (v('jatek') ? ' <small>(' + pct(v('gyozelem'), v('jatek')) + ')</small>' : ''), 'gold') +
-      statTile('🍪', 'Pogácsa (pénztárca)', shopState ? shopState.wallet : '–', 'gold') +
-      statTile('⭐', 'Összpontszám', v('pont')) +
-      statTile('⚖️', 'Lejátszott kör', v('korok')) +
-      statTile('🔨', 'Elítélve (vádlottként)', v('bunos') + '×', 'bad') +
-      statTile('🕊️', 'Felmentve (vádlottként)', v('artatlan') + '×', 'good') +
-      statTile('🏅', 'Díj', v('dijak')) +
-      statTile('🎭', 'Teljesített kihívás', v('kihivas')) +
-      statTile('📈', 'Felmentési arány', pct(v('artatlan'), v('vadlott')), 'good') +
-      statTile('🗡️', 'Megnyert ügy (ügyész/védő)', v('ugyeszSiker') + v('vedoSiker')) +
-      statTile('🥠', 'Összes szerzett pogácsa', shopState ? shopState.earned : '–', 'gold') +
+    '<div class="pd-head" style="--i:0"><div class="pd-title"><h3>BŰNÜGYI AKTA</h3><span class="pd-case">Ügyszám: KB-' + (1000 + h) + '/' + new Date().getFullYear() + '</span></div>' +
+      '<span class="pd-stamp ' + stamp.cls + '">' + stamp.t + (stamp.sub ? '<small>' + stamp.sub + '</small>' : '') + '</span>' +
+      '<span class="ps-sub">' + (played ? 'A nyilvántartás szerint ennyit tettél eddig.' : 'Még nem játszottál végig egy játékot – az első után itt megjelennek a számaid.') + '</span></div>' +
+    '<div class="pd-hero">' +
+      '<div class="pd-big" style="--i:1"><i aria-hidden="true">🎮</i>' + pdNum(v('jatek'), 0) + '<span>Lejátszott játék</span><small>' + v('korok') + ' kör a teremben</small></div>' +
+      '<div class="pd-big win" style="--i:2"><span class="pd-ring" style="--pdp:' + winP + '" aria-hidden="true"><i>🏆</i></span>' + pdNum(v('gyozelem'), 80) +
+        '<span>Győzelem</span><small>' + (v('jatek') ? winP + '% győzelmi arány' : 'még nincs győzelem') + '</small></div>' +
+      '<div class="pd-big gold" style="--i:3"><i aria-hidden="true">🍪</i>' + (wallet == null ? '<b>–</b>' : pdNum(wallet, 160)) + '<span>Pogácsa</span><small>' + (shopState ? 'összesen ' + shopState.earned + ' szerzett' : 'a pénztárcád') + '</small></div>' +
     '</div>' +
-    '<div class="ps-roles">' +
-      '<span class="ps-role">⚖️ Vádlottként <b>' + v('vadlott') + '×</b> <small>(felmentési arány ' + pct(v('artatlan'), v('vadlott')) + ')</small></span>' +
-      '<span class="ps-role">🗡️ Ügyészként <b>' + v('ugyesz') + '×</b> <small>(elítélést ért el: ' + v('ugyeszSiker') + '×)</small></span>' +
-      '<span class="ps-role">🛡️ Védőként <b>' + v('vedo') + '×</b> <small>(felmentést ért el: ' + v('vedoSiker') + '×)</small></span>' +
-      '<span class="ps-role">👨‍⚖️ Bíróként <b>' + v('biro') + '×</b></span>' +
-      '<span class="ps-role">🧑‍💼 Tanúként <b>' + v('tanu') + '×</b></span>' +
+    '<div class="pd-chips" style="--i:4">' +
+      '<span class="pd-chip"><i aria-hidden="true">⭐</i>' + pdNum(v('pont'), 200) + ' pont</span>' +
+      '<span class="pd-chip"><i aria-hidden="true">🗡️</i>' + pdNum(v('ugyeszSiker') + v('vedoSiker'), 240) + ' megnyert ügy</span>' +
+      '<span class="pd-chip"><i aria-hidden="true">🏅</i>' + pdNum(v('dijak'), 280) + ' díj</span>' +
+      '<span class="pd-chip"><i aria-hidden="true">🎭</i>' + pdNum(v('kihivas'), 320) + ' teljesített kihívás</span>' +
     '</div>' +
-    (window.kbBadges ? window.kbBadges.profileHtml(s) : '') +
-    '<div class="ps-actions">' +
-      '<button type="button" id="btnProfileEdit" class="btn">✎ PROFIL MÓDOSÍTÁSA</button>' +
-      '<button type="button" id="btnShopOpen" class="btn">🛒 BOLT</button>' +
-      '<button type="button" id="btnQuestsOpen" class="btn">📜 NAPI KÜLDETÉSEK' + (ready ? ' <i class="shop-badge">' + ready + '</i>' : '') + '</button>' +
-      '<button type="button" id="btnFriendsOpen" class="btn">👥 BARÁTOK' + (friendReq ? ' <i class="shop-badge">' + friendReq + '</i>' : '') + '</button>' +
-      '<button type="button" id="btnRankOpen" class="btn">🏆 RANGLISTA</button>' +
-      '<a id="btnSupportOpen" class="btn" href="/tamogatas">❤️ TÁMOGATÁS</a>' +
-      '<a id="discordInviteProfile" class="btn" href="https://discord.gg/yyG7hH4aEB" target="_blank" rel="noopener noreferrer">💬 DISCORD</a>' +
-      '<button type="button" id="btnLogout" class="btn ghost ps-logout">⎋ KIJELENTKEZÉS</button>' +
+    '<div class="pd-sec" style="--i:5"><h4>SZEREPEIM <small>hányszor álltál a teremben</small></h4><div class="pd-roles">' +
+      PD_ROLES.map((r, i) => '<div class="pd-role r-' + r.role + (v(r.key) ? '' : ' zero') + '" style="--j:' + i + '">' +
+        pdRoleImg(me.avatar, r) +
+        '<span class="pd-role-n">' + pdNum(v(r.key), 360 + i * 70) + '×</span>' +
+        '<span class="pd-role-cap"><span class="pd-role-name">' + r.name + '</span><small>' + (v(r.key) ? r.sub(v) : 'még nem volt') + '</small></span></div>').join('') +
+    '</div>' +
+    (verdicts ? '<div class="pd-verdict" aria-label="Ítéletek vádlottként: ' + v('bunos') + ' bűnös, ' + v('artatlan') + ' felmentve">' +
+        '<span class="pdv-tag bad">BŰNÖS <b>' + v('bunos') + '</b></span>' +
+        '<span class="pdv-bar"><span class="bad" style="flex-grow:' + v('bunos') + '"></span><span class="good" style="flex-grow:' + v('artatlan') + '"></span></span>' +
+        '<span class="pdv-tag good"><b>' + v('artatlan') + '</b> FELMENTVE</span></div>'
+      : '<div class="pd-verdict empty">⚖️ A vádlottak padján még nem ültél – az ítéleteid itt jelennek meg.</div>') +
+    '</div>' +
+    '<div class="pd-sec" style="--i:6">' + (window.kbBadges ? window.kbBadges.profileHtml(s) : '') + '</div>' +
+    '<div class="pd-actions" style="--i:7">' +
+      '<button type="button" id="btnShopOpen" class="pd-act"><i aria-hidden="true">🛒</i><b>BOLT</b><small>' + (wallet == null ? 'keretek, kártyahátak' : '🍪 ' + wallet + ' pogácsád van') + '</small></button>' +
+      '<button type="button" id="btnQuestsOpen" class="pd-act"><i aria-hidden="true">📜</i><b>NAPI KÜLDETÉSEK' + (ready ? ' <i class="shop-badge">' + ready + '</i>' : '') + '</b><small>' + (ready ? ready + ' jutalom átvehető!' : 'a mai feladataid') + '</small></button>' +
+      '<button type="button" id="btnFriendsOpen" class="pd-act"><i aria-hidden="true">👥</i><b>BARÁTOK' + (friendReq ? ' <i class="shop-badge">' + friendReq + '</i>' : '') + '</b><small>' + (friendReq ? friendReq + ' új jelölés' : 'meghívás, üzenetek') + '</small></button>' +
+      '<button type="button" id="btnRankOpen" class="pd-act"><i aria-hidden="true">🏆</i><b>RANGLISTA</b><small>a hét legjobbjai</small></button>' +
+    '</div>' +
+    '<div class="pd-links" style="--i:8">' +
+      '<button type="button" id="btnProfileEdit" class="btn small ghost">✎ Profil módosítása</button>' +
+      '<a id="btnSupportOpen" class="btn small ghost" href="/tamogatas">❤️ Támogatás</a>' +
+      '<a id="discordInviteProfile" class="btn small ghost" href="https://discord.gg/yyG7hH4aEB" target="_blank" rel="noopener noreferrer">💬 Discord</a>' +
+      '<button type="button" id="btnLogout" class="btn small ghost ps-logout">⎋ Kijelentkezés</button>' +
     '</div>';
+  pdFx(box, me.nev);
   const rankBtn = $('#btnRankOpen');
   if (rankBtn) rankBtn.addEventListener('click', () => window.kbRanking && window.kbRanking.open('heti'));
   const friendsBtn = $('#btnFriendsOpen');
@@ -1462,6 +1491,28 @@ function renderProfileStats(me) {
   const shopBtn = $('#btnShopOpen'), questBtn = $('#btnQuestsOpen');
   if (shopBtn) shopBtn.addEventListener('click', () => window.kbShop && window.kbShop.open('shop'));
   if (questBtn) questBtn.addEventListener('click', () => window.kbShop && window.kbShop.open('quests'));
+}
+
+// a belépő animáció: képernyőnként egyszer (csak ha a névválasztó látszik); újrarajzoláskor ugyanott folytatódik
+function pdFx(box, name) {
+  let reduce = false;
+  try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { /* */ }
+  if (!reduce && document.body.dataset.screen === 'name' && PROFILE_FX.name !== name) { PROFILE_FX.name = name; PROFILE_FX.start = performance.now(); }
+  const el = performance.now() - PROFILE_FX.start;
+  cancelAnimationFrame(PROFILE_FX.raf);
+  if (reduce || PROFILE_FX.name !== name || el >= PD_FX_MS) { box.classList.remove('pd-anim'); return; }
+  box.style.setProperty('--pd-el', Math.round(el) + 'ms');
+  box.classList.add('pd-anim');
+  const tick = () => {
+    const t = performance.now() - PROFILE_FX.start, done = t >= PD_FX_MS;
+    for (const n of box.querySelectorAll('[data-count]')) {
+      const k = done ? 1 : Math.max(0, Math.min(1, (t - 250 - (+n.dataset.d || 0)) / 900));
+      n.textContent = String(Math.round(+n.dataset.count * (1 - Math.pow(1 - k, 3))));
+    }
+    if (done) box.classList.remove('pd-anim');
+    else PROFILE_FX.raf = requestAnimationFrame(tick);
+  };
+  tick();
 }
 
 // A saját (fiókhoz tartozó) kártyával lépünk be: a szobában a profil szövegei látszanak.
@@ -1529,14 +1580,15 @@ $('#btnGuestGo').addEventListener('click', () => {
   }
   const prior = GUEST_PRIORS.length ? GUEST_PRIORS[Math.floor(Math.random() * GUEST_PRIORS.length)] : 'Előélete tiszta. Túl tiszta.';
   // Foglalt név (regisztrált vagy nyilvántartott játékosé) nem használható: a szerver dönt (és a belépéskor is ellenőrzi).
-  socket.emit('check_name', { name, guest: true }, (res) => {
+  // Az azonosítás (identify) után kérdezünk: bejelentkezés után a saját fióknév különben "regisztrált játékosé" hibát kapna, amíg a socket még vendég.
+  afterIdentified(() => socket.emit('check_name', { name, guest: true }, (res) => {
     if (res && res.error) { $('#guestPrior').textContent = '❌ ' + res.error; return; }
     CHOSEN = { nev: name, profile: false, titulus: 'Ismeretlen tettes', priusz: prior };
     MY.name = name;
     LS.setItem('kb_name', name);
     show('menu');
     autoConnectAfterName();
-  });
+  }));
 });
 
 $('#btnChangeSuspect').addEventListener('click', () => {

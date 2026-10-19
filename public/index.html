@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="/cinema.css">
   <link rel="stylesheet" href="/courts.css">
   <link rel="stylesheet" href="/packs.css">
+  <link rel="stylesheet" href="/profile.css">
+  <link rel="stylesheet" href="/menu.css">
   <link rel="stylesheet" href="/phone.css">
   <link rel="stylesheet" href="/watch.css">
   <link rel="stylesheet" href="/intro.css">
@@ -443,25 +445,66 @@
   </div>
 
   <!-- ===================== MENÜ (szoba létrehozása / csatlakozás) ===================== -->
-  <div id="screen-menu" class="screen screen-station">
+  <!-- ===================== FŐMENÜ: A TÁRGYALÓTEREM ELŐCSARNOKA (public/menu.js, menu.css) ===================== -->
+  <div id="screen-menu" class="screen screen-station mm">
     <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
-    <div class="wood-panel">
-      <h1 class="logo small">KAMU BÍRÓSÁG</h1>
-      <div id="menuWho" class="menu-who hidden" aria-live="polite"></div>
-      <button id="btnCreate" class="btn big full">ÚJ TÁRGYALÁS INDÍTÁSA<br><small>(új szoba)</small></button>
-      <div class="divider">vagy</div>
-      <label for="codeInput">Csatlakozás meghívó kóddal:</label>
-      <input id="codeInput" maxlength="4" placeholder="pl. KRA7" style="text-transform:uppercase">
-      <button id="btnJoin" class="btn big full">BELÉPÉS A TEREMBE</button>
-      <p id="menuError" class="error"></p>
-      <p class="hint">Tipp: a szoba linkjét be lehet másolni a Discordra, aki rákattint, azonnal csatlakozik.</p>
-      <button id="btnHowTo" type="button" class="btn small ghost howto-btn" data-help>❓ Hogyan kell játszani?</button>
-      <button id="btnPacks" type="button" class="btn small ghost" data-packs="mine">🃏 Kártyaműhely: saját csomagok</button>
-      <div class="discord-link-box hidden" aria-live="polite"></div>
-      <div id="courtMine" class="discord-link-box court-mine hidden" aria-live="polite"></div>
-      <button id="btnChangeSuspect" class="btn small ghost">↩ Másik gyanúsított vagyok</button>
-      <a class="btn small ghost support-link" href="/tamogatas">❤️ Támogasd a Kamu Bíróságot</a>
-      <a id="discordInviteMenu" class="btn small ghost discord-invite" href="https://discord.gg/yyG7hH4aEB" target="_blank" rel="noopener noreferrer">💬 Csatlakozz a Discordhoz</a>
+    <div class="mm-bg" aria-hidden="true"><img class="mm-bg-img" src="/assets/terem-hatter.webp" alt=""><span class="mm-rays"></span><span class="mm-dust"></span><span class="mm-dust b"></span><span class="mm-vignette"></span></div>
+    <div class="mm-wrap">
+      <header class="mm-head">
+        <h1 class="logo mm-logo">KAMU BÍRÓSÁG</h1>
+        <p class="mm-tag">Itt mindenki bűnös. Csak az a kérdés, miben.</p>
+        <div class="mm-who-row">
+          <div id="menuWho" class="menu-who hidden" aria-live="polite"></div>
+          <p id="mmLive" class="mm-live" aria-live="polite"><span class="mm-live-dot" aria-hidden="true"></span><b>ÉLŐ</b> <span class="mm-live-txt">a terem nyitva</span></p>
+        </div>
+      </header>
+
+      <section class="mm-stage" aria-hidden="true">
+        <span class="mm-spot"></span>
+        <span class="mm-floor"></span>
+        <img class="mm-hero a" alt="" decoding="async">
+        <img class="mm-hero b" alt="" decoding="async">
+        <span class="mm-plate"><small>EZ A KÖR A TIÉD LEHET:</small><b class="mm-role">BÍRÓ</b><i class="mm-role-sub">Kalapács a kézben, te döntesz.</i></span>
+      </section>
+
+      <nav class="mm-actions" aria-label="Főmenü">
+        <button id="btnCreate" type="button" class="mm-card mm-create">
+          <span class="mm-art mm-cast" aria-hidden="true"><img src="/assets/vedougyved.png" alt=""><img src="/assets/vadlott.png" alt=""><img src="/assets/ugyesz.png" alt=""></span>
+          <span class="mm-txt"><small>HÁZIGAZDA LESZEL</small><b>ÚJ TÁRGYALÁS</b><i>Nyiss szobát, hívd be a haverokat</i></span>
+          <span class="mm-go" aria-hidden="true">▸</span>
+        </button>
+        <div class="mm-card mm-join">
+          <span class="mm-art mm-witness" aria-hidden="true"><img src="/assets/tanu.png" alt=""></span>
+          <span class="mm-txt"><small>VAN MEGHÍVÓD?</small><b>CSATLAKOZÁS</b></span>
+          <div class="mm-code">
+            <label for="codeInput" class="sr-only">Csatlakozás meghívó kóddal</label>
+            <input id="codeInput" maxlength="4" placeholder="KÓD" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase">
+            <button id="btnJoin" type="button" class="mm-join-btn">BELÉPÉS A TEREMBE</button>
+          </div>
+          <p id="menuError" class="error"></p>
+        </div>
+        <button id="btnPacks" type="button" class="mm-card mm-small mm-packs" data-packs="mine">
+          <span class="mm-fan" aria-hidden="true"><span class="mm-mini ev"><small>BIZONYÍTÉK</small>A vádlott Google-előzményei</span><span class="mm-mini ch"><small>KIHÍVÁS</small>Mondd el rapben!</span><span class="mm-mini al"><small>ALIBI</small>Épp aludtam. Állítólag.</span></span>
+          <span class="mm-txt"><b>KÁRTYAMŰHELY</b><i>Írd meg a saját vádjaidat</i></span>
+        </button>
+        <button id="btnHowTo" type="button" class="mm-card mm-small mm-howto howto-btn" data-help>
+          <span class="mm-q" aria-hidden="true">?</span>
+          <span class="mm-txt"><b>HOGYAN KELL JÁTSZANI?</b><i>2 perc, és érted</i></span>
+        </button>
+      </nav>
+
+      <div class="mm-side">
+        <div class="discord-link-box hidden" aria-live="polite"></div>
+        <div id="courtMine" class="discord-link-box court-mine hidden" aria-live="polite"></div>
+        <div class="mm-links mm-account">
+          <button id="btnChangeSuspect" class="btn small ghost">↩ Másik gyanúsított vagyok</button>
+          <a class="btn small ghost support-link" href="/tamogatas">❤️ Támogatás</a>
+          <a id="discordInviteMenu" class="btn small ghost discord-invite" href="https://discord.gg/yyG7hH4aEB" target="_blank" rel="noopener noreferrer">💬 Discord</a>
+        </div>
+        <p class="hint mm-hint">Tipp: a szoba linkjét be lehet másolni a Discordra – aki rákattint, azonnal csatlakozik.</p>
+      </div>
+
+      <div class="mm-news" aria-hidden="true"><span class="mm-news-label">RENDKÍVÜLI</span><span class="mm-news-track"><span class="mm-news-txt"></span></span></div>
     </div>
   </div>
 
@@ -711,5 +754,6 @@
   <script src="/watch.js"></script>
   <script src="/turn-alert.js"></script>
   <script src="/voice.js"></script>
+  <script src="/menu.js"></script>
 </body>
 </html>
