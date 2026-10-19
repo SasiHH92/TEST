@@ -79,6 +79,33 @@ async function test(name, work) {
       assert.equal(await page.evaluate(() => sessionStorage.getItem('kb_bootRetry')), null);
     });
 
+    // "vissza" gomb a frissítés után: a böngésző a gyorsítótárból egy régebbi oldalt hoz vissza, a szkriptek már az újak → a client.js egy hiányzó
+    // elemnél félúton megáll (régen: utána a belépés "Cannot access 'identSeq' before initialization" hibára futott). A régi oldalt itt egy kivett
+    // gombbal utánozzuk (a client.js betöltéskor köti a kezelőjét).
+    const oldPage = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8').replace('<button id="btnLeaveLobby" class="btn small ghost">KILÉPÉS</button>', '');
+    await test('régi oldal + új szkript (félbeszakadt client.js): egyszer automatikusan újratölt, a friss oldallal rendben betölt, a belépés működik', async () => {
+      assert.ok(!oldPage.includes('id="btnLeaveLobby"'), 'a "régi oldal" utánzata kész');
+      const page = await newPage();
+      const errors = []; page.on('pageerror', (e) => errors.push(e.message));
+      let loads = 0;
+      await page.route((u) => u.pathname === '/', (route) => { loads++; if (loads === 1) route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: oldPage }); else route.continue(); });
+      await page.goto(BASE + '/');
+      await page.waitForFunction(() => window.KB_CLIENT_READY === true && document.body.dataset.screen === 'auth', null, { timeout: 15000 });
+      assert.equal(loads, 2, 'egyszer újratöltött');
+      assert.equal(await page.isVisible('#bootFail'), false);
+      const firstErrors = errors.length; // (az első, régi oldal hibája várt)
+      await page.click('#authGuest'); await page.waitForFunction(() => document.body.dataset.screen === 'name', null, { timeout: 10000 });
+      assert.deepEqual(errors.slice(firstErrors), [], 'a friss oldalon nincs hiba (identSeq sem)');
+    });
+    await test('ha az újratöltés után is félbeszakad a client.js: üzenet + gomb (nem marad félig működő oldal)', async () => {
+      const page = await newPage();
+      await page.route((u) => u.pathname === '/', (route) => route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: oldPage }));
+      await page.route('**/api/client-error', (route) => route.fulfill({ status: 204 }));
+      await page.goto(BASE + '/');
+      await page.waitForSelector('#bootFail', { timeout: 15000 });
+      assert.equal(await page.isVisible('#bootFail button'), true);
+    });
+
     await test('a socket.io nem töltődik be: ugyanúgy üzenetet kapunk', async () => {
       const page = await newPage();
       await page.route('**/socket.io/socket.io.js', (route) => route.abort('failed'));

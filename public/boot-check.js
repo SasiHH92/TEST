@@ -14,6 +14,7 @@
     const out = [];
     if (!ok(() => typeof io !== 'undefined')) out.push('socket.io');
     if (!ok(() => typeof $ !== 'undefined' && typeof socket !== 'undefined' && socket)) out.push('client.js');
+    else if (!ok(() => window.KB_CLIENT_READY === true)) out.push('client.js (félbeszakadt: régi oldal + új szkript?)'); // a client.js elindult, de nem futott végig
     if (!ok(() => 'kbAccount' in window)) out.push('auth.js');
     return out;
   }

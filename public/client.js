@@ -1742,8 +1742,9 @@ $('#btnCopyLink').addEventListener('click', () => {
 
 // MEGOSZTÁS (telefon / Play-alkalmazás): a rendszer megosztás-ablaka (Discord, Messenger, Viber…) a szobalinkkel. Csak ott látszik, ahol van
 // Web Share API; ha a megosztás nem sikerül (de nem a játékos szakította meg), a link a vágólapra kerül.
-if (navigator.share) $('#btnShareLink').classList.remove('hidden');
-$('#btnShareLink').addEventListener('click', async () => {
+const shareBtn = $('#btnShareLink'); // (régebbi, gyorsítótárból visszahozott oldalon nincs ilyen gomb: a kód ne álljon meg)
+if (shareBtn && navigator.share) shareBtn.classList.remove('hidden');
+if (shareBtn) shareBtn.addEventListener('click', async () => {
   const url = location.origin + '/?room=' + MY.code;
   try {
     await navigator.share({ title: 'Kamu Bíróság', text: 'Gyere a tárgyalásra! ⚖️ Szobakód: ' + MY.code, url });
@@ -1754,7 +1755,8 @@ $('#btnShareLink').addEventListener('click', async () => {
 });
 
 // NÉZŐI LINK: a tárgyalás játékos nélkül nézhető (stream nézői, OBS böngészőforrás) – /?watch=KÓD
-$('#btnCopyWatch').addEventListener('click', () => {
+const watchBtn = $('#btnCopyWatch');
+if (watchBtn) watchBtn.addEventListener('click', () => {
   const url = location.origin + '/?watch=' + MY.code;
   const done = () => { showToast('📺 Nézői link kimásolva – a stream nézői (vagy az OBS) ezzel nézhetik a tárgyalást.'); };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => showToast('📺 Nézői link: ' + url));
@@ -3894,5 +3896,8 @@ $('#accusationTicker').addEventListener('keydown', e => { if (e.key === 'Enter' 
 // A panelek és a névtáblák méretváltozását csak egy közös RAF méri.
 if(window.ResizeObserver) {
   const hudObserver=new ResizeObserver(scheduleSceneLayout);
-  ['scenePanel','accusationTicker','myCardsBar','judgeWatchBar'].forEach(id=>hudObserver.observe(document.getElementById(id)));
+  ['scenePanel','accusationTicker','myCardsBar','judgeWatchBar'].forEach(id=>{ const el=document.getElementById(id); if(el) hudObserver.observe(el); });
 }
+// A client.js végigfutott (a fájl LEGVÉGÉN kell maradnia). A boot-check.js figyeli: ha hiányzik, a szkript félúton megállt – pl. a böngésző "vissza" gombja
+// a gyorsítótárból egy régebbi oldalt hozott vissza az új szkriptekkel –, és egyszeri újratöltéssel helyreáll (különben pl. a belépés "identSeq" hibára futna).
+window.KB_CLIENT_READY = true;
