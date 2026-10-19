@@ -389,7 +389,9 @@ class Game {
       autoAdvance: this.autoAdvance ? {...this.autoAdvance} : null,
       autoStopped: this.autoStopped,
       objectionPending: this.objectionPending,
-      spectators: this.watchers || 0 // NÉZŐ MÓD: hányan nézik a szobát (a szerver tartja nyilván)
+      spectators: this.watchers || 0, // NÉZŐ MÓD: hányan nézik a szobát (a szerver tartja nyilván)
+      // JÁTÉKBELI HANG (béta): a szerver engedi (voiceAllowed), a házigazda bekapcsolta (voiceOn); kik vannak bent (peers), legfeljebb max fő
+      voice: this.voiceAllowed ? { on: !!this.voiceOn, peers: this.voiceOn ? [...(this.voicePeers || [])] : [], max: this.voiceMax || 8 } : null
     };
 
     if (this.phase === PHASES.GAME_OVER) base.gameOver = this.finalResults();
@@ -1761,6 +1763,7 @@ class Game {
   handleDisconnect(playerId) {
     const p = this.players.get(playerId);
     if (!p || p.kickedOut) return;
+    if (this.voicePeers) this.voicePeers.delete(playerId); // a hangból is kikerül (visszatérve a kliens újra csatlakozik)
     p.connected = false;
     p.goneSince = Date.now();
     if (this.phase === PHASES.OBJECTION && this.roundData?.currentJudgeId === playerId &&
@@ -2019,6 +2022,7 @@ class Game {
     if (!p || p.kickedOut) return false;
     this.kickedIds.add(targetId);
     this.kickedNames.add(p.name.toLowerCase());
+    if (this.voicePeers) this.voicePeers.delete(targetId);
     this.archivedPlayers.set(targetId, {...p, isHost:false, connected:false, sessionToken:undefined});
     p.kickedOut = true;
     p.connected = false;
@@ -2037,6 +2041,7 @@ class Game {
   handleLeave(playerId) {
     const p = this.players.get(playerId);
     if (!p) return;
+    if (this.voicePeers) this.voicePeers.delete(playerId);
     p.connected = false;
     p.goneSince = Date.now();
     if (this.phase !== PHASES.LOBBY) this.archivedPlayers.set(playerId, {...p, isHost:false, connected:false, sessionToken:undefined});

@@ -79,7 +79,9 @@ async function browserCheck(BASE, expectVisible) {
 (async () => {
   await test('élesen (RENDER=true): /api/config szerint nincs bot, a szerver elutasítja a kérést, a "Bot hozzáadása" gomb nem látszik', async () => {
     await withServer(3218, { RENDER: 'true' }, async (BASE) => {
-      assert.deepEqual(await (await fetch(BASE + '/api/config')).json(), { lobbyBots: false });
+      const cfg = await (await fetch(BASE + '/api/config')).json();
+      assert.equal(cfg.lobbyBots, false);
+      assert.equal(cfg.voice, false, 'élesen a játékbeli hang (béta) is alapból ki');
       const s = await hostRoom(BASE);
       const a = await emit(s, 'add_bot'); assert.match(a.error || '', /ki vannak kapcsolva/);
       const r = await emit(s, 'remove_bot'); assert.match(r.error || '', /ki vannak kapcsolva/);
@@ -89,7 +91,9 @@ async function browserCheck(BASE, expectVisible) {
   });
   await test('helyben / teszteken (nincs RENDER): a botok működnek, a gomb látszik', async () => {
     await withServer(3219, {}, async (BASE) => {
-      assert.deepEqual(await (await fetch(BASE + '/api/config')).json(), { lobbyBots: true });
+      const cfg = await (await fetch(BASE + '/api/config')).json();
+      assert.equal(cfg.lobbyBots, true);
+      assert.equal(cfg.voice, true, 'helyben a játékbeli hang (béta) alapból elérhető');
       const s = await hostRoom(BASE);
       assert.ok((await emit(s, 'add_bot')).ok);
       assert.ok((await emit(s, 'remove_bot')).ok);
@@ -99,10 +103,10 @@ async function browserCheck(BASE, expectVisible) {
   });
   await test('a KB_LOBBY_BOTS felülírja az alapot (élesen bekapcsolható, helyben kikapcsolható)', async () => {
     await withServer(3220, { RENDER: 'true', KB_LOBBY_BOTS: '1' }, async (BASE) => {
-      assert.deepEqual(await (await fetch(BASE + '/api/config')).json(), { lobbyBots: true });
+      assert.equal((await (await fetch(BASE + '/api/config')).json()).lobbyBots, true);
     });
     await withServer(3221, { KB_LOBBY_BOTS: '0' }, async (BASE) => {
-      assert.deepEqual(await (await fetch(BASE + '/api/config')).json(), { lobbyBots: false });
+      assert.equal((await (await fetch(BASE + '/api/config')).json()).lobbyBots, false);
     });
   });
   console.log('\nLobbi-botok: ' + passed + ' sikeres, ' + failed + ' hibás teszt.');

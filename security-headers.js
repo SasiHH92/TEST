@@ -26,17 +26,20 @@ const CSP = [
 ].join('; ');
 
 const PERMISSIONS = 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()';
+// a játékbeli hang (béta, KB_VOICE) bekapcsolásakor a mikrofon a SAJÁT oldalon engedélyezett (beágyazott idegen oldal továbbra sem kaphatja meg)
+const PERMISSIONS_VOICE = PERMISSIONS.replace('microphone=()', 'microphone=(self)');
 
-function securityHeaders() {
+function securityHeaders({ microphone = false } = {}) {
+  const permissions = microphone ? PERMISSIONS_VOICE : PERMISSIONS;
   return (req, res, next) => {
     res.setHeader('Content-Security-Policy', CSP);
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', PERMISSIONS);
+    res.setHeader('Permissions-Policy', permissions);
     if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000');
     next();
   };
 }
 
-module.exports = { securityHeaders, CSP, PERMISSIONS };
+module.exports = { securityHeaders, CSP, PERMISSIONS, PERMISSIONS_VOICE };

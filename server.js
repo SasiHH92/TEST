@@ -76,7 +76,10 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 app.set('trust proxy', 1);
 // Biztonsági fejlécek (CSP, beágyazás-tiltás, HSTS stb.) minden válaszra – a statikus fájlok előtt kell lenniük.
 app.disable('x-powered-by');
-app.use(securityHeaders());
+// Játékbeli hang (BÉTA): WebRTC, a játékosok között közvetlenül. Élesen (Render) alapból KI; a KB_VOICE=1 / 0 felülírja.
+// Bekapcsolva a mikrofon a saját oldalon engedélyezett (Permissions-Policy: microphone=(self)), egyébként tiltott.
+const VOICE_ENABLED = process.env.KB_VOICE ? process.env.KB_VOICE === '1' : !process.env.RENDER;
+app.use(securityHeaders({ microphone: VOICE_ENABLED }));
 // Legendás kártya igénylése: a kódot a LEGEND_SECRET-ből számoljuk (a titkot a tulajdonos állítja be a tárhelyen, a kódban nincs).
 const LEGEND_SECRET = process.env.LEGEND_SECRET || '';
 // Hibanapló: a váratlan hibák összevonva, fájlban és (DATABASE_URL esetén) az adatbázisban is megmaradnak; az /admin oldal mutatja.
@@ -345,9 +348,12 @@ app.get('/api/media', (req, res) => {
 // Lobbi-botok (a házigazda "Bot hozzáadása" gombja): csak teszteléshez / helyi fejlesztéshez. Élesen (Render: RENDER=true) alapból KI van kapcsolva;
 // a KB_LOBBY_BOTS=1 / 0 felülírja. A kliens a /api/config-ból tudja, hogy mutassa-e a gombokat.
 const LOBBY_BOTS = process.env.KB_LOBBY_BOTS ? process.env.KB_LOBBY_BOTS === '1' : !process.env.RENDER;
+// Játékbeli hang (BÉTA, a VOICE_ENABLED fent): a szerver csak a kapcsolatfelvételt közvetíti, hangot nem lát, nem tárol.
+// Bekapcsolt szerveren is a házigazda kapcsolja be szobánként; legfeljebb VOICE_MAX fő.
+const VOICE_MAX = Math.max(2, Math.min(12, parseInt(process.env.KB_VOICE_MAX, 10) || 8));
 app.get('/api/config', (req, res) => {
   res.set('Cache-Control', 'no-cache');
-  res.json({ lobbyBots: LOBBY_BOTS });
+  res.json({ lobbyBots: LOBBY_BOTS, voice: VOICE_ENABLED });
 });
 app.get('/api/role-sprites', (req, res) => {
   const now = Date.now();
@@ -1247,6 +1253,51 @@ io.on('connection', (socket) => {
     game.broadcast(); // a játékosok látják a nézőszámot
   });
 
+  // ---- JÁTÉKBELI HANG (BÉTA, WebRTC): a szerver csak a kapcsolatfelvételt (SDP) közvetíti két játékos között; a hang közvetlenül megy ----
+  const voiceCtx = () => {
+    const sess = sockets.get(socket.id);
+    const game = sess && rooms.get(sess.code);
+    const me = game && game.getPlayer(sess.playerId);
+    return me ? { sess, game, me } : null;
+  };
+  safeOn('voice_room', ({ on } = {}, ack) => { // a házigazda be- / kikapcsolja a hangot a szobában
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const c = voiceCtx();
+    if (!c) return reply({ error: 'Nincs szoba.' });
+    if (!c.game.voiceAllowed) return reply({ error: 'A játékbeli hang ezen a szerveren nincs bekapcsolva.' });
+    if (c.game.hostId() !== c.sess.playerId) return reply({ error: 'A hangot a házigazda kapcsolhatja be.' });
+    c.game.voiceOn = !!on;
+    if (!c.game.voiceOn) c.game.voicePeers = new Set();
+    c.game.broadcast();
+    reply({ ok: true, on: c.game.voiceOn });
+  });
+  safeOn('voice_join', (_p, ack) => {
+    const reply = (r) => { if (typeof ack === 'function') ack(r); };
+    const c = voiceCtx();
+    if (!c) return reply({ error: 'Nincs szoba.' });
+    if (!c.game.voiceAllowed || !c.game.voiceOn) return reply({ error: 'A hang ebben a szobában nincs bekapcsolva.' });
+    if (c.me.isBot) return reply({ error: 'A botok nem beszélnek.' });
+    c.game.voicePeers = c.game.voicePeers || new Set();
+    if (!c.game.voicePeers.has(c.me.id) && c.game.voicePeers.size >= (c.game.voiceMax || VOICE_MAX)) return reply({ error: 'A hang (béta) legfeljebb ' + (c.game.voiceMax || VOICE_MAX) + ' fős.' });
+    c.game.voicePeers.add(c.me.id);
+    c.game.broadcast();
+    reply({ ok: true, peers: [...c.game.voicePeers] });
+  });
+  safeOn('voice_leave', (_p, ack) => {
+    const c = voiceCtx();
+    if (c && c.game.voicePeers && c.game.voicePeers.delete(c.me.id)) c.game.broadcast();
+    if (typeof ack === 'function') ack({ ok: true });
+  });
+  safeOn('voice_signal', ({ to, data } = {}) => { // ajánlat / válasz továbbítása egy másik, a hangban lévő játékosnak (ugyanabban a szobában)
+    const c = voiceCtx();
+    if (!c || !c.game.voiceOn || !c.game.voicePeers || !c.game.voicePeers.has(c.me.id)) return;
+    if (typeof to !== 'string' || to === c.me.id || !c.game.voicePeers.has(to)) return;
+    if (!data || typeof data !== 'object' || !['offer', 'answer', 'bye'].includes(data.type)) return;
+    const sdp = typeof data.sdp === 'string' ? data.sdp : '';
+    if (sdp.length > 20000) return;
+    io.to(pidRoom(to, c.sess.code)).emit('voice_signal', { from: c.me.id, data: { type: data.type, sdp } });
+  });
+
   // ---- Közös tér: a saját hirdetés visszavonása (a szoba bármelyik tagja) ----
   safeOn('board_ad_remove', (_payload, ack) => {
     const sess = sockets.get(socket.id);
@@ -1334,6 +1385,7 @@ io.on('connection', (socket) => {
     detachPreviousRoom();
     const game = new Game(code, io);
     game.creatorIp = ip;
+    game.voiceAllowed = VOICE_ENABLED; game.voiceMax = VOICE_MAX; // játékbeli hang (béta): a házigazda kapcsolja be (voice_room)
     rooms.set(code, game);
     game.addPlayer(pid, name, cleanAvatar(avatar), true);
     game.getPlayer(pid).profile = profileFor(socket, name, profile);

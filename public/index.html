@@ -481,8 +481,12 @@
           <span class="qr-label">📞 Olvasd be – csatlakozás</span>
         </div>
         <button id="btnCopyLink" class="btn police">Link másolása Discordra</button>
-        <button id="btnCopyWatch" type="button" class="btn small ghost" title="Nézői link: a tárgyalás játékos nélkül nézhető (stream, OBS böngészőforrás)">📺 Nézői link</button>
+        <button id="btnShareLink" type="button" class="btn small support-mini hidden" title="Megosztás: a szobalink a telefon megosztás-ablakával (Discord, Messenger, Viber…)">📤 <span>Megosztás</span></button>
+        <button id="btnCopyWatch" type="button" class="btn small ghost support-mini" title="Nézői link: a tárgyalás játékos nélkül nézhető (stream, OBS böngészőforrás)">📺 <span>Nézői link</span></button>
         <span id="spectatorChip" class="spectator-chip hidden" aria-live="polite"></span>
+        <button id="btnVoiceRoom" type="button" class="btn small ghost support-mini hidden" title="Játékbeli hang (béta): a játékosok egymás között, Discord nélkül beszélhetnek; a beszédek alatt csak a beszélő és a bíró hallatszik">🎙️ <span>Hang bekapcsolása (béta)</span></button>
+        <button id="btnVoiceLobby" type="button" class="btn small hidden" aria-pressed="false">🎙️ Belépés a hangba</button>
+        <button id="btnVoiceLeave" type="button" class="btn small ghost support-mini hidden" title="Kilépés a hangból">✕ <span>Kilépés a hangból</span></button>
         <button id="btnReady" type="button" class="btn small hidden" aria-pressed="false">KÉSZEN ÁLLOK</button>
         <button id="btnAddBot" class="btn small hidden">Bot hozzáadása</button>
         <button id="btnRemoveBot" class="btn small hidden">Bot eltávolítása</button>
@@ -615,6 +619,7 @@
         <span id="gameRound" class="round-badge">1. tárgyalás</span>
         <span id="gameCode" class="code-badge"></span>
         <span id="spectatorChipGame" class="spectator-chip hidden" aria-live="polite"></span>
+      <button id="btnVoice" type="button" class="btn tiny hidden" aria-pressed="false" aria-label="Játékbeli hang">🎙️</button>
       <button id="btnMute" class="btn tiny">🔊</button>
       <input type="range" id="volume" min="0" max="100" value="70" class="volume">
       <button id="btnReduceMotion" class="btn tiny" title="Mozgás csökkentése" aria-label="Mozgás csökkentése" aria-pressed="false">🏃 Mozgás: TELJES</button>
@@ -687,6 +692,7 @@
   <script src="/media.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/avatar-roles.js"></script>
+  <script src="/badges.js"></script>
   <script src="/client.js"></script>
   <script src="/auth.js"></script>
   <script src="/shop.js"></script>
@@ -703,5 +709,7 @@
   <script src="/intro.js"></script>
   <script src="/wakelock.js"></script>
   <script src="/watch.js"></script>
+  <script src="/turn-alert.js"></script>
+  <script src="/voice.js"></script>
 </body>
 </html>

@@ -1264,6 +1264,7 @@ function mugCardHtml(o) {
     '<span class="mug-name">' + escapeHtml(name) + '</span>' +
     (o.badge ? '<span class="mug-badge">' + escapeHtml(o.badge) + '</span>' : '') +
     '<span class="mug-title">' + escapeHtml(o.title || '') + '</span>' +
+    (window.kbBadges ? window.kbBadges.html(st, 3, 'mug-badges') : '') +
     '<span class="mug-stats">' +
       '<span class="ms ms-bad" title="Elítélve"><i aria-hidden="true">🔨</i>Elítélve <b>' + (st ? st.bunos : 0) + '×</b></span>' +
       '<span class="ms ms-good" title="Felmentve"><i aria-hidden="true">🕊️</i>Felmentve <b>' + (st ? st.artatlan : 0) + '×</b></span>' +
@@ -1439,6 +1440,7 @@ function renderProfileStats(me) {
       '<span class="ps-role">👨‍⚖️ Bíróként <b>' + v('biro') + '×</b></span>' +
       '<span class="ps-role">🧑‍💼 Tanúként <b>' + v('tanu') + '×</b></span>' +
     '</div>' +
+    (window.kbBadges ? window.kbBadges.profileHtml(s) : '') +
     '<div class="ps-actions">' +
       '<button type="button" id="btnProfileEdit" class="btn">✎ PROFIL MÓDOSÍTÁSA</button>' +
       '<button type="button" id="btnShopOpen" class="btn">🛒 BOLT</button>' +
@@ -1686,6 +1688,19 @@ $('#btnCopyLink').addEventListener('click', () => {
   });
 });
 
+// MEGOSZTÁS (telefon / Play-alkalmazás): a rendszer megosztás-ablaka (Discord, Messenger, Viber…) a szobalinkkel. Csak ott látszik, ahol van
+// Web Share API; ha a megosztás nem sikerül (de nem a játékos szakította meg), a link a vágólapra kerül.
+if (navigator.share) $('#btnShareLink').classList.remove('hidden');
+$('#btnShareLink').addEventListener('click', async () => {
+  const url = location.origin + '/?room=' + MY.code;
+  try {
+    await navigator.share({ title: 'Kamu Bíróság', text: 'Gyere a tárgyalásra! ⚖️ Szobakód: ' + MY.code, url });
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // a játékos bezárta a megosztás-ablakot
+    try { await navigator.clipboard.writeText(url); showToast('📋 A szobalink kimásolva.'); } catch (_) { showToast('Szobalink: ' + url); }
+  }
+});
+
 // NÉZŐI LINK: a tárgyalás játékos nélkül nézhető (stream nézői, OBS böngészőforrás) – /?watch=KÓD
 $('#btnCopyWatch').addEventListener('click', () => {
   const url = location.origin + '/?watch=' + MY.code;
@@ -1860,7 +1875,7 @@ function posterHtml(p, idx) {
     portrait +
     '<span class="p-wanted">' + (isBot ? 'HIVATALOS SZEMÉLYZET' : ((cosm && cosm.labelText) || 'KÖRÖZÉS')) + '</span>' +
     '<span class="p-name">' + escapeHtml(p.name) + '</span>' +
-    '<div class="p-badge-row">' + (prof.jelveny && !isBot ? '<span class="p-badge">' + escapeHtml(prof.jelveny) + '</span>' : '') + '</div>' +
+    '<div class="p-badge-row">' + (prof.jelveny && !isBot ? '<span class="p-badge">' + escapeHtml(prof.jelveny) + '</span>' : '') + (!isBot && window.kbBadges ? window.kbBadges.html(prof._stats, 4, 'p-badges') : '') + '</div>' +
     '<div class="p-state-row">' + stateBadges + '</div>' +
     '<span class="p-title">' + escapeHtml(title) + '</span>' +
     '<span class="p-priors">' + escapeHtml(priusz) + '</span>' +
@@ -3676,6 +3691,7 @@ socket.on('state', (state) => {
   }
   updateSpectatorChips();
   startGoneTimers();
+  setTimeout(() => document.dispatchEvent(new CustomEvent('kb:state')), 0); // a többi modul (pl. "Te jössz!" jelzés) a kirajzolás után
   if (state.phase === 'lobby') {
     show('lobby');
     renderLobby();

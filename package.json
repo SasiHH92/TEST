@@ -74,6 +74,9 @@
     "test:wakelock": "node test/wakelock.js",
     "test:app-mode": "node test/app-mode.js",
     "test:watch": "node test/watch-mode.js",
+    "test:turn": "node test/turn-share.js",
+    "test:voice": "node test/voice.js",
+    "test:badges": "node test/badges.js",
     "play:assets": "node scripts/make-play-assets.js"
   },
   "engines": {

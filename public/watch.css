@@ -21,7 +21,7 @@ body.watch-mode #screen-game #scenePanel button, body.watch-mode #screen-game .i
 body.watch-mode #screen-game .react-btn, body.watch-mode #screen-game .react-bar, body.watch-mode #screen-game .sb-kick, body.watch-mode #screen-game #sbTabChat,
 body.watch-mode #screen-game #btnLeaveGame, body.watch-mode #screen-game #btnReduceMotion, body.watch-mode #screen-game .info-bar .volume,
 body.watch-mode #screen-game .vd-details, body.watch-mode #screen-game .acc-fun-row,
-body.watch-mode #judgeWatchBar, body.watch-mode #screen-game .sb-tabs { display: none !important; }
+body.watch-mode #judgeWatchBar, body.watch-mode #screen-game .sb-tabs, body.watch-mode #btnVoice { display: none !important; }
 
 /* jelvény (felül középen) és üzenetsáv */
 .watch-badge { display: none; }

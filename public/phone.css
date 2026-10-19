@@ -127,6 +127,9 @@ html.in-app .support-link, html.in-app #btnSupportLobby, html.in-app #btnSupport
   .card-hand[data-state="open"] .ch-toggle { left: auto; right: 8px; top: -2px; bottom: auto; transform: translateY(-100%); width: auto; padding: 0 12px; }
   .card-hand[data-state="open"] .ch-toggle .ch-label::after { content: ' ▾'; }
   .card-preview { position: fixed; left: calc(10px + var(--safe-l)); right: auto; bottom: 134px; width: min(340px, 46vw); max-height: calc(100dvh - 150px); }
+  /* beszéd közben nyitott tálcánál a teendő-gomb (VÉGEZTEM / TILTAKOZOM / kérdés) a tálca (124 px) fölé kerül – különben a lapok alá csúszna, és csak a tálca bezárása után lehetne megnyomni */
+  body:has(.card-hand[data-state="open"]) #screen-game .content-zone[data-layout="speech"] { bottom: 132px; }
+  .support-mini span { display: none; } /* a lobbi kis mellékgombjai (Megosztás, Nézői link, Támogatás, Discord, Hang) csak ikonok – a teljes név a súgószövegben */
   body:has(.card-hand[data-state="open"]) .bug-fab { visibility: hidden; } /* a nyitott tálca fölött ne takarjon a Hibajelentés ikon */
   /* 🐞 Hibajelentés: a bal alsó sarokban a görgetett tartalomra (lobbi gombjai, belépőoldal) és a KÁRTYÁIM paklira lógna.
      Belépőoldal: a bal felső sarok (mint 700 px fölött); névválasztó / menü / lobbi: a bal felső 🔊/🏃 sarok-kapcsolók mellett; játékban kártyákkal a pakli fölött. */
