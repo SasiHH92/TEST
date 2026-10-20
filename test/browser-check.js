@@ -215,12 +215,12 @@ async function main() {
     for(const [width,height] of sizes) {
       await page.setViewportSize({width,height});
       for(const tab of ['login','register']) {
-        if(width<=700) await page.click(tab==='login'?'#authLoginTab':'#authRegisterTab');
+        await page.click(tab==='login'?'#authLoginTab':'#authRegisterTab'); // (minden méreten fülek)
         const errors=await page.evaluate(()=>{
           const failures=[];
           if(document.documentElement.scrollWidth>innerWidth+1) failures.push('A belépőoldal vízszintesen kilóg.');
           const selected=document.querySelector('.auth-forms').dataset.tab;
-          const prefix=innerWidth<=700&&selected==='register'?'Register':'Login';
+          const prefix=selected==='register'?'Register':'Login';
           const card=document.querySelector('#auth'+prefix+'Card');
           const r=card.getBoundingClientRect();
           if(r.left<0||r.right>innerWidth+1) failures.push('Az űrlap oldalra kilóg.');
@@ -236,13 +236,14 @@ async function main() {
         await page.locator(submitSelector).click({trial:true});
         report.authResults.push({width,height,tab,errors});
       }
-      if(width<=700) await page.click('#authLoginTab');
+      await page.click('#authLoginTab');
       await page.evaluate(()=>scrollTo(0,0));
       const filename='belepes-'+width+'x'+height+'.png';
       await page.screenshot({path:path.join(screenshotDir,filename),fullPage:true});report.screenshots.push(filename);
     }
     await page.setViewportSize({width:1366,height:768});
     const accountEmail='browser-'+Date.now()+'@example.invalid',accountPassword='Böngészős jelszó 123!';
+    await page.click('#authRegisterTab');
     await page.fill('#authRegisterName','FiókTeszt');await page.fill('#authRegisterEmail',accountEmail);
     await page.fill('#authRegisterPassword',accountPassword);await page.fill('#authRegisterConfirm',accountPassword);
     await page.check('#authTerms'); // 16+ és a feltételek elfogadása (kötelező)

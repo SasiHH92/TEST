@@ -484,6 +484,7 @@ async function fullServer() {
           const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
           await page.goto(BASE + '/');
           await page.waitForFunction(() => !document.querySelector('#authRegisterSubmit').disabled, null, { timeout: 15000 });
+          await page.click('#authRegisterTab'); // (a belépőoldalon egyszerre egy kártya látszik: fülek)
           await page.fill('#authRegisterName', 'Böngésző Béla');
           await page.fill('#authRegisterEmail', 'bela@example.invalid');
           await page.fill('#authRegisterPassword', password);
@@ -493,6 +494,7 @@ async function fullServer() {
           await page.waitForFunction(() => /megerősítő levelet/.test(document.querySelector('#authRegisterMessage').textContent));
           assert.equal(await page.evaluate(() => !!window.kbAccount), false, 'még nincs belépve');
           // belépés megerősítés nélkül
+          await page.click('#authLoginTab'); // (fülek: a regisztráció után a BEJELENTKEZÉS fül)
           await page.fill('#authLoginEmail', 'bela@example.invalid');
           await page.fill('#authLoginPassword', password);
           await page.click('#authLoginSubmit');

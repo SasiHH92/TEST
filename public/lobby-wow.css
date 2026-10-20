@@ -1,0 +1,162 @@
+/* ============================================================
+   LOBBI – "a tárgyalóterem, ahol a beállításokra várunk" (index.html #screen-lobby.lw, public/lobby-fx.js)
+   A meglévő lobbi-stílusra (style.css .casefile-header, .board, .poster, .folder) épülő réteg; az azonosítók és a logika változatlanok.
+   - háttér: a terem képe a beégetett felirat nélkül (mint a menüben), fénysugár, por, vignetta
+   - felső sáv: ügyirat-pecsét + QR + meghívás egy csoportban; második sorban a saját teendők (kész vagyok, hang, botok)
+   - a terem: reflektor-söprés, ülés-számláló ("5 / 12 gyanúsított", "még N kell")
+   - széles képernyőn (≥ 1200 px) a házigazda asztala jobb oldalon RÖGZÍTVE, a TÁRGYALÁS MEGKEZDÉSE mindig látszik
+   - telefonon (≤ 700 px) és fekvő telefonon csak a látvány változik, az elrendezés a régi (phone.css, a telefonos tesztek erre épülnek)
+   ============================================================ */
+#screen-lobby.lw.active { background: #0b0604; }
+.lw { position: relative; isolation: isolate; overflow-x: clip; } /* (a rögzített háttér a lobbi saját háttere fölött, a tartalom alatt; a belépő animáció beúszó elemei ne okozzanak vízszintes görgetést – a clip nem görgető doboz, a sticky asztal működik) */
+.lw-bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: #0b0604; }
+.lw-bg-img {
+  position: absolute; left: 50%; bottom: 0; width: max(100vw, 261vh); height: auto; max-width: none;
+  transform: translateX(-50%); transform-origin: 50% 100%; filter: blur(2.5px) saturate(1.05) brightness(0.8);
+  animation: aw-drift 40s ease-in-out infinite alternate;
+}
+.lw-rays {
+  position: absolute; left: 50%; top: -16%; width: 1600px; height: 1600px; transform: translateX(-50%); transform-origin: 50% 0;
+  background: repeating-conic-gradient(from 150deg at 50% 0%, rgba(255, 214, 140, 0.07) 0deg 3deg, transparent 3deg 11deg);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 72%); mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 72%);
+  mix-blend-mode: screen; animation: mm-sway 18s ease-in-out infinite alternate;
+}
+.lw-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 50% 30%, rgba(8, 4, 2, 0.25) 0%, rgba(8, 4, 2, 0.6) 55%, rgba(6, 3, 1, 0.92) 100%), linear-gradient(180deg, rgba(8, 4, 2, 0.45), transparent 30%, rgba(8, 4, 2, 0.6));
+}
+
+/* ---- felső sáv: az ügyirat-pecsét ---- */
+.lw .casefile-box {
+  position: relative; padding: 8px 18px 22px; border: 2px solid #c9a85c; border-radius: 12px;
+  background: radial-gradient(120% 90% at 50% 0%, rgba(242, 193, 78, 0.22), transparent 60%), linear-gradient(180deg, #3d2a18, #1a1109);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(242, 193, 78, 0.3), 0 0 22px rgba(242, 193, 78, 0.18);
+}
+.lw .casefile-label { letter-spacing: 3px; }
+.lw .casefile-box .code-badge { font-size: 38px; letter-spacing: 9px; text-shadow: 0 0 16px rgba(242, 193, 78, 0.45); }
+.lw .casefile-box .code-badge.copyable::after { top: calc(100% + 1px); font-size: 8.5px; letter-spacing: 1.6px; }
+
+/* ---- a terem: reflektor-söprés + ülés-számláló ---- */
+.lw .board { overflow: hidden; isolation: isolate; backdrop-filter: blur(2px); }
+.lw .board::before {
+  content: ''; position: absolute; inset: -20% -10%; z-index: -1; pointer-events: none;
+  background: radial-gradient(28% 60% at 50% 40%, rgba(255, 230, 170, 0.11), transparent 70%);
+  animation: lw-sweep 11s ease-in-out infinite alternate;
+}
+.lw .board-title { margin-bottom: 10px; text-shadow: 0 2px 0 #6e4a14, 0 0 22px rgba(242, 193, 78, 0.35); }
+.lw-seats { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; margin: 0 auto 18px; }
+.lw-seats:empty { display: none; }
+.lw-seat-pips { display: inline-flex; gap: 5px; }
+.lw-seat-pips i {
+  width: 14px; height: 14px; border-radius: 50%; border: 1.5px dashed rgba(201, 168, 92, 0.55); background: rgba(0, 0, 0, 0.3);
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.lw-seat-pips i.on { border: 1.5px solid #fff0b8; background: radial-gradient(circle at 35% 30%, #fff1c2, #f2c14e 55%, #b07a1f); box-shadow: 0 0 10px rgba(242, 193, 78, 0.55); transform: scale(1.08); }
+.lw-seat-pips i.min { outline: 2px solid rgba(255, 107, 94, 0.45); outline-offset: 2px; }
+.lw-seats.ready .lw-seat-pips i.min { outline-color: rgba(99, 220, 143, 0.55); }
+.lw-seat-txt { font: 500 14px var(--font-disp); letter-spacing: 2px; color: #ecd9a6; }
+.lw-seat-txt b { font-weight: 500; font-size: 17px; color: #ffe08a; }
+.lw-seat-txt em { font-style: normal; color: #ff8a7e; letter-spacing: 1px; }
+.lw-seat-txt em.ok { color: #7fe6a3; }
+
+/* ---- a házigazda asztala ---- */
+.lw .folder { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 240, 200, 0.4) inset; }
+.lw .lobby-mode-btn { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease; }
+.lw .lobby-mode-btn:hover { transform: translateY(-2px); }
+.lw #btnStartGame {
+  position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 64px; font-size: 22px; letter-spacing: 3px; color: #241a06;
+  background: linear-gradient(180deg, #ffe8a6 0%, #f2c14e 46%, #c98a22 100%); border: 1px solid #fff0b8;
+  box-shadow: 0 6px 0 #7a5212, 0 14px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.lw #btnStartGame::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%) no-repeat; background-size: 250% 100%;
+  animation: mm-sheen 5.5s ease-in-out infinite 1.5s;
+}
+.lw.lw-can-start #btnStartGame { animation: mm-glow 2.6s ease-in-out infinite; }
+.lw #btnStartGame:active { transform: translateY(4px); box-shadow: 0 2px 0 #7a5212, 0 6px 12px rgba(0, 0, 0, 0.5); }
+/* várakozó játékos: a bíró még rendezi az iratokat */
+.lw .waiting-note {
+  position: relative; padding: 22px 20px 20px; font-size: 19px; line-height: 1.35; border: 1px solid rgba(242, 193, 78, 0.5); border-style: solid;
+  background: radial-gradient(120% 90% at 50% 0%, rgba(242, 193, 78, 0.16), transparent 60%), rgba(20, 13, 6, 0.86);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.55); backdrop-filter: blur(4px);
+}
+.lw .waiting-note::before { content: '⚖️'; display: block; font-size: 38px; margin-bottom: 6px; animation: mm-bob 3s ease-in-out infinite; }
+.lw .waiting-note::after { content: ''; display: inline-block; width: 1.2em; text-align: left; animation: lw-dots 1.4s steps(4, end) infinite; }
+
+/* ---- hírszalag ---- */
+.lw .ticker { background: rgba(12, 8, 6, 0.88); backdrop-filter: blur(6px); border-top: 1px solid rgba(255, 96, 84, 0.6); }
+.lw .ticker-label { background: linear-gradient(180deg, #d8352a, #9e1e16); letter-spacing: 3px; padding: 4px 11px; }
+
+/* ---- belépő ---- */
+.lw-enter .lw-bg-img { animation: lw-zoom 1.8s cubic-bezier(0.22, 1, 0.36, 1) both, aw-drift 40s ease-in-out 1.8s infinite alternate; }
+.lw-enter .casefile-header { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both; }
+.lw-enter .casefile-box { animation: aw-stamp 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) 0.35s both; }
+.lw-enter .board { animation: lw-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both; }
+.lw-enter #hostSettings, .lw-enter #nonHostNote { animation: aw-slide 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.45s both; }
+@keyframes lw-zoom { from { transform: translateX(-50%) scale(1.14); filter: blur(2.5px) brightness(0.25); } to { transform: translateX(-50%) scale(1); filter: blur(2.5px) saturate(1.05) brightness(0.8); } }
+@keyframes lw-rise { from { opacity: 0; transform: translateY(30px) scale(0.98); } }
+@keyframes lw-sweep { from { transform: translateX(-28%); } to { transform: translateX(28%); } }
+@keyframes lw-dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75%, 100% { content: '...'; } }
+/* (a .casefile-box pecsét-animációja forgatás nélküli) */
+.lw-enter .casefile-box { animation-name: lw-stamp; }
+@keyframes lw-stamp { 0% { opacity: 0; transform: scale(1.8); } 60% { opacity: 1; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .lw *, .lw *::before, .lw *::after, .lw-bg * { animation: none !important; transition: none !important; }
+}
+
+/* ---- gépen, tableten és álló telefonon (NEM fekvő telefon): a felső sáv rendezett sorokban ---- */
+@media (min-width: 701px) and (min-height: 521px) {
+  .lw .lobby-wrap { padding-top: 66px; } /* a felső sáv a bal felső kapcsolók (🔊 🏃) alatt kezdődik */
+}
+@media (min-height: 521px) {
+  .lw .casefile-header {
+    gap: 10px 10px; padding: 12px 14px; margin-bottom: 18px; border-radius: 16px;
+    background: rgba(18, 11, 6, 0.74); border: 1px solid rgba(242, 193, 78, 0.35); backdrop-filter: blur(6px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  }
+  /* első sor: pecsét, QR, meghívás, megosztás, kilépés – második sor: a saját teendők és a házigazda botjai */
+  .lw .casefile-header::after { content: ''; flex-basis: 100%; height: 0; order: 50; }
+  .lw .casefile-box { order: 1; }
+  .lw #qrBox { order: 2; }
+  .lw #btnCopyLink { order: 3; }
+  .lw #btnShareLink { order: 4; }
+  .lw #btnCopyWatch { order: 5; }
+  .lw #discordInviteLobby { order: 6; }
+  .lw #btnSupportLobby { order: 7; }
+  .lw #btnLeaveLobby { order: 8; margin-left: auto; }
+  .lw #btnReady { order: 51; min-height: 44px; padding-left: 22px; padding-right: 22px; font-size: 14px; }
+  .lw #btnVoiceRoom { order: 52; }
+  .lw #btnVoiceLobby { order: 53; }
+  .lw #btnVoiceLeave { order: 54; }
+  .lw #spectatorChip { order: 55; }
+  .lw #btnAddBot { order: 60; margin-left: auto; }
+  .lw #btnRemoveBot { order: 61; }
+}
+@media (max-width: 700px) and (min-height: 521px) {
+  .lw .casefile-header { padding: 10px; gap: 8px; }
+  .lw #btnCopyLink { flex: 1 1 auto; }
+  .lw #btnReady { flex: 1 1 100%; }
+  .lw #btnAddBot { margin-left: 0; }
+}
+
+/* ---- széles képernyő: a terem balra, a házigazda asztala jobbra rögzítve ---- */
+@media (min-width: 1200px) and (min-height: 600px) {
+  .lw .lobby-wrap {
+    max-width: 1440px; display: grid; grid-template-columns: minmax(0, 1fr) 410px; column-gap: 22px; align-items: start;
+    grid-template-areas: "head head" "court court" "board side";
+  }
+  .lw .casefile-header { grid-area: head; }
+  .lw #courtPanel { grid-area: court; }
+  .lw .board { grid-area: board; }
+  .lw #hostSettings, .lw #nonHostNote { grid-area: side; position: sticky; top: 14px; margin: 0; }
+  .lw #hostSettings { max-height: calc(100dvh - 76px); overflow: auto; overscroll-behavior: contain; padding: 18px 18px 0; scrollbar-width: thin; }
+  .lw .folder-tab { position: relative; top: auto; left: auto; display: inline-block; margin: 0 0 12px; padding: 6px 14px; border-bottom: 1px solid #a08b58; border-radius: 8px; }
+  .lw .lobby-mode { grid-template-columns: 1fr 1fr; }
+  .lw .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lw .folder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* a TÁRGYALÁS MEGKEZDÉSE az asztal alján rögzítve (görgetéskor is látszik) */
+  .lw #btnStartGame { position: sticky; bottom: 0; z-index: 3; width: calc(100% + 36px); margin: 14px -18px 0; border-radius: 0 0 10px 10px; }
+  .lw #nonHostNote { max-width: none; }
+}

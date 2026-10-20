@@ -65,7 +65,9 @@ const io = new Server(server, {
   cors: { origin: ALLOWED_ORIGIN ? [ALLOWED_ORIGIN] : false, credentials: false },
   transports: ['polling', 'websocket'], // websocket + polling fallback
   pingInterval: 20000,
-  pingTimeout: 25000
+  pingTimeout: 25000,
+  // egy üzenet legfeljebb 64 KB (az alapértelmezett 1 MB helyett): a legnagyobb valódi üzenet a hang SDP-je (≤ 20 000 karakter) – a nagy, haszontalan csomagok ne terheljék a szervert
+  maxHttpBufferSize: 64 * 1024
 });
 
 const PORT = process.env.PORT || 3000;
@@ -74,6 +76,9 @@ const MAX_ROOMS = 50; // egy szerverpéldányon legfeljebb ennyi szoba élhet eg
 
 // Reverse proxy (Render) mögött a kliens IP-je a proxy fejlécéből jön.
 app.set('trust proxy', 1);
+// a játékos valódi címe (Cloudflare → Render → szerver): a req.ip mindenhol ezt adja – client-ip.js
+const clientIp = require('./client-ip');
+app.use(clientIp.middleware);
 // Biztonsági fejlécek (CSP, beágyazás-tiltás, HSTS stb.) minden válaszra – a statikus fájlok előtt kell lenniük.
 app.disable('x-powered-by');
 // Játékbeli hang (BÉTA): WebRTC, a játékosok között közvetlenül. Élesen (Render) alapból KI; a KB_VOICE=1 / 0 felülírja.
@@ -353,7 +358,7 @@ const LOBBY_BOTS = process.env.KB_LOBBY_BOTS ? process.env.KB_LOBBY_BOTS === '1'
 const VOICE_MAX = Math.max(2, Math.min(12, parseInt(process.env.KB_VOICE_MAX, 10) || 8));
 app.get('/api/config', (req, res) => {
   res.set('Cache-Control', 'no-cache');
-  res.json({ lobbyBots: LOBBY_BOTS, voice: VOICE_ENABLED });
+  res.json({ lobbyBots: LOBBY_BOTS, voice: VOICE_ENABLED, maxPlayers: MAX_PLAYERS });
 });
 // ÉLŐ számok a főmenühöz: csak összesítés (folyó tárgyalások, gyülekező szobák, kapcsolódó játékosok – botok nélkül), név / kód nélkül; 5 mp-es gyorsítótár
 let liveCache = { at: 0, data: null };
@@ -915,8 +920,7 @@ function cleanPlayerId(playerId, socketId) {
 // ---- Visszaélés-védelem: kliens-IP, sebességkorlát, kapcsolat- és szobakorlátok ----
 // A Render proxy a valódi címet a X-Forwarded-For lista VÉGÉRE fűzi (az elejét a kliens hamisíthatja), ezért az utolsó elemet vesszük.
 function clientIpOf(socket) {
-  const list = String(socket.handshake.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
-  return list.length ? list[list.length - 1] : (socket.handshake.address || '');
+  return clientIp.fromHeaders(socket.handshake.headers, socket.handshake.address); // (Cloudflare mögött a játékos címe, nem a Cloudflare-é – client-ip.js)
 }
 // Egyszerű csúszóablakos korlát: allow(kulcs) hamis, ha az ablakon belül már elfogyott a keret.
 function makeLimiter(max, windowMs, cap = 5000) {

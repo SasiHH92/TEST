@@ -1,0 +1,243 @@
+/* ============================================================
+   BELÉPŐOLDAL – "a tárgyalóterem ajtaja" (index.html #screen-auth.aw, public/auth-fx.js)
+   A meglévő belépő-stílusra (style.css .auth-*) épülő réteg; az azonosítók és az űrlapok változatlanok.
+   - háttér: a login-videó / állókép a beégetett felirat nélkül (a felső ~32% a képernyőn kívül, mint a menüben), fénysugár, szálló por, vignetta;
+     előtér-figura NINCS (a felhasználó kérése: csak a háttér – test/cinema.js B7)
+   - bal oldal: animált arany cím, piros "KI A BŰNÖS?" pecsét, nagy kártyák: FOLYTATÁS (ha van fiók), JÁTÉK VENDÉGKÉNT (idézés), ÉLŐ sáv
+   - jobb oldal: egy akta-kártya fülekkel (BEJELENTKEZÉS / REGISZTRÁCIÓ) – minden méreten egyszerre egy látszik
+   - belépő animáció (.aw-enter, képernyőnként egyszer); egérrel 3D-dőlés a kártyákon; csökkentett mozgásnál nincs animáció
+   ============================================================ */
+
+/* ---- háttér: a kép / videó teteje (beégetett cím) a képernyőn kívül; 261vh = 1,47 × 16/9 × 100vh ---- */
+.aw .auth-background, .aw .auth-video {
+  inset: auto; left: 50%; bottom: 0; top: auto; width: max(100vw, 261vh); height: auto; max-width: none;
+  transform: translateX(-50%); transform-origin: 50% 100%; object-fit: cover; object-position: 50% 100%;
+  animation: aw-drift 38s ease-in-out infinite alternate;
+}
+.aw .auth-shade {
+  background:
+    linear-gradient(90deg, rgba(10, 5, 3, 0.86) 0%, rgba(10, 5, 3, 0.55) 34%, rgba(10, 5, 3, 0.25) 58%, rgba(10, 5, 3, 0.55) 100%),
+    linear-gradient(180deg, rgba(10, 5, 3, 0.55) 0%, transparent 26%, transparent 66%, rgba(12, 5, 3, 0.85) 100%);
+}
+.aw-fx { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.aw-rays {
+  position: absolute; left: 30%; top: -14%; width: 1500px; height: 1500px; transform: translateX(-50%); transform-origin: 50% 0;
+  background: repeating-conic-gradient(from 150deg at 50% 0%, rgba(255, 214, 140, 0.08) 0deg 3deg, transparent 3deg 11deg);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 72%); mask-image: radial-gradient(closest-side at 50% 0%, #000 0%, transparent 72%);
+  mix-blend-mode: screen; animation: mm-sway 17s ease-in-out infinite alternate;
+}
+.aw-dust {
+  position: absolute; inset: 0; opacity: 0.65;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 22%, rgba(255, 232, 170, 0.9), transparent 70%),
+    radial-gradient(1.2px 1.2px at 34% 68%, rgba(255, 232, 170, 0.8), transparent 70%),
+    radial-gradient(2px 2px at 58% 38%, rgba(255, 220, 150, 0.7), transparent 70%),
+    radial-gradient(1.3px 1.3px at 76% 82%, rgba(255, 240, 200, 0.85), transparent 70%),
+    radial-gradient(1.8px 1.8px at 90% 14%, rgba(255, 226, 160, 0.75), transparent 70%);
+  background-size: 420px 420px; animation: mm-dust 46s linear infinite;
+}
+.aw-dust.b { opacity: 0.4; background-size: 260px 260px; animation-duration: 30s; filter: blur(0.6px); }
+
+/* ---- elrendezés: bal a hős, jobb az akta; alatta az állapot és a lábléc ---- */
+.aw .auth-layout {
+  display: grid; width: min(100%, 1240px); margin: 0 auto; min-height: 100dvh; align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 430px); grid-template-rows: 1fr auto auto auto;
+  grid-template-areas: "hero forms" "status status" "retry retry" "foot foot";
+  column-gap: 56px; row-gap: 8px; padding: 60px 40px 0; gap: 8px 56px;
+}
+.aw .aw-hero { grid-area: hero; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; min-width: 0; z-index: 3; }
+.aw .auth-forms { grid-area: forms; width: 100%; max-width: 430px; margin: 0; display: block; justify-self: end; }
+.aw .auth-status { grid-area: status; justify-self: center; }
+.aw #authRetry { grid-area: retry; justify-self: center; }
+.aw .auth-features { grid-area: foot; justify-self: center; margin-top: 10px; background: rgba(34, 12, 9, 0.78); backdrop-filter: blur(6px); }
+
+/* ---- fejléc ---- */
+.aw .auth-header { text-align: left; }
+.aw .auth-eyebrow { margin-bottom: 2px; font-size: 12px; letter-spacing: 4px; color: #f6dca2; }
+.aw .auth-logo {
+  font-family: var(--font-disp); font-weight: 500; font-size: clamp(52px, 6vw, 92px); line-height: 1.16; letter-spacing: 6px;
+  padding: 0.2em 0; margin: 0; text-shadow: none; color: transparent;
+  background: linear-gradient(100deg, #b8862b 0%, #ffe9a8 20%, #f2c14e 38%, #fff7da 50%, #d99a2b 62%, #ffe39a 80%, #b8862b 100%);
+  background-size: 260% 100%; -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 3px 0 #4a3410) drop-shadow(0 12px 26px rgba(0, 0, 0, 0.7));
+  animation: mm-gold 7s linear infinite; transform-origin: 0 0;
+}
+.aw .auth-logo span { display: none; } /* (a kalapács-emoji a háttér-kivágásos aranyszövegben nem látszana) */
+.aw .auth-ribbon { margin: 10px 0 0 -6px; transform: rotate(-1.2deg); } /* (a cím alsó belső térköze + a ferde szalag ne érjen egymásba) */
+/* "KI A BŰNÖS?" – piros pecsét */
+.aw .auth-slogan {
+  margin: 12px 0 2px 4px; padding: 8px 22px 7px; transform: rotate(-4deg); transform-origin: 0 50%;
+  color: #ff5b4d; background: rgba(40, 8, 6, 0.45); border: 3px double #ff5b4d; border-radius: 8px;
+  box-shadow: 0 0 26px rgba(255, 91, 77, 0.25), inset 0 0 14px rgba(255, 91, 77, 0.18); text-shadow: 0 0 10px rgba(255, 91, 77, 0.45);
+}
+.aw .auth-slogan strong { font-family: var(--font-disp); font-weight: 600; font-size: 34px; letter-spacing: 4px; line-height: 1.05; }
+.aw .auth-slogan span { font-size: 10.5px; letter-spacing: 2.6px; color: #ffd2c8; }
+
+/* ---- nagy kártyák: folytatás / vendég ---- */
+.aw .aw-cta { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(100%, 560px); margin-top: 6px; perspective: 1100px; }
+.aw .aw-card {
+  --rx: 0deg; --ry: 0deg;
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 16px; row-gap: 2px;
+  width: 100%; min-height: 0; margin: 0; padding: 18px 20px 18px 24px; border-radius: 18px; text-align: left; cursor: pointer;
+  font: inherit; letter-spacing: normal; transform: rotateX(var(--rx)) rotateY(var(--ry)); transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, filter 0.2s ease;
+}
+.aw .aw-card.tilt { transition: transform 0.08s linear, box-shadow 0.3s ease; }
+.aw .aw-card::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
+  background: radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, 0.32), transparent 62%);
+}
+.aw .aw-card.tilt::after { opacity: 1; }
+.aw .aw-card > small { grid-column: 1; font: 500 12px var(--font-disp); letter-spacing: 3.5px; }
+.aw .aw-card > b { grid-column: 1; font: 500 40px/1.05 var(--font-disp); letter-spacing: 3px; overflow-wrap: anywhere; }
+.aw .aw-card > b b { font: inherit; }
+.aw .aw-card > i { grid-column: 1; font-style: normal; font-size: 13.5px; font-weight: 600; }
+.aw .aw-go {
+  grid-column: 2; grid-row: 1 / span 3; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 24px; box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.aw .aw-card:hover .aw-go { transform: translateX(5px) scale(1.08); }
+.aw .aw-card:disabled { cursor: default; filter: grayscale(0.4) brightness(0.85); }
+.aw .aw-card:focus-visible { outline: 3px solid #fff3d0; outline-offset: 4px; }
+/* vendég: arany idézés, lüktet és csillan */
+.aw .aw-guest {
+  color: #241a06; background: linear-gradient(180deg, #ffe8a6 0%, #f2c14e 46%, #c98a22 100%); border: 1px solid #fff0b8;
+  box-shadow: 0 7px 0 #7a5212, 0 18px 34px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  animation: mm-glow 2.8s ease-in-out infinite;
+}
+.aw .aw-guest::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%) no-repeat; background-size: 250% 100%;
+  animation: mm-sheen 5.5s ease-in-out infinite 2s;
+}
+.aw .aw-guest > small { color: #6b4710; }
+.aw .aw-guest > b { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55); }
+.aw .aw-guest > i { color: #4a3109; }
+.aw .aw-guest .aw-go { color: #ffe08a; background: #241a06; }
+/* folytatás a fiókkal: smaragd */
+.aw .aw-continue {
+  color: #04210f; background: linear-gradient(180deg, #b6f2c8 0%, #4cc27c 50%, #1e8048 100%); border: 1px solid #d9ffe5;
+  box-shadow: 0 7px 0 #0f4d2a, 0 18px 34px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+.aw .aw-continue > small { color: #0e4a26; }
+.aw .aw-continue > b { font-size: 30px; }
+.aw .aw-continue .aw-go { color: #b6f2c8; background: #04210f; }
+.aw .aw-continue:not(.hidden) + .aw-guest { animation: none; } /* (ha van fiók, a folytatás az elsődleges) */
+/* élő sáv */
+.aw .aw-live {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; margin: 2px 0 0; padding: 6px 14px; border-radius: 999px;
+  font-size: 12.5px; color: #f3e3c0; background: rgba(12, 8, 6, 0.74); border: 1px solid rgba(255, 96, 84, 0.5); backdrop-filter: blur(6px);
+}
+.aw .aw-live b { font: 500 13px var(--font-disp); letter-spacing: 2px; color: #ff6b5e; }
+.aw .aw-live-dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: #ff4b3e; animation: mm-pulse 1.6s ease-out infinite; }
+
+/* ---- az akta: fülek + egy kártya ---- */
+.aw .auth-tabs { display: flex; gap: 6px; padding: 0 12px; }
+.aw .auth-tabs button {
+  flex: 1; min-height: 46px; padding: 8px 6px; border: 1px solid #ae8854; border-bottom: 0; border-radius: 10px 10px 0 0; cursor: pointer;
+  font: 600 13px var(--font-disp); letter-spacing: 1.6px; color: #ecd0a0; background: rgba(42, 26, 16, 0.9);
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.aw .auth-tabs button[aria-selected='true'] { color: #51351c; background: #f8e7c5; transform: translateY(1px); }
+.aw .auth-tabs button:not([aria-selected='true']):hover { color: #ffe08a; background: rgba(72, 46, 26, 0.96); }
+.aw .auth-forms[data-tab='login'] #authRegisterCard, .aw .auth-forms[data-tab='register'] #authLoginCard { display: none; }
+.aw .auth-card {
+  border-top-left-radius: 6px; border-top-right-radius: 6px;
+  box-shadow: 0 26px 54px rgba(0, 0, 0, 0.6), inset 0 0 0 4px rgba(255, 244, 213, 0.3), inset 0 0 40px rgba(183, 127, 38, 0.13);
+  animation: aw-flip 0.5s cubic-bezier(0.22, 1, 0.36, 1); transform-origin: 50% 0;
+}
+.aw .auth-stamp { font-size: 9px; opacity: 0.8; }
+
+/* ---- belépő ---- */
+.aw-enter .auth-background, .aw-enter .auth-video { animation: aw-zoom 2s cubic-bezier(0.22, 1, 0.36, 1) both, aw-drift 38s ease-in-out 2s infinite alternate; }
+.aw-enter .auth-eyebrow { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both; }
+.aw-enter .auth-logo { animation: mm-drop 0.55s cubic-bezier(0.55, 0, 0.75, 0.2) 0.2s both, mm-gold 7s linear infinite; }
+.aw-enter .auth-ribbon { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.65s both; }
+.aw-enter .auth-slogan { animation: aw-stamp 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) 0.85s both; }
+.aw-enter .aw-card { animation: aw-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 1s; }
+.aw-enter .aw-guest { animation: aw-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 1.1s both, mm-glow 2.8s ease-in-out 1.8s infinite; }
+.aw-enter .aw-live { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.3s both; }
+.aw-enter .auth-forms { animation: aw-slide 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.7s both; }
+.aw-enter .auth-features { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.4s both; }
+
+@keyframes aw-drift { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-51%) scale(1.05); } }
+@keyframes aw-zoom { from { transform: translateX(-50%) scale(1.14); filter: brightness(0.25); } to { transform: translateX(-50%) scale(1); filter: none; } }
+@keyframes aw-stamp { 0% { opacity: 0; transform: rotate(-4deg) scale(2.2); } 60% { opacity: 1; transform: rotate(-4deg) scale(0.93); } 100% { opacity: 1; transform: rotate(-4deg) scale(1); } }
+@keyframes aw-rise { from { opacity: 0; transform: translateY(26px) rotateX(18deg); } }
+@keyframes aw-slide { from { opacity: 0; transform: translateX(60px) rotateY(-14deg); } }
+@keyframes aw-flip { from { opacity: 0; transform: perspective(900px) rotateX(-12deg) translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .aw *, .aw *::before, .aw *::after, .aw-fx * { animation: none !important; transition: none !important; }
+}
+
+/* ---- gépen, alacsonyabb képernyőn (pl. 1366 × 768): tömörebb ---- */
+@media (min-width: 1000px) and (max-height: 820px) {
+  .aw .auth-layout { padding-top: 52px; }
+  .aw .auth-logo { font-size: clamp(48px, 5vw, 70px); }
+  .aw .aw-hero { gap: 10px; }
+  .aw .auth-slogan strong { font-size: 28px; }
+  .aw .aw-card { padding-top: 14px; padding-bottom: 14px; }
+  .aw .aw-card > b { font-size: 34px; }
+}
+
+/* ---- keskeny: egy oszlop (a hős fölül, a vendég-belépés rögtön látszik) ---- */
+@media (max-width: 999px) {
+  .aw .auth-layout {
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto auto auto; grid-template-areas: "hero" "forms" "status" "retry" "foot";
+    width: min(100%, 640px); padding: 58px 16px 0; align-items: start; row-gap: 16px;
+  }
+  .aw .aw-hero { align-items: center; text-align: center; }
+  .aw .auth-header { text-align: center; }
+  .aw .auth-logo { transform-origin: 50% 0; }
+  .aw .auth-ribbon { margin-left: 0; }
+  .aw .auth-slogan { margin-left: 0; transform-origin: 50% 50%; }
+  .aw .aw-cta { width: 100%; }
+  .aw .aw-live { align-self: center; }
+  .aw .auth-forms { justify-self: center; max-width: 460px; }
+  .aw .auth-shade { background: linear-gradient(180deg, rgba(10, 5, 3, 0.75) 0%, rgba(10, 5, 3, 0.45) 30%, rgba(10, 5, 3, 0.6) 60%, rgba(12, 5, 3, 0.88) 100%); }
+  .aw-rays { left: 50%; }
+}
+@media (max-width: 560px) {
+  .aw .auth-layout { padding: 54px 14px 0; row-gap: 14px; }
+  .aw .auth-eyebrow { font-size: 9px; letter-spacing: 2px; }
+  .aw .auth-logo { font-size: clamp(36px, 11vw, 50px); letter-spacing: 3px; }
+  .aw .auth-slogan { padding: 6px 14px 5px; }
+  .aw .auth-slogan strong { font-size: 24px; letter-spacing: 3px; }
+  .aw .auth-slogan span { font-size: 8.5px; letter-spacing: 1.4px; }
+  .aw .aw-card { padding: 14px 14px 14px 18px; column-gap: 10px; border-radius: 16px; }
+  .aw .aw-card > small { font-size: 10px; letter-spacing: 2px; }
+  .aw .aw-card > b { font-size: 27px; letter-spacing: 2px; }
+  .aw .aw-continue > b { font-size: 22px; }
+  .aw .aw-card > i { font-size: 12px; }
+  .aw .aw-go { width: 44px; height: 44px; font-size: 20px; }
+}
+
+/* ---- fekvő telefon: két oszlop, tömör ---- */
+@media (orientation: landscape) and (max-height: 520px) {
+  .aw .auth-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); grid-template-rows: auto auto auto auto; grid-template-areas: "hero forms" "status status" "retry retry" "foot foot";
+    width: 100%; max-width: none; padding: 62px calc(16px + var(--safe-r, 0px)) 0 calc(16px + var(--safe-l, 0px)); column-gap: 20px; row-gap: 10px; align-items: start;
+  }
+  .aw .aw-hero { align-items: flex-start; text-align: left; gap: 8px; }
+  .aw .auth-header { text-align: left; }
+  .aw .auth-eyebrow { display: none; }
+  .aw .auth-logo { font-size: 34px; letter-spacing: 3px; transform-origin: 0 0; }
+  .aw .auth-ribbon { margin: 7px 0 0; font-size: 7.5px; padding: 4px 14px; }
+  .aw .auth-slogan { margin: 2px 0 0 2px; padding: 4px 12px; transform-origin: 0 50%; }
+  .aw .auth-slogan strong { font-size: 19px; }
+  .aw .auth-slogan span { display: none; }
+  .aw .aw-cta { gap: 8px; }
+  .aw .aw-card { padding: 10px 12px 10px 16px; border-radius: 14px; }
+  .aw .aw-card > small { font-size: 9px; letter-spacing: 1.8px; }
+  .aw .aw-card > b { font-size: 24px; }
+  .aw .aw-card > i { display: none; }
+  .aw .aw-go { width: 40px; height: 40px; font-size: 18px; }
+  .aw .aw-live { align-self: flex-start; font-size: 11px; padding: 4px 10px; }
+  .aw .auth-forms { justify-self: end; }
+}
+
+/* a régi szabály (style.css: széles képernyőn a videóba égetett cím látszott, a HTML-cím rejtett) itt nem kell: a beégetett cím le van vágva */
+.aw .auth-header, .aw .auth-slogan { visibility: visible; }
+/* a háttér a KÉPERNYŐHÖZ rögzítve (nem az oldal aljához): telefonon az oldal hosszabb a képernyőnél, és a kép teteje (a beégetett cím) különben lecsúszna a látható részre */
+.aw .auth-background, .aw .auth-video { position: fixed; }
+.aw .auth-shade, .aw .aw-fx { position: fixed; inset: 0; }

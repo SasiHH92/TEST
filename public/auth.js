@@ -4,7 +4,7 @@
   let account=null, availability=null, busy=false, resetToken='', initializing=false;
   Object.defineProperty(window,'kbAccount',{get:()=>account,configurable:true});
   const forms=document.querySelector('.auth-forms');
-  const mobile=matchMedia('(max-width: 700px)');
+  // (a bejelentkezés / regisztráció minden képernyőméreten fül: egyszerre egy kártya látszik – auth-wow.css)
   const recovery=$('#authRecovery');
   const message=(selector,text,success=false)=>{
     const element=$(selector);
@@ -54,15 +54,14 @@
       const selected=value===name;
       const button=$('#auth'+(value==='login'?'Login':'Register')+'Tab');
       button.setAttribute('aria-selected',String(selected));button.tabIndex=selected?0:-1;
-      if(selected&&focus&&mobile.matches) button.focus();
+      if(selected&&focus) button.focus();
     }
     tabAccessibility();
   }
   function tabAccessibility() {
     for(const prefix of ['Login','Register']) {
       const card=$('#auth'+prefix+'Card');
-      if(mobile.matches) {card.setAttribute('role','tabpanel');card.setAttribute('aria-labelledby','auth'+prefix+'Tab');}
-      else {card.removeAttribute('role');card.setAttribute('aria-labelledby','auth'+prefix+'Title');}
+      card.setAttribute('role','tabpanel');card.setAttribute('aria-labelledby','auth'+prefix+'Tab');
     }
   }
   for(const button of $$('[data-auth-tab]')) button.addEventListener('click',()=>tab(button.dataset.authTab,true));
@@ -74,7 +73,7 @@
     const next=event.key==='Home'?'login':event.key==='End'?'register':forms.dataset.tab==='login'?'register':'login';
     tab(next,true);
   });
-  mobile.addEventListener('change',tabAccessibility);tabAccessibility();
+  tabAccessibility();
   for(const button of $$('[data-password]')) button.addEventListener('click',()=>{
     const input=document.getElementById(button.dataset.password), visible=input.type==='password';
     input.type=visible?'text':'password';button.setAttribute('aria-pressed',String(visible));

@@ -239,6 +239,7 @@ async function ui() {
           await page.waitForFunction(() => !document.querySelector('#authRegisterSubmit').disabled, null, { timeout: 15000 });
           const hrefs = await page.$$eval('.auth-legal a', (as) => as.map((a) => a.getAttribute('href')));
           assert.deepEqual(hrefs, ['/impresszum', '/adatkezeles', '/felhasznalasi-feltetelek']);
+          await page.click('#authRegisterTab'); // (a belépőoldalon egyszerre egy kártya látszik: fülek)
           assert.equal(await page.isVisible('#authTerms'), true);
           assert.equal(await page.getAttribute('#authTerms', 'required'), '');
           assert.match(await page.textContent('label.auth-terms'), /Elmúltam 16 éves/);

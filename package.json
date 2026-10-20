@@ -79,6 +79,9 @@
     "test:badges": "node test/badges.js",
     "test:profile": "node test/profile-dash.js",
     "test:menu": "node test/menu-wow.js",
+    "test:auth-lobby": "node test/auth-lobby-wow.js",
+    "test:xss": "node test/xss-probe.js",
+    "test:client-ip": "node test/client-ip.js",
     "play:assets": "node scripts/make-play-assets.js"
   },
   "engines": {

@@ -6,7 +6,7 @@
    Belépő (.mm-enter, képernyőnként egyszer) + kalapácsütés (.mm-thud); egérrel 3D-dőlés (.tilt). Csökkentett mozgásnál nincs animáció.
    ============================================================ */
 #screen-menu.mm.active { display: block; padding: 0; background: #0b0604; }
-.mm { position: relative; min-height: 100dvh; overflow-x: hidden; isolation: isolate; }
+.mm { position: relative; min-height: 100dvh; overflow-x: clip; isolation: isolate; } /* (clip: nem görgető doboz – a fekvő telefonos sticky színpad működik) */
 .mm .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---- háttér ---- */

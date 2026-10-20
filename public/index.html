@@ -15,6 +15,8 @@
   <link rel="stylesheet" href="/packs.css">
   <link rel="stylesheet" href="/profile.css">
   <link rel="stylesheet" href="/menu.css">
+  <link rel="stylesheet" href="/auth-wow.css">
+  <link rel="stylesheet" href="/lobby-wow.css">
   <link rel="stylesheet" href="/phone.css">
   <link rel="stylesheet" href="/watch.css">
   <link rel="stylesheet" href="/intro.css">
@@ -101,17 +103,25 @@
 
   <noscript><p style="margin:0;padding:16px;background:#2a0b14;color:#f3ece0;text-align:center;font-family:sans-serif">A Kamu Bíróság játékhoz JavaScript szükséges. Kapcsold be a böngésződben, majd töltsd újra az oldalt.</p></noscript>
   <!-- ===================== BELÉPÉS A TÁRGYALÓTEREMBE ===================== -->
-  <main id="screen-auth" class="screen active auth-screen">
+  <main id="screen-auth" class="screen active auth-screen aw">
     <img class="auth-background" src="/assets/terem-hatter.webp" alt="" fetchpriority="high">
     <div class="auth-shade" aria-hidden="true"></div>
+    <div class="aw-fx" aria-hidden="true"><span class="aw-rays"></span><span class="aw-dust"></span><span class="aw-dust b"></span></div>
     <button class="info-btn auth-help" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
     <div class="auth-layout">
+      <div class="aw-hero">
       <header class="auth-header">
         <p class="auth-eyebrow">A TÁRGYALÓTEREM AJTAJA NYITVA</p>
         <h1 class="auth-logo">KAMU BÍRÓSÁG <span aria-hidden="true">🔨</span></h1>
         <p class="auth-ribbon">RENDŐRSÉGI NYILVÁNTARTÁS · KIZÁRÓLAG BÜNTETETLEN POÉNOK</p>
       </header>
       <div class="auth-slogan"><strong>KI A BŰNÖS?</strong><span>KATTINTS. VÁLASSZ. TÁRGYALJ. NEVESS.</span></div>
+      <div class="aw-cta">
+        <button id="authContinue" type="button" class="auth-guest aw-card aw-continue hidden"><small>ÜDV ÚJRA A TEREMBEN</small><b>FOLYTATÁS MINT <b id="authContinueName"></b></b><span class="aw-go" aria-hidden="true">→</span></button>
+        <button id="authGuest" type="button" class="auth-guest aw-card aw-guest"><small>IDÉZÉS · MEGJELENNI KÖTELES</small><b>JÁTÉK VENDÉGKÉNT</b><i>Regisztráció nélkül, azonnal a teremben</i><span class="aw-go" aria-hidden="true">→</span></button>
+        <p id="awLive" class="aw-live" aria-live="polite"><span class="aw-live-dot" aria-hidden="true"></span><b>ÉLŐ</b> <span class="aw-live-txt">a terem nyitva</span></p>
+      </div>
+      </div>
 
       <div class="auth-forms" data-tab="login">
         <div class="auth-tabs" role="tablist" aria-label="Belépés vagy regisztráció">
@@ -177,8 +187,6 @@
       </div>
       <p id="authStatus" class="auth-status" role="status" aria-live="polite">A belépés előkészítése…</p>
       <button id="authRetry" type="button" class="auth-guest hidden">ÚJRAPRÓBÁLOM</button>
-      <button id="authContinue" type="button" class="auth-guest hidden">FOLYTATÁS MINT <b id="authContinueName"></b> <span aria-hidden="true">→</span></button>
-      <button id="authGuest" type="button" class="auth-guest">JÁTÉK VENDÉGKÉNT <span aria-hidden="true">→</span></button>
       <footer class="auth-features">
         <span><b aria-hidden="true">🕵️</b> VÁLASSZ KARAKTERT</span>
         <span><b aria-hidden="true">⚖️</b> TÁRGYALJ ÉS NEVESS</span>
@@ -509,8 +517,9 @@
   </div>
 
   <!-- ===================== LOBBY: A RENDŐRŐRS FALIÚJSÁGJA ===================== -->
-  <div id="screen-lobby" class="screen screen-station">
+  <div id="screen-lobby" class="screen screen-station lw">
     <button class="info-btn" data-help aria-label="Játékleírás" title="Játékleírás">i</button>
+    <div class="lw-bg" aria-hidden="true"><img class="lw-bg-img" src="/assets/terem-hatter.webp" alt=""><span class="lw-rays"></span><span class="aw-dust"></span><span class="aw-dust b"></span><span class="lw-vignette"></span></div>
     <div class="lobby-wrap">
 
       <!-- Ügyirat száma + link + QR -->
@@ -544,6 +553,7 @@
       <!-- Plakátfal -->
       <div class="board">
         <h2 class="board-title">KÖRÖZÉS – A TEREMBEN TARTÓZKODÓK</h2>
+        <div id="lwSeats" class="lw-seats" aria-live="polite"></div>
         <div id="pinWall" class="pin-wall"></div>
         <p id="lobbyHint" class="lobby-hint"></p>
       </div>
@@ -755,5 +765,7 @@
   <script src="/turn-alert.js"></script>
   <script src="/voice.js"></script>
   <script src="/menu.js"></script>
+  <script src="/auth-fx.js"></script>
+  <script src="/lobby-fx.js"></script>
 </body>
 </html>
