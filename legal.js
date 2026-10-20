@@ -22,8 +22,8 @@
 
 const express = require('express');
 
-const LEGAL_VERSION = '2026-10-16';
-const LEGAL_DATE_TEXT = '2026. október 15.';
+const LEGAL_VERSION = '2026-10-20';
+const LEGAL_DATE_TEXT = '2026. október 20.';
 const SITE_NAME = 'Kamu Bíróság';
 
 const esc = (v) => String(v === undefined || v === null ? '' : v)
@@ -139,6 +139,7 @@ function privacy(cfg) {
       ['Hibajelentések', 'a leírás, a megadott név, a képernyő neve, a szobakód, a böngésző típusa (user agent) és az opcionálisan csatolt képernyőkép. A jelentés a fejlesztők privát Discord-csatornájába kerül', 'hibajavítás, szolgáltatásminőség; jogos érdek, a küldéssel adott hozzájárulás', 'a hiba megoldásáig; a Discord-üzenetet a fejlesztők törölhetik'],
       ['Rendszer-levelek', 'e-mail-cím, név, a levél tartalma (megerősítő / visszaállító link, szobakód). Marketing- vagy hírlevél nincs', 'a regisztráció megerősítése, jelszó-visszaállítás, értesítések, meghívó; szerződés', 'a kézbesítő szolgáltató naplózási ideje szerint'],
       ['Üzemeltetési naplók', 'hibanapló (az e-mail-címek és tokenek eltávolításával), a tárhely- és hálózati szolgáltatók szerver-naplói (IP-cím, időpont, kért oldal)', 'a szolgáltatás biztonsága, hibaelhárítás; jogos érdek', 'a szolgáltatók beállítása szerint (általában rövid ideig)'],
+      ['Látogatottsági statisztika', 'naponta hány alkalommal nyitották meg a főoldalt és hány egyedi látogató volt (ebből szobalinkről). Az egyedi látogató megállapításához az IP-cím és a böngésző típusának rövid lenyomata készül egy <b>naponta cserélődő</b> titkos kulccsal; magát az IP-címet nem tároljuk, sütit nem használunk, és a lenyomat másnap már senkihez nem köthető', 'a látogatottság mérése, a szolgáltatás fejlesztése; jogos érdek', 'a lenyomat és a kulcs a nap végéig (budapesti idő szerint); a napi összesített számok 90 napig'],
       ['Mentések', 'az adatbázis napi biztonsági mentése', 'adatvesztés elleni védelem; jogos érdek', 'legfeljebb 14 napig; a törölt adat ennyi ideig még szerepelhet a mentésekben']
     ])) +
     sec('cimzettek', '3. Kik kezelik az adataidat? (adatfeldolgozók, címzettek)', '<p>Az adataidat nem adjuk el, és nem adjuk át marketing célra. Az alábbi szolgáltatók a nevünkben, a szolgáltatás működtetéséhez dolgoznak fel adatokat:</p>' + table(['Szolgáltató', 'Mit végez', 'Hol'], [

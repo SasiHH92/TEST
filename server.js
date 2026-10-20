@@ -167,7 +167,7 @@ app.use('/api/packs', createPacksApi({ packs, auth: authApi, onError: reportErro
 const cardFeedback = createCardFeedback({ file: path.resolve(__dirname, process.env.KB_CARDFB_FILE || 'data/cardfeedback.json'), persist: () => storage.push('cardfeedback') });
 Game.setCardFeedback(cardFeedback);
 // Aktivitás-napló az admin műszerfalhoz: napi játékok / egyedi játékosok / online csúcs, óránkénti minták (név nélkül; activity.js)
-const { createActivity, dayOf } = require('./activity');
+const { createActivity, dayOf, isBotAgent } = require('./activity');
 const activity = createActivity({ file: path.resolve(__dirname, process.env.KB_ACTIVITY_FILE || 'data/activity.json'), persist: () => storage.push('activity') });
 const socialApi = createSocial({
   auth: authApi,
@@ -220,6 +220,7 @@ app.get('/api/account/export', (req, res) => {
 
 // Böngészős hibák jelentése (public/report.js): szigorúan korlátozva, csak rövid, tisztított szöveg kerül a naplóba.
 const clientErrorHits = new Map(); // ip -> időbélyegek
+const { isClientNoise } = require('./client-noise'); // idegen (beszúrt) szkriptek / víruskereső / bővítmény "hibái" nem kerülnek a naplóba
 app.post('/api/client-error', express.json({ limit: '4kb' }), (req, res) => {
   const now = Date.now();
   const hits = (clientErrorHits.get(req.ip) || []).filter((t) => now - t < 60 * 1000);
@@ -228,6 +229,7 @@ app.post('/api/client-error', express.json({ limit: '4kb' }), (req, res) => {
   if (clientErrorHits.size > 5000) clientErrorHits.delete(clientErrorHits.keys().next().value);
   const b = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
   if (typeof b.message !== 'string' || !b.message.trim()) return res.status(400).end();
+  if (isClientNoise(b.message, b.src)) return res.status(204).end();
   const device = /iPhone|iPad|iPod/i.test(req.get('user-agent') || '') ? 'iOS' : /Android/i.test(req.get('user-agent') || '') ? 'Android' : 'gép';
   errors.record('client', { message: b.message }, {
     src: typeof b.src === 'string' ? b.src.replace(/[?#].*$/, '').split('/').slice(-2).join('/') : '',
@@ -261,6 +263,11 @@ function renderIndex(req) {
   return html;
 }
 app.get(['/', '/index.html'], (req, res, next) => {
+  // látogatottság az admin műszerfalhoz (activity.js visit): csak valódi böngésző, nem előtöltés (prefetch / prerender), nem HEAD
+  try {
+    const ua = req.get('user-agent') || '', purpose = (req.get('sec-purpose') || req.get('purpose') || '').toLowerCase();
+    if (req.method === 'GET' && !isBotAgent(ua) && !/prefetch|prerender/.test(purpose)) activity.visit({ ip: req.ip, ua, invite: typeof req.query.room === 'string' && /^[A-Za-z0-9]{4}$/.test(req.query.room) });
+  } catch (_) { /* a napló nem kritikus */ }
   let html;
   try { html = renderIndex(req); } catch (_) { return next(); } // hiba esetén a statikus fájl megy (a helyőrzők csak az előnézetet érintik)
   res.set('Cache-Control', 'no-cache');

@@ -158,6 +158,11 @@ async function main() {
       assert.ok(!list[0].ctx.src.includes('?') && !list[0].ctx.src.includes('https'), list[0].ctx.src);
     });
 
+    await test('Böngészős hibajelentés: az idegen szkript "Script error."-ja (fájl nélkül) nem kerül a naplóba (client-noise.js)', async () => {
+      assert.equal((await call(BASE, 'POST', '/api/client-error', { message: 'Script error.', src: '', line: 0 })).status, 204);
+      assert.equal((await admin('GET', '/errors')).data.errors.length, 1, 'csak az előző, valódi hiba van a naplóban');
+    });
+
     await test('Böngészős hibajelentés: üres / hibás kérés elutasítva, hibás JSON 400', async () => {
       assert.equal((await call(BASE, 'POST', '/api/client-error', { message: '' })).status, 400);
       assert.equal((await call(BASE, 'POST', '/api/client-error', { nincs: 1 })).status, 400);

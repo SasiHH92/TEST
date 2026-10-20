@@ -3,18 +3,24 @@
 // KAMU BÍRÓSÁG – aktivitás-napló az admin műszerfalhoz (data/activity.json, a Neonba is mentve: storage 'activity')
 //   - napi számok (Budapest szerinti nap, 90 nap): indult / befejeződött / megszakadt játék, egyedi játékosok, egyszerre online csúcs (játékos, szoba)
 //   - óránkénti minták (48 óra): az órán belüli legtöbb online játékos / szoba / kapcsolat
+//   - látogatottság (naponta): a főoldal megnyitásai (views), egyedi látogatók (visitors), ebből szobalinkről (invites) – keresőrobot, link-előnézet, előtöltés nem számít
 // Az egyedi játékosok számolásához CSAK a mai nap rövid név-ujjlenyomatai élnek (sha256 első 10 karaktere), a napváltáskor törlődnek –
-// név nem kerül tárolásra. Bot nem számít.
+// név nem kerül tárolásra. Bot nem számít. Az egyedi látogatóhoz az IP-cím + böngésző-típus lenyomata kell egy NAPONTA ÚJ, véletlen kulccsal
+// (sha256(kulcs | ip | user agent) első 12 karaktere): a kulcs és a lenyomatok a napváltáskor törlődnek, így a lenyomat másnap már senkihez
+// sem köthető vissza; az IP-cím maga nem kerül tárolásra, süti nincs.
 // ============================================================
 const fs = require('fs');
 const crypto = require('crypto');
 
-const KEEP_DAYS = 90, KEEP_HOURS = 48, MAX_TODAY_IDS = 5000;
+const KEEP_DAYS = 90, KEEP_HOURS = 48, MAX_TODAY_IDS = 5000, MAX_TODAY_VISITORS = 20000;
 const dayFmt = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Budapest', year: 'numeric', month: '2-digit', day: '2-digit' });
 const dayOf = (t) => dayFmt.format(new Date(t)); // 'ÉÉÉÉ-HH-NN'
 const hourOf = (t) => Math.floor(t / 3600000) * 3600000;
 const tag = (name) => crypto.createHash('sha256').update(String(name || '').trim().toLowerCase()).digest('hex').slice(0, 10);
-const blankDay = () => ({ started: 0, finished: 0, aborted: 0, players: 0, peakPlayers: 0, peakRooms: 0 });
+const blankDay = () => ({ started: 0, finished: 0, aborted: 0, players: 0, peakPlayers: 0, peakRooms: 0, views: 0, visitors: 0, invites: 0 });
+// keresőrobot, link-előnézet (Discord, Messenger …), felügyelő, parancssori letöltő, fej nélküli böngésző: nem látogató
+const BOT_UA = /bot\b|bot\/|crawl|spider|slurp|preview|facebookexternalhit|meta-externalagent|embedly|whatsapp|telegram|discord|skype|slack|vkshare|bingpreview|lighthouse|pagespeed|headless|phantom|puppeteer|playwright|selenium|curl\/|wget|python|node-fetch|undici|axios|okhttp|go-http|java\/|libwww|httpclient|monitor|uptime|pingdom|statuscake|render\//i;
+const isBotAgent = (ua) => { const s = String(ua || ''); return !s || s.length < 12 || BOT_UA.test(s); };
 
 function createActivity({ file, persist = () => {}, now = () => Date.now() } = {}) {
   let data = { version: 1, days: {}, hours: [], today: { day: '', ids: [] } };
@@ -23,7 +29,7 @@ function createActivity({ file, persist = () => {}, now = () => Date.now() } = {
     if (raw && typeof raw === 'object') data = { ...data, ...raw, days: raw.days || {}, hours: Array.isArray(raw.hours) ? raw.hours : [], today: raw.today || data.today };
   } catch (_) { /* nincs még fájl: üresen indul */ }
 
-  let timer = null;
+  let timer = null, visitorSet = null; // a mai látogató-lenyomatok halmaza (gyors kereséshez; a fájlban tömb)
   function save() {
     if (timer) return;
     timer = setTimeout(() => {
@@ -34,7 +40,7 @@ function createActivity({ file, persist = () => {}, now = () => Date.now() } = {
   }
   function day(t = now()) {
     const key = dayOf(t);
-    if (data.today.day !== key) data.today = { day: key, ids: [] }; // napváltás: a tegnapi ujjlenyomatok törlődnek
+    if (data.today.day !== key) { data.today = { day: key, ids: [], visitors: [], salt: '' }; visitorSet = null; } // napváltás: a tegnapi ujjlenyomatok, a látogató-lenyomatok és a kulcs törlődnek
     if (!data.days[key]) {
       data.days[key] = blankDay();
       const keys = Object.keys(data.days).sort();
@@ -52,6 +58,19 @@ function createActivity({ file, persist = () => {}, now = () => Date.now() } = {
       for (const n of names) { if (ids.size >= MAX_TODAY_IDS) break; ids.add(tag(n)); }
       data.today.ids = [...ids];
       d.players = ids.size;
+      save();
+    },
+    // a főoldal megnyitása (server.js GET /): ip a valódi játékos-cím (client-ip.js), ua a böngésző; invite: szobalinkről (/?room=KÓD)
+    visit({ ip = '', ua = '', invite = false } = {}) {
+      const d = day();
+      if (!data.today.salt) data.today.salt = crypto.randomBytes(16).toString('hex');
+      if (!Array.isArray(data.today.visitors)) data.today.visitors = [];
+      if (!visitorSet) visitorSet = new Set(data.today.visitors);
+      d.views = (d.views || 0) + 1;
+      if (invite) d.invites = (d.invites || 0) + 1;
+      const id = crypto.createHash('sha256').update(data.today.salt + '|' + ip + '|' + ua).digest('hex').slice(0, 12);
+      if (!visitorSet.has(id) && visitorSet.size < MAX_TODAY_VISITORS) { visitorSet.add(id); data.today.visitors.push(id); }
+      d.visitors = visitorSet.size;
       save();
     },
     gameFinished() { day().finished++; save(); },
@@ -93,4 +112,4 @@ function createActivity({ file, persist = () => {}, now = () => Date.now() } = {
   };
 }
 
-module.exports = { createActivity, dayOf, KEEP_DAYS, KEEP_HOURS };
+module.exports = { createActivity, dayOf, isBotAgent, KEEP_DAYS, KEEP_HOURS };

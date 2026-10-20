@@ -1,7 +1,9 @@
 'use strict';
 // ============================================================
 // KAMU BÍRÓSÁG – az admin műszerfal (activity.js, GET /api/admin/overview, public/admin.js Áttekintés / Élő szobák / Hibajelentések)
-//  A) activity.js: napi számok (egyedi játékos név nélkül, napváltáskor új nap), percenkénti minta → napi csúcs + óránkénti legtöbb (48 óra), a fájlba nem kerül név
+//  A) activity.js: napi számok (egyedi játékos név nélkül, napváltáskor új nap), percenkénti minta → napi csúcs + óránkénti legtöbb (48 óra), a fájlba nem kerül név;
+//     látogatottság: megnyitás / egyedi látogató / szobalinkről, a lenyomat naponta új kulccsal, IP-cím nem kerül a fájlba; botszűrő
+//  B2) GET /: böngésző számít, bot / link-előnézet / előtöltés / HEAD nem; /?room=KÓD szobalinkről
 //  B) /api/admin/overview: token nélkül 401; tokennel az élő szoba (játékosnevek, bot, házigazda), a számlálók, a hibajelentés, az indított játék a naplóban
 //  C) böngésző: belépés után az Áttekintés az alapfül, a KPI-k, a 4 grafikon (oszlopok, értékcímke egérre és ← → nyílra, táblázat-nézet), élő szoba-kártya,
 //     ranglista-váltó, hibajelentés-szűrő; a játékosnév / hibaszöveg SZÖVEGKÉNT jelenik meg (nincs HTML-befecskendezés); mobilon (390) nincs vízszintes görgetés; nincs konzol-hiba
@@ -14,7 +16,7 @@ const os = require('os');
 const fs = require('fs');
 const crypto = require('crypto');
 const { io } = require('socket.io-client');
-const { createActivity, dayOf } = require('../activity');
+const { createActivity, dayOf, isBotAgent } = require('../activity');
 
 let chromium;
 try { ({ chromium } = require('playwright-core')); } catch (_) { /* a C) rész kimarad */ }
@@ -90,6 +92,37 @@ async function unit() {
     const b = createActivity({ file, now: () => clock });
     assert.equal(b.summary(5).days.find((d) => d.day === dayOf(Date.parse('2026-03-10T10:15:00Z'))).players, 4);
   });
+  await check('A) látogatás: azonos cím + böngésző egy látogató; másik böngésző / cím új; szobalinkről külön; újratöltve is megmarad', async () => {
+    const UA1 = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1', UA2 = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130 Safari/537.36';
+    a.visit({ ip: '203.0.113.7', ua: UA1 }); a.visit({ ip: '203.0.113.7', ua: UA1 }); a.visit({ ip: '203.0.113.7', ua: UA2, invite: true }); a.visit({ ip: '198.51.100.9', ua: UA1 });
+    const t = a.summary(1).days[0];
+    assert.deepEqual({ v: t.views, u: t.visitors, i: t.invites }, { v: 4, u: 3, i: 1 });
+    a.flush();
+    const raw = fs.readFileSync(file, 'utf8');
+    for (const x of ['203.0.113.7', '198.51.100.9', 'iPhone', 'Chrome/130']) assert.ok(!raw.includes(x), 'nincs a fájlban: ' + x);
+    const b = createActivity({ file, now: () => clock });
+    b.visit({ ip: '203.0.113.7', ua: UA1 });
+    assert.deepEqual({ v: b.summary(1).days[0].views, u: b.summary(1).days[0].visitors }, { v: 5, u: 3 }, 'újraindítás után ugyanaz a látogató nem számít újnak');
+  });
+  await check('A) látogatás: napváltáskor új kulcs, a tegnapi lenyomatok törlődnek (a tegnapi látogató ma újra számít, a tegnapi szám marad)', async () => {
+    const before = JSON.parse(fs.readFileSync(file, 'utf8')).today;
+    clock += DAY;
+    a.visit({ ip: '203.0.113.7', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Safari/604.1' });
+    a.flush();
+    const after = JSON.parse(fs.readFileSync(file, 'utf8')).today;
+    assert.notEqual(after.salt, before.salt, 'új napi kulcs'); assert.equal(after.visitors.length, 1);
+    assert.ok(!after.visitors.some((x) => before.visitors.includes(x)), 'a tegnapi lenyomatok nincsenek meg');
+    const days = a.summary(2).days;
+    assert.equal(days[1].visitors, 1); assert.equal(days[0].visitors, 3);
+  });
+  await check('A) botszűrő: keresőrobot, link-előnézet, letöltő, fej nélküli böngésző, üres UA nem látogató; telefon / gép igen', async () => {
+    for (const ua of ['Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)', 'facebookexternalhit/1.1', 'Mozilla/5.0 (compatible; Googlebot/2.1)', 'TelegramBot (like TwitterBot)',
+      'WhatsApp/2.23', 'curl/8.4.0', 'python-requests/2.31', 'node-fetch', 'Go-http-client/1.1', 'Mozilla/5.0 HeadlessChrome/120', 'Render/1.0', '', 'x'])
+      assert.equal(isBotAgent(ua), true, ua);
+    for (const ua of ['Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130 Safari/537.36 Edg/130', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15'])
+      assert.equal(isBotAgent(ua), false, ua);
+  });
 }
 
 // előre feltöltött napló, hogy a grafikonokon legyen mit mutatni
@@ -125,6 +158,19 @@ async function main() {
     assert.ok(evilRoom && evilRoom.code, 'a "gonosz" nevű szoba létrejött: ' + JSON.stringify(evilRoom));
     const bugRes = await fetch(BASE + '/api/bugreport', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Hibás Henrik', kind: 'ui', text: 'A gomb eltűnt ' + EVIL + ' a menüből', where: 'menu', room: code }) });
     assert.equal(bugRes.status, 200, 'hibajelentés elküldve');
+
+    // ---------- B2) látogatás a főoldalon ----------
+    const page0 = (q, headers, method = 'GET') => fetch(BASE + '/' + q, { method, headers });
+    const PHONE = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130 Mobile Safari/537.36', DESK = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130 Safari/537.36';
+    await page0('', { 'User-Agent': PHONE }); await page0('', { 'User-Agent': PHONE }); await page0('?room=' + code, { 'User-Agent': DESK });
+    await page0('?room=' + code, { 'User-Agent': 'Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)' });
+    await page0('', { 'User-Agent': DESK, 'Sec-Purpose': 'prefetch' });
+    await page0('', { 'User-Agent': DESK }, 'HEAD');
+    await page0('?room=<script>', { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) Version/17.0 Safari/605.1.15' });
+    await check('B2) GET /: 4 megnyitás, 3 egyedi látogató, 1 szobalinkről; a Discord-előnézet, az előtöltés és a HEAD nem számít; rossz kód nem szobalink', async () => {
+      const t = (await (await admin('/overview')).json()).activity.days.at(-1);
+      assert.deepEqual({ v: t.views, u: t.visitors, i: t.invites }, { v: 4, u: 3, i: 1 }, JSON.stringify(t));
+    });
 
     // ---------- B) API ----------
     let o;
@@ -190,16 +236,21 @@ async function main() {
       assert.match(await page.textContent('#liveTxt'), /élő · frissítve \d/);
       assert.equal(await page.$$eval('#ovKpis .kpi', (e) => e.length), 10);
       assert.match(await page.textContent('#ovKpis'), /Új hibajelentés\s*1/);
+      assert.match(await page.textContent('#ovKpis'), /Mai látogató\s*3\s*4 megnyitás · 1 szobalinkről/);
+      assert.match(await page.textContent('#ovServer'), /Kapcsolatok/);
       assert.equal(await page.textContent('#cntLive'), '4'); assert.equal(await page.textContent('#cntBugs'), '1');
     });
-    await check('C) a 4 grafikon: oszlopok a betöltött napokra, rakott oszlop 2 sorozattal, x/y címkék, táblázat-nézet', async () => {
-      const info = await page.evaluate(() => ['#chOnline', '#chGames', '#chPlayers', '#chSignups'].map((sel) => {
+    await check('C) az 5 grafikon: oszlopok a betöltött napokra, rakott oszlop 2 sorozattal, x/y címkék, táblázat-nézet (a látogatóknál a megnyitás is)', async () => {
+      const info = await page.evaluate(() => ['#chOnline', '#chGames', '#chPlayers', '#chSignups', '#chVisitors'].map((sel) => {
         const box = document.querySelector(sel);
         return { sel, cols: box.querySelectorAll('.ch-col').length, bars: box.querySelectorAll('.seg-bar').length, s2: box.querySelectorAll('.seg-bar.s2').length,
           y: box.querySelectorAll('.ch-y span').length, x: box.querySelectorAll('.ch-x-labels span').length, rows: box.querySelectorAll('.ch-table tr').length, empty: !!box.querySelector('.ch-empty'),
           maxBarW: Math.max(0, ...[...box.querySelectorAll('.seg-bar')].map((b) => b.getBoundingClientRect().width)) };
       }));
-      const [on, games, players, signups] = info;
+      const [on, games, players, signups, visitors] = info;
+      assert.equal(visitors.cols, 30); assert.equal(visitors.bars, 1, 'ma van látogató: ' + JSON.stringify(visitors));
+      assert.match(await page.textContent('#chVisitors .ch-table tr:nth-child(2)'), /3\s*4\s*1/, 'a mai sor: látogató, megnyitás, szobalinkről');
+      assert.match(await page.textContent('#chVisitors .ch-table tr:first-child'), /egyedi látogató\s*megnyitás\s*szobalinkről/);
       assert.equal(on.cols, 48); assert.ok(on.bars >= 20, JSON.stringify(on)); assert.equal(on.rows, 49);
       assert.equal(games.cols, 30); assert.ok(games.s2 >= 5, 'megszakadt szeletek: ' + JSON.stringify(games)); assert.ok(games.y >= 3 && games.x >= 4, JSON.stringify(games));
       assert.equal(players.cols, 30); assert.ok(players.bars >= 12);

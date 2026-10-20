@@ -179,7 +179,7 @@
     const colEls = rows.map((r) => {
       const c = el('div', { className: 'ch-col' });
       r.values.forEach((v, i) => { if (v > 0) c.append(el('div', { className: 'seg-bar ' + series[i].cls, style: 'height:calc(' + ((v / top) * 100) + '% - ' + (i ? 2 : 0) + 'px)' })); });
-      const rowsFor = () => series.map((s, i) => ({ label: s.name, value: r.values[i], color: s.color }));
+      const rowsFor = () => series.map((s, i) => ({ label: s.name, value: r.values[i], color: s.color })).concat((r.extra || []).map((x) => ({ label: x.label, value: x.value, color: 'transparent' })));
       c.addEventListener('pointerenter', () => showTip(c, r.label, rowsFor()));
       c.addEventListener('pointerleave', hideTip);
       c._tip = () => showTip(c, r.label, rowsFor());
@@ -199,8 +199,9 @@
     const every = Math.max(1, Math.ceil(rows.length / 7));
     rows.forEach((r, i) => { if (i % every === 0 || i === rows.length - 1) xl.append(el('span', { textContent: r.short, style: 'left:' + (((i + 0.5) / rows.length) * 100) + '%' })); });
     const table = el('details', { className: 'ch-table' }, el('summary', { textContent: 'Adatok táblázatban' }));
-    const tb = el('table'); tb.append(el('tr', {}, el('th', { textContent: '' }), ...series.map((s) => el('th', { textContent: s.name }))));
-    for (const r of rows.slice().reverse()) tb.append(el('tr', {}, el('td', { textContent: r.label }), ...r.values.map((v) => el('td', { textContent: fmtN(v) }))));
+    const extraNames = (rows[0].extra || []).map((x) => x.label);
+    const tb = el('table'); tb.append(el('tr', {}, el('th', { textContent: '' }), ...series.map((s) => el('th', { textContent: s.name })), ...extraNames.map((n) => el('th', { textContent: n }))));
+    for (const r of rows.slice().reverse()) tb.append(el('tr', {}, el('td', { textContent: r.label }), ...r.values.map((v) => el('td', { textContent: fmtN(v) })), ...(r.extra || []).map((x) => el('td', { textContent: fmtN(x.value) }))));
     table.append(tb);
     box.append(plot, el('div', { className: 'ch-x' }, el('span'), xl), table);
   }
@@ -234,7 +235,7 @@
     const newBugs = (o.bugs.byStatus && o.bugs.byStatus.new) || 0;
     $('#ovKpis').replaceChildren(
       kpi('Folyó tárgyalások', fmtN(tot.playing), tot.lobbies + ' szoba gyülekezik'),
-      kpi('Kapcsolatok', fmtN(tot.sockets), tot.watching ? tot.watching + ' néző' : 'böngésző / telefon'),
+      kpi('Mai látogató', fmtN(today.visitors || 0), fmtN(today.views || 0) + ' megnyitás' + (today.invites ? ' · ' + fmtN(today.invites) + ' szobalinkről' : '')),
       kpi('Ma játszott', fmtN(today.players || 0), (today.started || 0) + ' játék indult ma'),
       kpi('Mai csúcs', fmtN(today.peakPlayers || 0), 'egyszerre online · ' + (today.peakRooms || 0) + ' szoba'),
       kpi('Fiókok', fmtN(o.accounts.total), '+' + o.accounts.new7d + ' az elmúlt 7 napban', '', o.accounts.new7d ? 'up' : ''),
@@ -248,6 +249,8 @@
       [{ name: 'online játékos', cls: 's1', color: 'var(--series-1)' }], 'Még nincs mérés – a szerver percenként jegyzi fel, hányan vannak online.');
     barChart($('#chGames'), days.map((d) => ({ label: d.day, short: dayLabel(d.day), values: [d.finished, d.aborted] })),
       [{ name: 'befejezett', cls: 's1', color: 'var(--series-1)' }, { name: 'megszakadt', cls: 's2', color: 'var(--series-2)' }], 'Még nincs befejezett vagy megszakadt játék a naplóban.');
+    barChart($('#chVisitors'), days.map((d) => ({ label: d.day, short: dayLabel(d.day), values: [d.visitors || 0], extra: [{ label: 'megnyitás', value: d.views || 0 }, { label: 'szobalinkről', value: d.invites || 0 }] })),
+      [{ name: 'egyedi látogató', cls: 's1', color: 'var(--series-1)' }], 'Még nincs látogatás a naplóban – a főoldal megnyitásait mától számolja.');
     barChart($('#chPlayers'), days.map((d) => ({ label: d.day, short: dayLabel(d.day), values: [d.players] })),
       [{ name: 'egyedi játékos', cls: 's1', color: 'var(--series-1)' }], 'Még nincs játék a naplóban.');
     barChart($('#chSignups'), days.map((d) => ({ label: d.day, short: dayLabel(d.day), values: [d.signups || 0] })),
@@ -273,6 +276,7 @@
       el('div', { className: 'meter' + (pct >= 85 ? ' crit' : pct >= 70 ? ' warn' : '') }, el('div', { className: 'm-top' }, el('span', { textContent: 'Memória (a Render ingyenes csomag: ' + LIMIT + ' MB)' }), el('b', { textContent: used + ' MB · ' + pct + '%' })),
         el('div', { className: 'm-track' }, el('div', { className: 'm-fill', style: 'width:' + pct + '%' }))),
       el('dl', { className: 'kv' }, el('dt', { textContent: 'Node' }), el('dd', { textContent: sv.node }), el('dt', { textContent: 'Verzió' }), el('dd', { textContent: sv.commit || 'helyi' }),
+        el('dt', { textContent: 'Kapcsolatok' }), el('dd', { textContent: fmtN(tot.sockets) + (tot.watching ? ' (ebből ' + tot.watching + ' néző)' : '') }),
         el('dt', { textContent: 'Szobák' }), el('dd', { textContent: tot.rooms + ' / ' + sv.maxRooms + ' (szobánként legfeljebb ' + sv.maxPlayers + ' fő)' })),
       el('div', { className: 'flags' }, el('span', { className: 'tag' + (sv.render ? ' good' : ''), textContent: sv.render ? 'Render' : 'helyi szerver' }), el('span', { className: 'tag' + (sv.voice ? ' good' : ''), textContent: 'hang (béta): ' + (sv.voice ? 'BE' : 'ki') }),
         el('span', { className: 'tag', textContent: 'lobbi-botok: ' + (sv.lobbyBots ? 'be' : 'ki') })));
