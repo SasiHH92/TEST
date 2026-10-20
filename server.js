@@ -166,6 +166,9 @@ app.use('/api/packs', createPacksApi({ packs, auth: authApi, onError: reportErro
 // Kártya-visszajelzés: a vádakra adott 😂/👎 szavazatok névtelen összesítése (fájlban él, és a külső adatbázisba is feltöltődik).
 const cardFeedback = createCardFeedback({ file: path.resolve(__dirname, process.env.KB_CARDFB_FILE || 'data/cardfeedback.json'), persist: () => storage.push('cardfeedback') });
 Game.setCardFeedback(cardFeedback);
+// Aktivitás-napló az admin műszerfalhoz: napi játékok / egyedi játékosok / online csúcs, óránkénti minták (név nélkül; activity.js)
+const { createActivity, dayOf } = require('./activity');
+const activity = createActivity({ file: path.resolve(__dirname, process.env.KB_ACTIVITY_FILE || 'data/activity.json'), persist: () => storage.push('activity') });
 const socialApi = createSocial({
   auth: authApi,
   dms,
@@ -180,7 +183,7 @@ const socialApi = createSocial({
 app.use('/api/friends',socialApi.router);
 
 // Üzemeltetői felület: csak ADMIN_TOKEN (legalább 24 karakter) beállításakor él, egyébként 404 (lásd admin.js).
-const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, packs, cardFeedback, legal: () => ({ missing: legal.missing(), version: legal.version, minAge: legal.minAge }), hideBoardMessage: (id) => hideBoardMessage(id) });
+const adminApi = createAdmin({ token: process.env.ADMIN_TOKEN || '', errors, storage, auth: authApi, moderation, packs, cardFeedback, legal: () => ({ missing: legal.missing(), version: legal.version, minAge: legal.minAge }), hideBoardMessage: (id) => hideBoardMessage(id), overview: () => adminOverview() });
 app.use('/api/admin', adminApi.router);
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
@@ -735,6 +738,11 @@ app.use('/api/bot', courtsApi.bot);
 app.use('/api', courtsApi.web);
 Game.setLifecycleHook((game, event) => {
   try {
+    if (event === 'started') activity.gameStarted([...game.players.values()].filter((p) => !p.isBot).map((p) => p.name));
+    else if (event === 'finished') activity.gameFinished();
+    else if (event === 'aborted') activity.gameAborted();
+  } catch (e) { reportError('activity', e); }
+  try {
     if (event === 'started') courts.roomStarted(game.code);
     else if (event === 'finished') courts.roomFinished(game.code);
     else if (event === 'aborted' || event === 'disposed') courts.roomGone(game.code);
@@ -748,6 +756,57 @@ Game.setLifecycleHook((game, event) => {
   }
 });
 setInterval(() => { try { courts.expireStale(); } catch (e) { reportError('court-expire', e); } }, 30 * 60 * 1000).unref();
+// percenként: hányan vannak online (nem bot, kapcsolódva), hány szobában – az admin "online" grafikonjához
+function liveCounts() {
+  let players = 0, roomsWithPeople = 0;
+  for (const g of rooms.values()) { let n = 0; for (const p of g.players.values()) if (!p.isBot && p.connected) n++; players += n; if (n) roomsWithPeople++; }
+  return { players, rooms: roomsWithPeople, sockets: io.engine.clientsCount };
+}
+setInterval(() => { try { activity.sample(liveCounts()); } catch (e) { reportError('activity', e); } }, 60 * 1000).unref();
+
+// ---------- üzemeltetői műszerfal (GET /api/admin/overview, csak admin tokennel): élő szobák, szerver, fiókok, játékosok, aktivitás, hibajelentések ----------
+const SERVER_STARTED = Date.now();
+function adminOverview() {
+  const t = Date.now(), DAY = 86400000;
+  const live = []; let humans = 0, bots = 0, playing = 0, lobbies = 0, watching = 0;
+  for (const g of rooms.values()) {
+    const ps = [...g.players.values()], host = g.hostId();
+    humans += ps.filter((p) => p.connected && !p.isBot).length; bots += ps.filter((p) => p.isBot).length; watching += g.watchers || 0;
+    if (g.phase === PHASES.LOBBY) lobbies++; else playing++;
+    live.push({ code: g.code, phase: g.phase, round: g.round || 0, rounds: (g.settings && g.settings.rounds) || 0, createdAt: g.createdAt || 0,
+      watchers: g.watchers || 0, voice: !!(g.voiceAllowed && g.voiceOn),
+      players: ps.map((p) => ({ name: p.name, bot: !!p.isBot, on: !!p.connected, host: p.id === host, score: p.score || 0 })) });
+  }
+  const people = (r) => r.players.filter((p) => p.on && !p.bot).length;
+  live.sort((a, b) => people(b) - people(a) || b.createdAt - a.createdAt);
+  let accounts = [];
+  try { accounts = authApi.admin.listAccounts(); } catch (_) { /* a fiókkezelés most nem elérhető */ }
+  try { activity.sample(liveCounts()); } catch (_) { /* a napló nem kritikus */ }
+  const act = activity.summary(30), signups = new Map();
+  for (const a of accounts) if (a.createdAt > t - 31 * DAY) { const k = dayOf(a.createdAt); signups.set(k, (signups.get(k) || 0) + 1); }
+  for (const d of act.days) d.signups = signups.get(d.day) || 0;
+  const week = weekStart(budapestDate()), recs = Object.values(STATS || {});
+  let playerGames = 0, rounds = 0, weeklyActive = 0;
+  for (const r of recs) { playerGames += r.jatek || 0; rounds += r.korok || 0; if (r.weekly && r.weekly.week === week) weeklyActive++; }
+  const bugList = bugs.all(), byStatus = {}, byKind = {};
+  for (const b of bugList) { const s = b.status || 'new'; byStatus[s] = (byStatus[s] || 0) + 1; byKind[b.kind] = (byKind[b.kind] || 0) + 1; }
+  const mem = process.memoryUsage();
+  return {
+    time: t,
+    live: { rooms: live, totals: { rooms: rooms.size, playing, lobbies, humans, bots, watching, sockets: io.engine.clientsCount } },
+    server: { uptimeSeconds: Math.round(process.uptime()), startedAt: SERVER_STARTED, node: process.version, commit: String(process.env.RENDER_GIT_COMMIT || '').slice(0, 7),
+      memory: { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal }, render: !!process.env.RENDER, voice: VOICE_ENABLED, lobbyBots: LOBBY_BOTS, maxPlayers: MAX_PLAYERS, maxRooms: MAX_ROOMS },
+    accounts: { total: accounts.length, new24h: accounts.filter((a) => a.createdAt > t - DAY).length, new7d: accounts.filter((a) => a.createdAt > t - 7 * DAY).length,
+      active24h: accounts.filter((a) => a.lastLoginAt > t - DAY).length, active7d: accounts.filter((a) => a.lastLoginAt > t - 7 * DAY).length,
+      providers: { password: accounts.filter((a) => a.password).length, discord: accounts.filter((a) => a.providers.includes('discord')).length, google: accounts.filter((a) => a.providers.includes('google')).length },
+      legends: accounts.filter((a) => a.legend).length, waiting: accounts.filter((a) => a.mustChangePassword).length },
+    players: { known: recs.length, weeklyActive, playerGames, rounds,
+      top: lb.build(STATS, { period: 'osszes', metric: 'pont', weekStart: week, limit: 8 }).rows, topWeek: lb.build(STATS, { period: 'heti', metric: 'pont', weekStart: week, limit: 8 }).rows },
+    activity: act,
+    bugs: { total: bugList.length, byStatus, byKind, latest: bugList.slice(-25).reverse().map((b) => ({ id: b.id, ts: b.ts, name: b.name, account: !!b.account, kind: b.kind, text: String(b.text || '').slice(0, 400), where: b.where || '', room: b.room || '', status: b.status || 'new' })) },
+    cards: cardFeedback.summary(), packs: { total: packs.count() }
+  };
+}
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // félreérthető karakterek nélkül
 

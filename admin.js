@@ -32,7 +32,7 @@ const MIN_TOKEN = 24;
 const FAIL_LIMIT = 10;
 const FAIL_WINDOW_MS = 10 * 60 * 1000;
 
-function createAdmin({ token = '', errors, storage, auth, moderation, packs = null, cardFeedback = null, legal: legalInfo = null, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
+function createAdmin({ token = '', errors, storage, auth, moderation, packs = null, cardFeedback = null, legal: legalInfo = null, overview = null, hideBoardMessage = () => false, now = () => Date.now(), startedAt = Date.now() }) {
   const router = express.Router();
   const enabled = typeof token === 'string' && token.length >= MIN_TOKEN;
   const expected = enabled ? crypto.createHash('sha256').update(token).digest() : null;
@@ -85,6 +85,8 @@ function createAdmin({ token = '', errors, storage, auth, moderation, packs = nu
     });
   }));
 
+  // műszerfal: élő szobák, szerver, fiókok, játékosok, aktivitás (30 nap / 48 óra), hibajelentések – server.js adminOverview
+  router.get('/overview', wrap(async (req, res) => { if (!overview) return res.status(404).json({ error: 'Nincs műszerfal-adat.' }); res.json(overview()); }));
   router.get('/errors', (req, res) => res.json({ errors: errors.list(), summary: errors.summary() }));
   router.post('/errors/clear', (req, res) => { errors.clear(); res.json({ ok: true }); });
 

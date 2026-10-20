@@ -162,6 +162,7 @@ class Game {
   constructor(code, io) {
     this.code = code;
     this.io = io;
+    this.createdAt = Date.now(); // (az admin műszerfalnak: mióta él a szoba)
     this.players = new Map();
     this.archivedPlayers = new Map();
     this.kickedNames = new Set();

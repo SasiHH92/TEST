@@ -111,7 +111,7 @@ const SECRET_KEYS = ['evidence', 'alibi', 'tricks', 'witnessCard', 'myChallenge'
       }
     });
     await check('A) a beszéd alatt adott reakció a nézőhöz is eljut', async () => {
-      host.emit('accusation_read');
+      (host.lastState.currentJudgeId === 'mateW' ? mate : host).emit('accusation_read'); // a "Felolvastam!" a kör bírójáé (bot-bírónál a bot olvas fel)
       assert.ok(await until(() => w1.lastWatch.phase === 'prep', 5000), 'felkészülés');
       assert.ok(await until(() => w1.lastWatch.phase === 'prosecution', 14000), 'vádbeszéd: ' + w1.lastWatch.phase);
       await pause(300);

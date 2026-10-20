@@ -4,123 +4,92 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Kamu Bíróság – üzemeltetés</title>
-<style>
-  :root { --bg:#14121a; --panel:#1d1a24; --panel2:#262230; --line:#3a3347; --ink:#efe8d8; --dim:#a79f8f; --gold:#f2c14e; --red:#e5484d; --green:#3fbf6b; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif; }
-  main { max-width:980px; margin:0 auto; padding:16px; }
-  h1 { font-size:22px; margin:6px 0; color:var(--gold); }
-  h2 { font-size:16px; margin:0 0 10px; color:var(--gold); }
-  h3 { font-size:14px; margin:16px 0 8px; color:var(--gold); }
-  section { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
-  input, select, textarea { background:#0f0d14; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:9px 10px; font:inherit; min-width:0; }
-  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
-  textarea { width:100%; min-height:110px; resize:vertical; }
-  input[type=checkbox] { width:18px; height:18px; padding:0; accent-color:var(--gold); }
-  button { background:var(--gold); color:#241a06; border:0; border-radius:6px; padding:9px 14px; font:inherit; font-weight:700; cursor:pointer; }
-  button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
-  button.ghost:hover:not(:disabled) { border-color:var(--gold); }
-  button.danger { background:transparent; color:var(--red); border:1px solid var(--red); }
-  button.danger:hover:not(:disabled) { background:var(--red); color:#fff; }
-  button.solid-danger { background:var(--red); color:#fff; }
-  button.small { padding:5px 10px; font-size:13px; }
-  button:disabled { opacity:.45; cursor:default; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .row input, .row select { flex:1 1 200px; }
-  .kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; }
-  .kv dt { color:var(--dim); } .kv dd { margin:0; word-break:break-word; }
-  .ok { color:var(--green); } .bad { color:var(--red); } .dim { color:var(--dim); }
-  .err { border-top:1px solid var(--line); padding:10px 0; }
-  .err:first-child { border-top:0; }
-  .tag { display:inline-block; font-size:11px; font-weight:700; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--gold); margin-right:6px; white-space:nowrap; }
-  .tag.bad { color:var(--red); border-color:var(--red); }
-  .tag.good { color:var(--green); border-color:var(--green); }
-  pre { margin:6px 0 0; padding:8px; background:#0f0d14; border-radius:6px; overflow:auto; font-size:12px; color:var(--dim); }
-  .msg { margin-top:8px; min-height:1.3em; }
-  code { background:#0f0d14; padding:1px 5px; border-radius:4px; word-break:break-all; }
-  .hidden { display:none !important; }
-  .pw { font-size:17px; font-weight:700; letter-spacing:.04em; color:var(--gold); user-select:all; }
-  .warn { border:1px solid var(--red); border-radius:8px; padding:8px 10px; margin:0 0 8px; background:rgba(229,72,77,.12); }
-
-  /* fejléc + összesítő kártyák + fülek */
-  .top { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between; margin-bottom:10px; }
-  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:14px; }
-  .stat { text-align:left; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-weight:400; }
-  .stat:hover { border-color:var(--gold); }
-  .stat b { display:block; font-size:22px; line-height:1.2; color:var(--gold); }
-  .stat b.bad { color:var(--red); } .stat b.ok { color:var(--green); }
-  .stat span { display:block; font-size:12px; color:var(--dim); }
-  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:14px; overflow-x:auto; }
-  .tabs button { background:transparent; color:var(--dim); border:0; border-bottom:3px solid transparent; border-radius:0; padding:10px 14px; white-space:nowrap; }
-  .tabs button[aria-selected=true] { color:var(--gold); border-bottom-color:var(--gold); }
-  .count { display:inline-block; min-width:20px; text-align:center; font-size:12px; padding:0 6px; border-radius:999px; background:var(--panel2); color:var(--ink); margin-left:4px; }
-  .count.bad { background:var(--red); color:#fff; }
-  .count:empty { display:none; }
-
-  /* fiók-lista */
-  details.fold { border:1px solid var(--line); border-radius:8px; margin-bottom:12px; background:var(--panel2); }
-  details.fold > summary { cursor:pointer; padding:10px 12px; font-weight:700; color:var(--gold); }
-  details.fold > div { padding:0 12px 12px; }
-  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
-  .chip { background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:999px; padding:4px 11px; font-size:13px; font-weight:400; }
-  .chip[aria-pressed=true] { background:var(--gold); color:#241a06; border-color:var(--gold); font-weight:700; }
-  .selbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
-  .selbar label { display:flex; gap:6px; align-items:center; cursor:pointer; }
-  .acct-list { max-height:640px; overflow:auto; }
-  .acct { display:grid; grid-template-columns:auto 1fr auto; gap:4px 12px; align-items:start; padding:10px 4px; border-bottom:1px solid var(--line); }
-  .acct:last-child { border-bottom:0; }
-  .acct.picked { background:rgba(242,193,78,.07); }
-  .acct .pick { margin-top:3px; }
-  .acct-name { overflow-wrap:anywhere; }
-  .acct-mail, .acct-dates { font-size:13px; color:var(--dim); overflow-wrap:anywhere; }
-  .acct-note { font-size:13px; color:var(--red); margin-top:2px; }
-  .acct-actions { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
-  @media (max-width:640px) {
-    main { padding:12px; }
-    .acct { grid-template-columns:auto 1fr; }
-    .acct-actions { grid-column:2; justify-content:flex-start; }
-  }
-
-  /* megerősítő ablak */
-  dialog { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:12px; padding:18px; width:min(460px, calc(100vw - 24px)); }
-  dialog::backdrop { background:rgba(10,8,14,.75); }
-  dialog p { margin:0 0 10px; }
-  dialog input { width:100%; margin:4px 0 12px; }
-  dialog .row { justify-content:flex-end; }
-</style>
+<title>Kamu Bíróság – irányítóterem</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Oswald:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin.css">
 </head>
 <body>
-<main>
-  <header class="top">
-    <h1>⚖️ Kamu Bíróság – üzemeltetés</h1>
-    <div class="row hidden" id="topActions">
-      <button class="ghost small" id="reload" type="button">Frissítés</button>
-      <button class="ghost small" id="adminLogout" type="button">Kilépés</button>
-    </div>
-  </header>
+<div class="bg" aria-hidden="true"></div>
 
-  <section id="login">
-    <h2>Belépés</h2>
+<!-- ===================== BELÉPÉS ===================== -->
+<section id="login" class="login">
+  <div class="login-card">
+    <div class="login-mark" aria-hidden="true">⚖️</div>
+    <h1 class="login-title">KAMU BÍRÓSÁG<small>IRÁNYÍTÓTEREM</small></h1>
     <p class="dim">Add meg az <code>ADMIN_TOKEN</code> értékét (a Render Environment fülén állítottad be). A böngésző csak erre a fülre jegyzi meg.</p>
     <form class="row" id="loginForm" autocomplete="off">
       <input id="token" type="password" placeholder="ADMIN_TOKEN" aria-label="Admin token" autocomplete="off">
       <button type="submit">BELÉPÉS</button>
     </form>
     <p class="msg bad" id="loginMsg" role="status"></p>
-  </section>
+  </div>
+</section>
 
-  <div id="panel" class="hidden">
+<div id="panel" class="shell hidden">
+  <!-- ===================== OLDALSÁV ===================== -->
+  <aside class="side">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">⚖️</span><span><b>KAMU BÍRÓSÁG</b><small>irányítóterem</small></span></div>
+    <nav class="tabs" role="tablist" aria-label="Szakaszok" aria-orientation="vertical">
+      <button type="button" role="tab" id="tabbtn-overview" data-tab="overview" aria-selected="true" aria-controls="tab-overview"><i aria-hidden="true">📊</i><span>Áttekintés</span></button>
+      <button type="button" role="tab" id="tabbtn-live" data-tab="live" aria-selected="false" aria-controls="tab-live"><i aria-hidden="true">🔴</i><span>Élő szobák</span><span class="count live" id="cntLive"></span></button>
+      <button type="button" role="tab" id="tabbtn-accounts" data-tab="accounts" aria-selected="false" aria-controls="accounts"><i aria-hidden="true">👤</i><span>Fiókok</span><span class="count" id="cntAccounts"></span></button>
+      <button type="button" role="tab" id="tabbtn-reports" data-tab="reports" aria-selected="false" aria-controls="tab-reports"><i aria-hidden="true">🚩</i><span>Jelentések</span><span class="count" id="cntReports"></span></button>
+      <button type="button" role="tab" id="tabbtn-bugs" data-tab="bugs" aria-selected="false" aria-controls="tab-bugs"><i aria-hidden="true">🐞</i><span>Hibajelentések</span><span class="count" id="cntBugs"></span></button>
+      <button type="button" role="tab" id="tabbtn-packs" data-tab="packs" aria-selected="false" aria-controls="tab-packs"><i aria-hidden="true">🃏</i><span>Csomagok</span><span class="count" id="cntPacks"></span></button>
+      <button type="button" role="tab" id="tabbtn-cards" data-tab="cards" aria-selected="false" aria-controls="tab-cards"><i aria-hidden="true">😂</i><span>Kártyák</span></button>
+      <button type="button" role="tab" id="tabbtn-errors" data-tab="errors" aria-selected="false" aria-controls="tab-errors"><i aria-hidden="true">⚠️</i><span>Hibák</span><span class="count" id="cntErrors"></span></button>
+      <button type="button" role="tab" id="tabbtn-system" data-tab="system" aria-selected="false" aria-controls="tab-system"><i aria-hidden="true">⚙️</i><span>Rendszer</span></button>
+    </nav>
+    <div class="side-foot hidden" id="topActions">
+      <label class="auto"><input type="checkbox" id="autoRefresh" checked> élő frissítés</label>
+      <div class="row">
+        <button class="ghost small" id="reload" type="button">Frissítés</button>
+        <button class="ghost small" id="adminLogout" type="button">Kilépés</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="content">
+    <header class="topbar">
+      <div><h1 id="pageTitle">Áttekintés</h1><p class="dim" id="pageSub">A játék állapota egy pillantással</p></div>
+      <div class="live-pill" id="livePill" title="Élő adatok: 15 másodpercenként frissül"><span class="dot" aria-hidden="true"></span><span id="liveTxt">betöltés…</span></div>
+    </header>
     <div class="stats" id="stats"></div>
 
-    <nav class="tabs" role="tablist" aria-label="Szakaszok">
-      <button type="button" role="tab" id="tabbtn-accounts" data-tab="accounts" aria-selected="true" aria-controls="accounts">Fiókok <span class="count" id="cntAccounts"></span></button>
-      <button type="button" role="tab" id="tabbtn-reports" data-tab="reports" aria-selected="false" aria-controls="tab-reports">Jelentések <span class="count" id="cntReports"></span></button>
-      <button type="button" role="tab" id="tabbtn-packs" data-tab="packs" aria-selected="false" aria-controls="tab-packs">Csomagok <span class="count" id="cntPacks"></span></button>
-      <button type="button" role="tab" id="tabbtn-cards" data-tab="cards" aria-selected="false" aria-controls="tab-cards">Kártyák</button>
-      <button type="button" role="tab" id="tabbtn-errors" data-tab="errors" aria-selected="false" aria-controls="tab-errors">Hibák <span class="count" id="cntErrors"></span></button>
-      <button type="button" role="tab" id="tabbtn-system" data-tab="system" aria-selected="false" aria-controls="tab-system">Rendszer</button>
-    </nav>
+    <!-- ===================== ÁTTEKINTÉS (műszerfal) ===================== -->
+    <section id="tab-overview" class="ov" role="tabpanel" aria-labelledby="tabbtn-overview">
+      <div class="ov-hero">
+        <div class="hero-live"><span class="pulse" aria-hidden="true"></span><div><b id="ovOnline">–</b><span>játékos online most</span><small id="ovOnlineSub"></small></div></div>
+        <div class="ov-kpis" id="ovKpis"></div>
+      </div>
+      <div class="ov-grid">
+        <article class="card chart-card wide"><header><div><h3>Online az elmúlt 48 órában</h3><small>óránként a legtöbb egyszerre online játékos</small></div></header><div class="chart" id="chOnline"></div></article>
+        <article class="card chart-card"><header><div><h3>Játékok naponta</h3><small>az elmúlt 30 nap</small></div><div class="legend"><span><i class="sw s1"></i>befejezett</span><span><i class="sw s2"></i>megszakadt</span></div></header><div class="chart" id="chGames"></div></article>
+        <article class="card chart-card"><header><div><h3>Egyedi játékosok naponta</h3><small>akik aznap játszottak (név nélkül számolva)</small></div></header><div class="chart" id="chPlayers"></div></article>
+        <article class="card"><header><div><h3>Élő szobák</h3><small id="ovRoomsSub"></small></div><button type="button" class="ghost small" data-tab="live">Mind →</button></header><div id="ovRooms"></div></article>
+        <article class="card"><header><div><h3>Ranglista</h3><small>pontszám szerint</small></div><div class="seg" role="group" aria-label="Időszak"><button type="button" class="chip" id="topWeekBtn" aria-pressed="true">Heti</button><button type="button" class="chip" id="topAllBtn" aria-pressed="false">Összesített</button></div></header><div id="ovTop"></div></article>
+        <article class="card"><header><div><h3>Legutóbbi hibajelentések</h3><small id="ovBugsSub"></small></div><button type="button" class="ghost small" data-tab="bugs">Mind →</button></header><div id="ovBugs"></div></article>
+        <article class="card chart-card"><header><div><h3>Regisztrációk naponta</h3><small>új fiókok az elmúlt 30 napban</small></div></header><div class="chart" id="chSignups"></div></article>
+        <article class="card wide server-card"><header><div><h3>Szerver</h3><small id="ovServerSub"></small></div><button type="button" class="ghost small" data-tab="system">Részletek →</button></header><div id="ovServer"></div></article>
+      </div>
+    </section>
+
+    <!-- ===================== ÉLŐ SZOBÁK ===================== -->
+    <section id="tab-live" class="hidden" role="tabpanel" aria-labelledby="tabbtn-live">
+      <h2>Élő szobák <span class="dim" id="liveSummary" style="font-weight:400"></span></h2>
+      <p class="dim">A szerveren most élő szobák (15 másodpercenként frissül). A szobába csak a játékosok láthatnak bele – itt a kód, a fázis, a játékosok és a nézők látszanak.</p>
+      <div id="liveRooms" class="rooms"></div>
+    </section>
+
+    <!-- ===================== HIBAJELENTÉSEK ===================== -->
+    <section id="tab-bugs" class="hidden" role="tabpanel" aria-labelledby="tabbtn-bugs">
+      <h2>Hibajelentések <span class="dim" id="bugsSummary" style="font-weight:400"></span></h2>
+      <p class="dim">A játékosok 🐞 gombbal küldött jelentései (a Discord-bot a 🐛・hibajelentés csatornába is kiposztolja őket; az állapotot ott állítja a stáb). A legutóbbi 25.</p>
+      <div class="chips" id="bugChips" role="group" aria-label="Szűrés állapot szerint"></div>
+      <div id="bugList"></div>
+    </section>
 
     <!-- ===================== FIÓKOK ===================== -->
     <section id="accounts" role="tabpanel" aria-labelledby="tabbtn-accounts">
@@ -234,8 +203,8 @@
         <p class="msg" id="resetMsg" role="status"></p>
       </section>
     </div>
-  </div>
-</main>
+  </main>
+</div>
 
 <!-- Megerősítő ablak (törlés, új jelszó, napló-törlés): veszélyes műveletnél a nevet / a TÖRLÖM szót be kell gépelni -->
 <dialog id="askDialog" aria-labelledby="askTitle">

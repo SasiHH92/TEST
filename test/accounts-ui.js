@@ -66,9 +66,12 @@ async function startServer() {
     const adminCtx = await newPage();
     const ap = adminCtx.page;
     const created = {}; // név -> ideiglenes jelszó
-    await check('Admin: belépés tokennel, megjelenik a Fiókok szakasz (legenda-választóval)', async () => {
+    await check('Admin: belépés tokennel, előbb az Áttekintés, a Fiókok fülön a Fiókok szakasz (legenda-választóval)', async () => {
       await ap.goto(BASE + '/admin', { waitUntil: 'domcontentloaded' });
       await ap.fill('#token', TOKEN); await ap.click('#loginForm button[type=submit]');
+      await ap.waitForSelector('#tab-overview', { state: 'visible' });
+      assert.equal(await ap.isVisible('#accounts'), false, 'belépés után az Áttekintés látszik');
+      await ap.click('#tabbtn-accounts');
       await ap.waitForSelector('#accounts', { state: 'visible' });
       await ap.waitForFunction(() => document.querySelectorAll('#newLegend option').length > 5);
       assert.match(await ap.textContent('#acctSummary'), /0 regisztrált/);
@@ -229,7 +232,8 @@ async function startServer() {
       await ap.waitForSelector('#login', { state: 'visible' });
       assert.equal(await ap.isVisible('#panel'), false);
       await ap.fill('#token', TOKEN); await ap.click('#loginForm button[type=submit]');
-      await ap.waitForSelector('#accounts', { state: 'visible' });
+      await ap.waitForSelector('#panel', { state: 'visible' });
+      await ap.click('#tabbtn-accounts'); await ap.waitForSelector('#accounts', { state: 'visible' });
     });
 
     await check('Admin: nincs konzol-hiba (CSP, szkript)', async () => { assert.deepEqual(adminCtx.errors, []); });
@@ -238,6 +242,8 @@ async function startServer() {
       const m = await newPage({ width: 390, height: 844 });
       await m.page.goto(BASE + '/admin', { waitUntil: 'domcontentloaded' });
       await m.page.fill('#token', TOKEN); await m.page.click('#loginForm button[type=submit]');
+      await m.page.waitForSelector('#tab-overview', { state: 'visible' });
+      await m.page.click('#tabbtn-accounts');
       await m.page.waitForSelector('#acctList .acct');
       const info = await m.page.evaluate(() => {
         const first = document.querySelector('#acctList .acct');

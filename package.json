@@ -83,6 +83,7 @@
     "test:xss": "node test/xss-probe.js",
     "test:client-ip": "node test/client-ip.js",
     "test:accusation-judge": "node test/accusation-judge.js",
+    "test:admin-dash": "node test/admin-dashboard.js",
     "play:assets": "node scripts/make-play-assets.js"
   },
   "engines": {

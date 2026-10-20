@@ -253,6 +253,8 @@ async function walk(browser, vp) {
             const lasting = result.problems.filter((p) => before.phase === phase && before.keys.has(p.replace(/\s*\(.*$/, '')));
             assert.deepEqual(lasting, [], '[' + tag + ' fázis: ' + phase + '] ' + lasting.join(' | '));
             before = { phase, keys };
+            // a "Felolvastam!" a kör bírójáé: ha most ez a (egyetlen emberi) játékos a bíró, neki kell megnyomnia (bot-bírónál a bot olvas fel)
+            if (phase === 'accusation') await page.evaluate(() => { const b = document.getElementById('iaAccRead'); if (b) b.click(); });
             if (seen.size >= 4 && (phase === 'verdict_vote' || phase === 'verdict' || phase === 'round_results' || phase === 'game_over')) break;
           }
           // a szerver által küldött fázisok (gyűjtve) – a mért (képernyőkép + átfedés-vizsgálat) fázisok mindig része ennek

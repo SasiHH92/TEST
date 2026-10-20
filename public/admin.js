@@ -33,9 +33,17 @@
   }
 
   // ---- Fülek ----
-  const TABS = { accounts: '#accounts', reports: '#tab-reports', packs: '#tab-packs', cards: '#tab-cards', errors: '#tab-errors', system: '#tab-system' };
+  const TABS = { overview: '#tab-overview', live: '#tab-live', accounts: '#accounts', reports: '#tab-reports', bugs: '#tab-bugs', packs: '#tab-packs', cards: '#tab-cards', errors: '#tab-errors', system: '#tab-system' };
+  const TITLES = {
+    overview: ['Áttekintés', 'A játék állapota egy pillantással'], live: ['Élő szobák', 'Most futó szobák és játékosok – 15 másodpercenként frissül'],
+    accounts: ['Fiókok', 'Regisztrált fiókok, ideiglenes jelszavak, törlés'], reports: ['Jelentések', 'Játékosok jelentései és a némítások'],
+    bugs: ['Hibajelentések', 'Amit a játékosok a játékból küldtek be'], packs: ['Közösségi csomagok', 'Kártyaműhely: közzététel, jelentések, elrejtés'],
+    cards: ['Kártyák', 'Vádak értékelése (😂 / 👎)'], errors: ['Hibák', 'A szerver és a böngészők hibanaplója'], system: ['Rendszer', 'Adatbázis, mentések, levélküldés, jelszó-visszaállítás']
+  };
   function selectTab(name, focus) {
-    if (!TABS[name]) name = 'accounts';
+    if (!TABS[name]) name = 'overview';
+    $('#pageTitle').textContent = TITLES[name][0]; $('#pageSub').textContent = TITLES[name][1];
+    $('#stats').classList.toggle('hidden', ['overview', 'live', 'bugs'].includes(name)); // ott a saját élő számaik látszanak
     for (const [key, sel] of Object.entries(TABS)) {
       $(sel).classList.toggle('hidden', key !== name);
       const b = $('#tabbtn-' + key); b.setAttribute('aria-selected', String(key === name)); b.tabIndex = key === name ? 0 : -1;
@@ -45,13 +53,13 @@
   }
   for (const b of document.querySelectorAll('[data-tab]')) b.addEventListener('click', () => selectTab(b.dataset.tab));
   $('.tabs').addEventListener('keydown', (ev) => {
-    if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(ev.key)) return;
     const names = Object.keys(TABS), now = names.findIndex((n) => $('#tabbtn-' + n).getAttribute('aria-selected') === 'true');
-    selectTab(names[(now + (ev.key === 'ArrowRight' ? 1 : names.length - 1)) % names.length], true);
+    selectTab(names[(now + (ev.key === 'ArrowRight' || ev.key === 'ArrowDown' ? 1 : names.length - 1)) % names.length], true);
     ev.preventDefault();
   });
-  let startTab = 'accounts';
-  try { startTab = sessionStorage.getItem('kb_admin_tab') || 'accounts'; } catch (_) { /* nem kritikus */ }
+  let startTab = 'overview';
+  try { startTab = sessionStorage.getItem('kb_admin_tab') || 'overview'; } catch (_) { /* nem kritikus */ }
   selectTab(startTab);
 
   // ---- Megerősítő ablak: veszélyes műveletnél a nevet / a TÖRLÖM szót be kell gépelni ----
@@ -86,9 +94,10 @@
     const s = await api('GET', '/status'); // előbb ez: rossz tokennel csak egy sikertelen próba számít
     show(true);
     const cardsQuery = '/cardfeedback?sort=' + encodeURIComponent($('#cardsSort').value) + '&min=' + encodeURIComponent($('#cardsMin').value || '3');
-    const [errs, backs, accts, reps, packs, cards] = await Promise.all([api('GET', '/errors'), api('GET', '/backups'), api('GET', '/accounts'), api('GET', '/reports'), api('GET', '/packs'), api('GET', cardsQuery)]);
+    const [errs, backs, accts, reps, packs, cards, ov] = await Promise.all([api('GET', '/errors'), api('GET', '/backups'), api('GET', '/accounts'), api('GET', '/reports'), api('GET', '/packs'), api('GET', cardsQuery), api('GET', '/overview')]);
     lastStatus = s;
-    renderSystem(s); renderErrors(errs); renderBackups(backs); renderReports(reps); renderAccounts(accts); renderPacks(packs); renderCards(cards);
+    renderSystem(s); renderErrors(errs); renderBackups(backs); renderReports(reps); renderAccounts(accts); renderPacks(packs); renderCards(cards); renderOverview(ov);
+    $('#cntAccounts').textContent = accts.accounts ? String(accts.accounts.length) : '';
     const reportedPacks = s.packs ? s.packs.reported : 0; $('#cntPacks').textContent = reportedPacks ? String(reportedPacks) : ''; $('#cntPacks').className = 'count' + (reportedPacks ? ' bad' : '');
     $('#cntErrors').textContent = s.errors.total ? String(s.errors.total) : ''; $('#cntErrors').className = 'count' + (s.errors.total ? ' bad' : '');
     $('#cntReports').textContent = s.reports.open ? String(s.reports.open) : ''; $('#cntReports').className = 'count' + (s.reports.open ? ' bad' : '');
@@ -119,6 +128,188 @@
       card('system', s.database ? 'Neon ✓' : 'NINCS', 'adatbázis', s.database ? 'ok' : 'bad'),
       card('system', s.backups.latest ? when(s.backups.latest.takenAt).replace(/:\d\d$/, '') : 'még nincs', 'legutóbbi mentés', s.backups.latest ? '' : 'bad'));
   }
+
+  // ============================================================
+  // MŰSZERFAL (Áttekintés), ÉLŐ SZOBÁK, HIBAJELENTÉSEK – GET /api/admin/overview, 15 másodpercenként frissül (élő frissítés)
+  // ============================================================
+  const PHASE_HU = { lobby: 'Gyülekező', accusation: 'Vádemelés', prep: 'Felkészülés', prosecution: 'Vádbeszéd', defense: 'Védekezés', defender: 'Védőbeszéd',
+    witness: 'Tanúvallomás', final_prosecution: 'Zárszó (vád)', final_defense: 'Zárszó (védelem)', objection: 'Tiltakozás', jury_question: 'Keresztkérdés',
+    verdict_vote: 'Szavazás', verdict: 'Ítélet', challenge_review: 'Kihívások', challenge_vote: 'Kihívás-szavazás', round_results: 'Kör vége', game_over: 'Játék vége' };
+  const BUG_ST = { new: 'Új', progress: 'Folyamatban', ice: 'Jegelve', done: 'Kész', wontfix: 'Nem javítjuk', cantrepro: 'Nem reprodukálható' };
+  const BUG_KIND = { bug: 'Hiba', sound: 'Hang', ui: 'Kinézet', room: 'Szoba', other: 'Egyéb' };
+  const fmtN = (n) => (Number(n) || 0).toLocaleString('hu-HU');
+  const ago = (t) => { if (!t) return '–'; const s = Math.max(0, Math.round((Date.now() - t) / 1000)); if (s < 60) return s + ' mp'; const m = Math.round(s / 60); if (m < 60) return m + ' perc'; const h = Math.floor(m / 60); if (h < 48) return h + ' óra ' + (m % 60) + ' perc'; return Math.round(h / 24) + ' nap'; };
+  const hourLabel = (t) => new Date(t).toLocaleTimeString('hu-HU', { timeZone: 'Europe/Budapest', hour: '2-digit', minute: '2-digit' });
+  const dayLabel = (key) => key.slice(5).replace('-', '.') + '.';
+  let lastOverview = null, topMode = 'week', bugFilter = 'all';
+
+  // tooltip (egy közös, a kurzor mellett)
+  const tip = el('div', { className: 'tip hidden', role: 'status' }); document.body.append(tip);
+  function showTip(target, title, rows) {
+    tip.replaceChildren(el('b', { textContent: title }), ...rows.map((r) => el('div', { className: 't-row' }, el('i', { className: 't-key', style: 'background:' + (r.color || 'var(--muted)') }), el('strong', { textContent: fmtN(r.value) }), el('span', { textContent: r.label }))));
+    tip.classList.remove('hidden');
+    const b = target.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = b.left + b.width / 2 - w / 2; x = Math.max(8, Math.min(window.innerWidth - w - 8, x));
+    let y = b.top - h - 8; if (y < 8) y = b.bottom + 8;
+    tip.style.left = Math.round(x) + 'px'; tip.style.top = Math.round(y) + 'px';
+  }
+  const hideTip = () => tip.classList.add('hidden');
+
+  // tiszta tengely-léptékek (0, 1, 2, 5, 10, 20, 50 … szorzók), egész számokra
+  function ticksFor(max) {
+    const raw = Math.max(1, max) / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+    const step = Math.max(1, (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag);
+    const top = Math.max(step, Math.ceil(Math.max(1, max) / step) * step), out = [];
+    for (let v = 0; v <= top + 1e-9; v += step) out.push(Math.round(v));
+    return out;
+  }
+  // oszlopdiagram: rows = [{ x, label, values: [...] }], series = [{ name, cls, color }]; egér / billentyű (← →) alatt értékcímke; táblázat-nézet
+  function barChart(box, rows, series, emptyText) {
+    box.replaceChildren();
+    const total = (r) => r.values.reduce((s, v) => s + v, 0);
+    const max = Math.max(0, ...rows.map(total));
+    if (!max) { box.append(el('div', { className: 'ch-empty', textContent: emptyText })); return; }
+    const ticks = ticksFor(max), top = ticks[ticks.length - 1];
+    const y = el('div', { className: 'ch-y' }), area = el('div', { className: 'ch-area' }), cols = el('div', { className: 'ch-cols' });
+    for (const t of ticks) {
+      const pct = (t / top) * 100;
+      y.append(el('span', { textContent: t >= 1000 ? (t / 1000) + 'K' : String(t), style: 'bottom:' + pct + '%' }));
+      if (t) area.append(el('div', { className: 'ch-grid', style: 'bottom:' + pct + '%' }));
+    }
+    const colEls = rows.map((r) => {
+      const c = el('div', { className: 'ch-col' });
+      r.values.forEach((v, i) => { if (v > 0) c.append(el('div', { className: 'seg-bar ' + series[i].cls, style: 'height:calc(' + ((v / top) * 100) + '% - ' + (i ? 2 : 0) + 'px)' })); });
+      const rowsFor = () => series.map((s, i) => ({ label: s.name, value: r.values[i], color: s.color }));
+      c.addEventListener('pointerenter', () => showTip(c, r.label, rowsFor()));
+      c.addEventListener('pointerleave', hideTip);
+      c._tip = () => showTip(c, r.label, rowsFor());
+      cols.append(c); return c;
+    });
+    area.append(cols);
+    const plot = el('div', { className: 'ch-plot', tabIndex: 0, role: 'img', ariaLabel: series.map((s) => s.name).join(' / ') + ': legfeljebb ' + max + ' (a ← → nyíllal végiglépkedhető)' }, y, area);
+    let cur = rows.length - 1;
+    plot.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+      ev.preventDefault(); cur = Math.max(0, Math.min(rows.length - 1, cur + (ev.key === 'ArrowRight' ? 1 : -1)));
+      colEls.forEach((c, i) => c.classList.toggle('focus', i === cur)); colEls[cur]._tip();
+    });
+    plot.addEventListener('focus', () => { colEls[cur].classList.add('focus'); colEls[cur]._tip(); });
+    plot.addEventListener('blur', () => { colEls.forEach((c) => c.classList.remove('focus')); hideTip(); });
+    const xl = el('div', { className: 'ch-x-labels' });
+    const every = Math.max(1, Math.ceil(rows.length / 7));
+    rows.forEach((r, i) => { if (i % every === 0 || i === rows.length - 1) xl.append(el('span', { textContent: r.short, style: 'left:' + (((i + 0.5) / rows.length) * 100) + '%' })); });
+    const table = el('details', { className: 'ch-table' }, el('summary', { textContent: 'Adatok táblázatban' }));
+    const tb = el('table'); tb.append(el('tr', {}, el('th', { textContent: '' }), ...series.map((s) => el('th', { textContent: s.name }))));
+    for (const r of rows.slice().reverse()) tb.append(el('tr', {}, el('td', { textContent: r.label }), ...r.values.map((v) => el('td', { textContent: fmtN(v) }))));
+    table.append(tb);
+    box.append(plot, el('div', { className: 'ch-x' }, el('span'), xl), table);
+  }
+
+  function kpi(label, value, sub, cls, subCls) {
+    return el('div', { className: 'kpi' + (cls ? ' ' + cls : '') }, el('span', { className: 'k-label', textContent: label }), el('span', { className: 'k-value', textContent: value }), sub ? el('span', { className: 'k-sub' + (subCls ? ' ' + subCls : ''), textContent: sub }) : '');
+  }
+  function roomCard(r) {
+    const people = r.players.filter((p) => p.on && !p.bot).length, isGame = r.phase !== 'lobby';
+    const meta = [isGame && r.rounds ? r.round + '. kör / ' + r.rounds : '', r.createdAt ? 'él ' + ago(r.createdAt) + ' óta' : '', r.watchers ? '📺 ' + r.watchers + ' néző' : '', r.voice ? '🎙️ hang be' : ''].filter(Boolean).join(' · ');
+    return el('div', { className: 'room' },
+      el('div', { className: 'room-head' }, el('span', { className: 'room-code', textContent: r.code }), el('span', { className: 'phase ' + (isGame ? 'game' : 'lobby'), textContent: (isGame ? '● ' : '◌ ') + (PHASE_HU[r.phase] || r.phase) })),
+      el('div', { className: 'room-meta', textContent: people + ' játékos' + (meta ? ' · ' + meta : '') }),
+      el('div', { className: 'people' }, ...r.players.map((p) => el('span', { className: 'person' + (p.on ? '' : ' off') + (p.bot ? ' bot' : ''), title: (p.host ? 'házigazda · ' : '') + (p.bot ? 'bot · ' : '') + (p.on ? 'kapcsolódva' : 'nincs kapcsolat') + ' · ' + p.score + ' pont', textContent: (p.host ? '👑 ' : p.bot ? '🤖 ' : '') + p.name }))));
+  }
+  function bugRow(b) {
+    return el('div', { className: 'bug' },
+      el('div', { className: 'bug-head' }, el('b', { textContent: b.id }), el('span', { className: 'st ' + b.status, textContent: BUG_ST[b.status] || b.status }), el('span', { className: 'tag', textContent: BUG_KIND[b.kind] || b.kind }),
+        el('span', { textContent: (b.name || 'vendég') + (b.account ? ' (fiók)' : '') + ' · ' + when(b.ts) + (b.where ? ' · ' + b.where : '') + (b.room ? ' · szoba ' + b.room : '') })),
+      el('div', { className: 'bug-text', textContent: b.text }));
+  }
+
+  function renderOverview(o) {
+    lastOverview = o;
+    const tot = o.live.totals, days = o.activity.days, today = days[days.length - 1] || {};
+    // élő jelző + hős-szám
+    const pill = $('#livePill'); pill.classList.remove('stale'); $('#liveTxt').textContent = 'élő · frissítve ' + new Date(o.time).toLocaleTimeString('hu-HU');
+    $('#ovOnline').textContent = fmtN(tot.humans);
+    $('#ovOnlineSub').textContent = tot.rooms + ' szoba · ' + tot.playing + ' folyó tárgyalás · ' + tot.lobbies + ' gyülekező' + (tot.bots ? ' · ' + tot.bots + ' bot' : '');
+    const s = lastStatus || { reports: { open: 0 }, errors: { total: 0 } };
+    const newBugs = (o.bugs.byStatus && o.bugs.byStatus.new) || 0;
+    $('#ovKpis').replaceChildren(
+      kpi('Folyó tárgyalások', fmtN(tot.playing), tot.lobbies + ' szoba gyülekezik'),
+      kpi('Kapcsolatok', fmtN(tot.sockets), tot.watching ? tot.watching + ' néző' : 'böngésző / telefon'),
+      kpi('Ma játszott', fmtN(today.players || 0), (today.started || 0) + ' játék indult ma'),
+      kpi('Mai csúcs', fmtN(today.peakPlayers || 0), 'egyszerre online · ' + (today.peakRooms || 0) + ' szoba'),
+      kpi('Fiókok', fmtN(o.accounts.total), '+' + o.accounts.new7d + ' az elmúlt 7 napban', '', o.accounts.new7d ? 'up' : ''),
+      kpi('Aktív fiókok (7 nap)', fmtN(o.accounts.active7d), 'ma: ' + o.accounts.active24h),
+      kpi('Ismert játékosnév', fmtN(o.players.known), 'heti aktív: ' + o.players.weeklyActive),
+      kpi('Új hibajelentés', fmtN(newBugs), o.bugs.total + ' összesen', newBugs ? 'alert' : ''),
+      kpi('Nyitott jelentés', fmtN(s.reports.open), 'moderáció', s.reports.open ? 'alert' : ''),
+      kpi('Rögzített hiba', fmtN(s.errors.total), (s.errors.distinct || 0) + ' féle', s.errors.total ? 'alert' : ''));
+    // grafikonok
+    barChart($('#chOnline'), o.activity.hours.map((h) => ({ label: new Date(h.t).toLocaleString('hu-HU', { timeZone: 'Europe/Budapest', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }), short: hourLabel(h.t), values: [h.players] })),
+      [{ name: 'online játékos', cls: 's1', color: 'var(--series-1)' }], 'Még nincs mérés – a szerver percenként jegyzi fel, hányan vannak online.');
+    barChart($('#chGames'), days.map((d) => ({ label: d.day, short: dayLabel(d.day), values: [d.finished, d.aborted] })),
+      [{ name: 'befejezett', cls: 's1', color: 'var(--series-1)' }, { name: 'megszakadt', cls: 's2', color: 'var(--series-2)' }], 'Még nincs befejezett vagy megszakadt játék a naplóban.');
+    barChart($('#chPlayers'), days.map((d) => ({ label: d.day, short: dayLabel(d.day), values: [d.players] })),
+      [{ name: 'egyedi játékos', cls: 's1', color: 'var(--series-1)' }], 'Még nincs játék a naplóban.');
+    barChart($('#chSignups'), days.map((d) => ({ label: d.day, short: dayLabel(d.day), values: [d.signups || 0] })),
+      [{ name: 'új fiók', cls: 's1', color: 'var(--series-1)' }], 'Az elmúlt 30 napban nem volt regisztráció.');
+    // élő szobák
+    const live = o.live.rooms;
+    $('#ovRoomsSub').textContent = live.length ? live.length + ' szoba él' : 'most nincs élő szoba';
+    const mini = el('div', { className: 'mini-rooms' }, ...live.slice(0, 3).map(roomCard));
+    $('#ovRooms').replaceChildren(live.length ? mini : el('div', { className: 'empty', textContent: 'Most senki nem játszik. 🌙' }));
+    $('#liveSummary').textContent = '– ' + live.length + ' szoba, ' + tot.humans + ' játékos online';
+    $('#liveRooms').replaceChildren(...(live.length ? live.map(roomCard) : [el('div', { className: 'empty', textContent: 'Most nincs élő szoba.' })]));
+    const cl = $('#cntLive'); cl.textContent = tot.humans ? String(tot.humans) : '';
+    renderTop();
+    // hibajelentések
+    $('#ovBugsSub').textContent = o.bugs.total ? o.bugs.total + ' jelentés · ' + newBugs + ' új' : 'még nincs jelentés';
+    $('#ovBugs').replaceChildren(...(o.bugs.latest.length ? o.bugs.latest.slice(0, 3).map(bugRow) : [el('div', { className: 'empty', textContent: 'Nincs hibajelentés. 🎉' })]));
+    const cb = $('#cntBugs'); cb.textContent = newBugs ? String(newBugs) : ''; cb.className = 'count' + (newBugs ? ' bad' : '');
+    renderBugs();
+    // szerver
+    const sv = o.server, mb = (b) => Math.round(b / 1048576), LIMIT = 512, used = mb(sv.memory.rss), pct = Math.min(100, Math.round((used / LIMIT) * 100));
+    $('#ovServerSub').textContent = 'fut ' + ago(sv.startedAt) + ' óta';
+    $('#ovServer').replaceChildren(
+      el('div', { className: 'meter' + (pct >= 85 ? ' crit' : pct >= 70 ? ' warn' : '') }, el('div', { className: 'm-top' }, el('span', { textContent: 'Memória (a Render ingyenes csomag: ' + LIMIT + ' MB)' }), el('b', { textContent: used + ' MB · ' + pct + '%' })),
+        el('div', { className: 'm-track' }, el('div', { className: 'm-fill', style: 'width:' + pct + '%' }))),
+      el('dl', { className: 'kv' }, el('dt', { textContent: 'Node' }), el('dd', { textContent: sv.node }), el('dt', { textContent: 'Verzió' }), el('dd', { textContent: sv.commit || 'helyi' }),
+        el('dt', { textContent: 'Szobák' }), el('dd', { textContent: tot.rooms + ' / ' + sv.maxRooms + ' (szobánként legfeljebb ' + sv.maxPlayers + ' fő)' })),
+      el('div', { className: 'flags' }, el('span', { className: 'tag' + (sv.render ? ' good' : ''), textContent: sv.render ? 'Render' : 'helyi szerver' }), el('span', { className: 'tag' + (sv.voice ? ' good' : ''), textContent: 'hang (béta): ' + (sv.voice ? 'BE' : 'ki') }),
+        el('span', { className: 'tag', textContent: 'lobbi-botok: ' + (sv.lobbyBots ? 'be' : 'ki') })));
+  }
+  function renderTop() {
+    const o = lastOverview; if (!o) return;
+    const rows = topMode === 'week' ? o.players.topWeek : o.players.top, max = Math.max(1, ...rows.map((r) => r.value));
+    $('#topWeekBtn').setAttribute('aria-pressed', String(topMode === 'week')); $('#topAllBtn').setAttribute('aria-pressed', String(topMode !== 'week'));
+    $('#ovTop').replaceChildren(rows.length ? el('ol', { className: 'toplist' }, ...rows.map((r) => el('li', {}, el('span', { className: 'rk', textContent: r.rank + '.' }),
+      el('span', { className: 'nm' }, el('span', { textContent: r.name }), el('div', { className: 'bar-mini', style: 'width:' + Math.max(4, (r.value / max) * 100) + '%' })), el('span', { className: 'vl', textContent: fmtN(r.value) }))))
+      : el('div', { className: 'empty', textContent: topMode === 'week' ? 'Ezen a héten még nincs pont.' : 'Még nincs pont a nyilvántartásban.' }));
+  }
+  function renderBugs() {
+    const o = lastOverview; if (!o) return;
+    const all = o.bugs.latest, statuses = ['all', ...Object.keys(BUG_ST).filter((k) => all.some((b) => b.status === k))];
+    if (!statuses.includes(bugFilter)) bugFilter = 'all';
+    $('#bugsSummary').textContent = '– ' + o.bugs.total + ' összesen';
+    $('#bugChips').replaceChildren(...statuses.map((k) => el('button', { type: 'button', className: 'chip', textContent: k === 'all' ? 'Mind (' + all.length + ')' : BUG_ST[k] + ' (' + all.filter((b) => b.status === k).length + ')', onclick: () => { bugFilter = k; renderBugs(); } })));
+    for (const b of $('#bugChips').children) b.setAttribute('aria-pressed', String(b.textContent.startsWith(bugFilter === 'all' ? 'Mind' : BUG_ST[bugFilter])));
+    const list = all.filter((b) => bugFilter === 'all' || b.status === bugFilter);
+    $('#bugList').replaceChildren(...(list.length ? list.map(bugRow) : [el('div', { className: 'empty', textContent: 'Nincs ilyen hibajelentés.' })]));
+  }
+  $('#topWeekBtn').addEventListener('click', () => { topMode = 'week'; renderTop(); });
+  $('#topAllBtn').addEventListener('click', () => { topMode = 'all'; renderTop(); });
+  // élő frissítés: 15 mp-enként az áttekintő (a többi szakasz kézi Frissítéssel – ne bántsa a félig kitöltött űrlapokat)
+  let refreshTimer = 0;
+  async function refreshOverview() {
+    if (!token || $('#panel').classList.contains('hidden')) return;
+    try { renderOverview(await api('GET', '/overview')); }
+    catch (_) { $('#livePill').classList.add('stale'); $('#liveTxt').textContent = 'nincs friss adat'; }
+  }
+  function scheduleRefresh() {
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => { if ($('#autoRefresh').checked && document.visibilityState === 'visible') refreshOverview(); }, 15000);
+  }
+  $('#autoRefresh').addEventListener('change', () => { if ($('#autoRefresh').checked) refreshOverview(); });
+  scheduleRefresh();
 
   // ---- Fiókok: lista (szűrés, rendezés, kijelölés), létrehozás ideiglenes jelszóval, új ideiglenes jelszó, törlés ----
   let accountData = { accounts: [], legends: [] };
