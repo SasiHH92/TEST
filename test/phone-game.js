@@ -242,7 +242,7 @@ async function startServer() {
             }
           };
           const speech = ['prosecution', 'defense', 'defender', 'witness', 'final_prosecution', 'final_defense'].includes(a.phase);
-          if (a.phase === 'accusation' && v.host) await once('read', () => tap('#iaAccRead', 'Felolvastam'));
+          if (a.phase === 'accusation' && await visible('#iaAccRead')) await once('read', () => tap('#iaAccRead', 'Felolvastam')); // (csak a bíró látja)
           if (a.phase === 'prep' && !extras.tray.has(ph.tag)) {
             if (await visible('.card-hand .ch-toggle')) {
               extras.tray.add(ph.tag);

@@ -944,6 +944,21 @@ class Game {
     this.setPhase(PHASES.PREP, this.settings.prepSeconds * 1000, () => this.startSpeech('prosecution'));
   }
 
+  // Ki nyomhatja meg a "Felolvastam!"-ot: a kör bírója; ha a bíró nincs a teremben (kilépett / megszakadt), a házigazda
+  // (különben mindenki az AFK-időzítőt várná). A kliens is ez alapján mutatja a gombot.
+  canReadAccusation(byId) {
+    const d = this.roundData;
+    if (this.phase !== PHASES.ACCUSATION || !d || !byId) return false;
+    if (byId === d.currentJudgeId) return true;
+    const judge = this.players.get(d.currentJudgeId);
+    return (!judge || !judge.connected) && byId === this.hostId();
+  }
+  accusationReadBy(byId) {
+    if (!this.canReadAccusation(byId)) return false;
+    this.accusationRead();
+    return true;
+  }
+
   speechSecondsFor(kind) {
     if (kind.startsWith('final')) return this.settings.closingSeconds;
     if (kind === 'defender') return this.settings.defenderSeconds;

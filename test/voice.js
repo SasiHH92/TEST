@@ -136,7 +136,7 @@ async function until(cond, ms = 5000) { const end = Date.now() + ms; while (Date
             await p1.waitForFunction(() => S && S.phase === 'accusation', null, { timeout: 10000 });
             const open = await p1.evaluate(() => window.kbVoice.state().trackEnabled);
             assert.equal(open, true, 'a vádemelésnél mindenki beszélhet');
-            await p1.evaluate(() => document.getElementById('iaAccRead').click());
+            for (const pg of [p1, p2]) await pg.evaluate(() => { const b = document.getElementById('iaAccRead'); if (b) b.click(); }); // (a bíró nyomja; bot bíró magától)
             await p1.waitForFunction(() => S && S.phase === 'prosecution', null, { timeout: 15000 });
             await pause(400);
             for (const p of [p1, p2]) {

@@ -39,7 +39,7 @@ function fixture(phase, viewerRole) {
       defender:d.defenderId,witness:d.witnessId,judge:d.currentJudgeId,
       juror:d.voters.find(id=>id!==d.currentJudgeId)};
     let myId = roles[speechRoles[phase] || 'prosecutor'];
-    if (phase==='accusation') myId = d.defendantId;
+    if (phase==='accusation') myId = d.currentJudgeId; // (a "Felolvastam!" a kör bírójáé)
     if (phase==='verdict_vote' || phase==='challenge_vote') {
       myId = d.voters.find(id=>id!==d.currentJudgeId) || d.currentJudgeId;
     }

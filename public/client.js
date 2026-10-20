@@ -2644,7 +2644,11 @@ $('#sbRows').addEventListener('click', async (e) => {
 function inlineActions() {
   const role = myRole();
   if (S.phase === 'accusation') {
-    return '<div class="inline-actions"><button class="btn big green" id="iaAccRead">Felolvastam!</button></div>';
+    // a "Felolvastam!" csak a kör bírójáé; ha a bíró nincs a teremben, a házigazdáé (a szerver ugyanígy dönt: game.js canReadAccusation)
+    const judge = S.players.find((p) => p.id === S.currentJudgeId);
+    const mine = S.currentJudgeId === MY.playerId || ((!judge || !judge.connected) && S.hostId === MY.playerId);
+    if (mine) return '<div class="inline-actions"><button class="btn big green" id="iaAccRead">Felolvastam!</button></div>';
+    return '<div class="inline-actions"><span class="acc-wait">⚖️ ' + (judge ? escapeHtml(judge.name) + ', a bíró' : 'A bíró') + ' felolvassa a vádat…</span></div>';
   }
   const speechPhases = {
     prosecution: { speaker: 'prosecutor', opps: ['defendant', 'defender'] },

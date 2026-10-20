@@ -87,9 +87,10 @@ class BotManager {
 
     switch (g.phase) {
       case PHASES.ACCUSATION: {
-        // Egy bot felolvassa a vádat, vagy ember várása után.
-        const reader = bots.find((b) => b.id === d.defendantId) || bots[0];
-        this.schedule(() => g.accusationRead(), rand(3500));
+        // A vádat a kör bírója olvassa fel: ha a bíró bot, ő lép tovább; emberi bírót a bot nem előz meg
+        // (ha a bíró nincs a teremben, a házigazda nyomhatja – ld. game.js canReadAccusation)
+        const judgeBot = bots.find((b) => b.id === d.currentJudgeId);
+        if (judgeBot) this.schedule(() => g.accusationReadBy(judgeBot.id), rand(3500));
         break;
       }
       case PHASES.PREP: {

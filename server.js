@@ -1598,7 +1598,7 @@ io.on('connection', (socket) => {
   safeOn('accusation_read', () => {
     const sess = sockets.get(socket.id);
     const game = sess && rooms.get(sess.code);
-    if (game) game.accusationRead();
+    if (game) game.accusationReadBy(sess.playerId); // csak a kör bírója (ha nincs a teremben: a házigazda) – game.js canReadAccusation
   });
 
   safeOn('done_speaking', () => {

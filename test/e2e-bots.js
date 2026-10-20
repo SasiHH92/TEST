@@ -133,7 +133,7 @@ function autopilot(me) {
   const tag = ':' + (st.caseNo || st.round);
   const isHuman = (id) => id === 'human1';
 
-  if (st.phase === 'accusation' && !seen['acc' + tag] && isHuman(st.prosecutorId)) {
+  if (st.phase === 'accusation' && !seen['acc' + tag] && isHuman(st.currentJudgeId)) { // (a "Felolvastam!" a bíróé; bot bíró magától felolvas)
     seen['acc' + tag] = true;
     fire(me, 'accusation_read');
   }

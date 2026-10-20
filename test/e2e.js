@@ -207,7 +207,7 @@ async function testStatsRecorded() {
   const defName = acc.players.find((p) => p.id === defId).name;
   check('a vádlott előre megadott játékos (2CORE, Szipuska vagy H3roMarci)', ['2CORE', 'Szipuska', 'H3roMarci'].includes(defName));
 
-  await fire(clients[0], 'accusation_read');
+  await fire(clients[Number(String(acc.currentJudgeId).slice(1))] || clients[0], 'accusation_read'); // (a "Felolvastam!" a kör bírójáé: playerId s0..s2)
   await waitState(clients[0], (s) => s.phase === 'prosecution', 20000);
   const s1 = clients[0].lastState;
   const pIdx = (pid) => parseInt(String(pid).replace('s', ''), 10);
