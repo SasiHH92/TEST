@@ -867,9 +867,22 @@ function scheduleSceneLayout() {
   cancelAnimationFrame(sceneLayoutRaf);
   sceneLayoutRaf=requestAnimationFrame(layoutStagePlates);
 }
+// A szerep-füzet (BÍRÓI FIGYELŐ) a vád-sáv alá csúszik, ha a kettő egymásra lógna: álló telefonon és tableten a kétsoros vád a füzet CSS-beli helyéig ér,
+// és a fölötte lévő vád-sáv eltakarná a füzet gombját. Kinyitott vagy épp beúszó vádnál a legutóbbi hely marad.
+function placeRoleBrief() {
+  const bar=$('#judgeWatchBar'), t=$('#accusationTicker');
+  if(!bar || bar.classList.contains('hidden') || !bar.offsetParent) return;
+  if(t && (t.classList.contains('expanded') || t.classList.contains('charge-intro'))) return;
+  bar.style.top='';
+  if(!t || t.classList.contains('hidden') || !t.getClientRects().length) return;
+  const b=bar.getBoundingClientRect(), r=t.getBoundingClientRect();
+  if(b.left>=r.right || r.left>=b.right || b.top>=r.bottom) return;
+  bar.style.top=Math.ceil(r.bottom-bar.offsetParent.getBoundingClientRect().top+6)+'px';
+}
 function layoutStagePlates() {
   const stage=$('#stage');
   if(!stage || !$('#screen-game').classList.contains('active')) return;
+  placeRoleBrief();
   const g=sceneGeometry(), base=stage.getBoundingClientRect();
   const panel=$('#scenePanel');
   const cards=$('#myCardsBar');

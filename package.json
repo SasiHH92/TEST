@@ -85,6 +85,7 @@
     "test:client-noise": "node test/client-noise.js",
     "test:accusation-judge": "node test/accusation-judge.js",
     "test:admin-dash": "node test/admin-dashboard.js",
+    "test:hud": "node test/hud-overlap.js",
     "play:assets": "node scripts/make-play-assets.js"
   },
   "engines": {

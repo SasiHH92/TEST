@@ -123,7 +123,32 @@
     const stage = $('#chStage');
     if (stage) stage.setAttribute('aria-hidden', st.open ? 'false' : 'true');
     renderPreview();
+    fitTexts();
   }
+
+  // A lap szövege annyi TELJES sorra rövidül ("…"), amennyi a pecsét fölött elfér. A CSS sor-korlátja (line-clamp) a lap méretétől független, és a böngésző
+  // a korlát utáni sorokat is kirajzolja, ha a doboz magasabb – így egy hosszú (pl. 130 karakteres közösségi) szöveg félbevágott sora a pecsét és a lábléc
+  // alá csúszna. Ezért a sorok száma ÉS a doboz magassága is a ténylegesen elférő teljes sorokhoz igazodik. A teljes szöveg a nagyítóban olvasható.
+  function fitTexts() {
+    const r = root();
+    if (!r || r.classList.contains('hidden')) return;
+    const texts = [...r.querySelectorAll('.ch-stage .court-card:not(.more) .cf-text')];
+    texts.forEach((tx) => { tx.style.webkitLineClamp = ''; tx.style.maxHeight = ''; tx.style.marginBottom = ''; });
+    const fits = texts.map((tx) => {
+      const cs = getComputedStyle(tx), lh = parseFloat(cs.lineHeight), h = tx.clientHeight;
+      if (!lh || !h) return null;
+      const stamp = tx.parentElement.querySelector('.cf-stamp');
+      const room = stamp && stamp.offsetHeight ? Math.min(h, stamp.offsetTop - tx.offsetTop - 2) : h;
+      return { lh, n: Math.max(1, Math.min(parseInt(cs.webkitLineClamp, 10) || 99, Math.floor((room + 1) / lh))) };
+    });
+    texts.forEach((tx, i) => {
+      const f = fits[i];
+      if (!f) return;
+      tx.style.webkitLineClamp = String(f.n); tx.style.maxHeight = f.n * f.lh + 'px'; tx.style.marginBottom = 'auto'; // a lábléc a lap alján marad
+    });
+  }
+  window.addEventListener('resize', () => { requestAnimationFrame(fitTexts); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTexts);
 
   // ---------------- műveletek ----------------
   function open(user) {

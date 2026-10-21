@@ -3897,6 +3897,12 @@ body[data-screen="name"] .comfort-dock, body[data-screen="menu"] .comfort-dock, 
 .bug-fab b { font-weight: 600; }
 @media (max-width: 700px) { .bug-fab b { display: none; } .bug-fab { padding: 8px; font-size: 15px; } }
 body.in-game .bug-fab { opacity: .55; }
+/* gépen a KÁRTYÁIM pakli a bal alsó sarokban, a gomb helyén ül: a gomb a zárt pakli fölé kerül, a kinyitott legyező mellett (az a gomb fölé nyílik) eltűnik
+   (900 px alatt a pakli a ponttábla-sáv fölött van, a gomb a sávban; a fekvő telefont a phone.css intézi) */
+@media (min-width: 901px) and (min-height: 521px) {
+  body.in-game.has-hand .bug-fab { bottom: 140px; }
+  body.in-game:has(.card-hand[data-state="open"]) .bug-fab { visibility: hidden; }
+}
 .bug-dialog { max-height: calc(100dvh - 24px); overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: #f6efdc; padding: 0; width: min(440px, calc(100vw - 32px)); }
 .bug-dialog::backdrop { background: rgba(0, 0, 0, .6); }
 .bug-dialog form { display: flex; flex-direction: column; gap: 10px; padding: 18px; }
