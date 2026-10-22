@@ -1,6 +1,6 @@
 # Bejelentkező-oldali videó-háttér (opcionális)
 
-**Jelenlegi állapot:** a belépőoldal háttere a végleges **`login-loop.mp4`** (2560×1440, H.264 High, 8 s-os hurok); a statikus `assets/terem-hatter.webp` a **poster** (amíg a videó tölt) és a **tartalék** (ha a videó nem tölthető be / nem játszható le). Korábban a belépőoldal háttere kizárólag a **statikus** `assets/terem-hatter.webp` volt. Ha ide videót teszel, a játék **automatikusan** ezt használja háttérnek – kód nem kell hozzá.
+**Jelenlegi állapot (2026-10-22 óta):** a belépőoldal háttere a játék teremképe, az `assets/terem-hatter.webp` (a beégetett cím levágva), lassú rá- és visszanagyítással – a felhasználó kérése. A **`login-loop.mp4`** (2560×1440, H.264 High, 8 s-os hurok) a projektben marad, de **alapból nem indul**: csak `window.kbCourtConfig = { loginVideo: true }` mellett (akkor a statikus kép a **poster** és a **tartalék**, ahogy lent le van írva).
 A bejelentkező űrlap (HTML/CSS) **nincs beégetve a videóba**; a videó fölött finom, filmes vignetta + sötétítés van, hogy az űrlap mindig olvasható marad.
 
 ## Fájlnevek

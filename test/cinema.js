@@ -69,6 +69,7 @@ async function newPage(browser, viewport, opts = {}) {
   const mobile = viewport.width < 700 || viewport.height < 500;
   const context = await browser.newContext({ viewport, isMobile: mobile, hasTouch: mobile, locale: 'hu-HU', reducedMotion: opts.reduced ? 'reduce' : 'no-preference', permissions: opts.permissions || [] });
   await context.addInitScript(() => { try { localStorage.setItem('kb_helpSeen', '1'); } catch (_) { /* nincs tár */ } });
+  if (opts.video) await context.addInitScript(() => { window.kbCourtConfig = Object.assign({}, window.kbCourtConfig, { loginVideo: true }); }); // a login-videó alapból ki (media.js)
   const page = await context.newPage();
   const errors = [], requests = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
@@ -219,7 +220,7 @@ async function partLoginVideo(browser, servers) {
   const videoReq = (reqs) => reqs.filter((u) => /\/assets\/video\//.test(u)).length;
 
   await check('B1 nincs videó-fájl (üres médiamappa): nincs <video>, nincs kérés, a statikus háttér marad', async () => {
-    const c = await newPage(browser, { width: 1366, height: 768 });
+    const c = await newPage(browser, { width: 1366, height: 768 }, { video: true });
     try {
       await goAuth(c.page, BASE3);
       assert.equal(await c.page.locator('video.auth-video').count(), 0);
@@ -232,7 +233,7 @@ async function partLoginVideo(browser, servers) {
   });
 
   await check('B2 a listázott, de nem elérhető videó: a <video> létrejön, a hiba után eltűnik, statikus háttér (auth-video-off)', async () => {
-    const c = await newPage(browser, { width: 1366, height: 768 });
+    const c = await newPage(browser, { width: 1366, height: 768 }, { video: true });
     try {
       await goAuth(c.page, BASE2);
       await c.page.waitForFunction(() => document.documentElement.classList.contains('auth-video-off'), null, { timeout: 8000 });
@@ -243,7 +244,7 @@ async function partLoginVideo(browser, servers) {
   });
 
   await check('B3 csökkentett mozgás: nincs videó, nincs kérés', async () => {
-    const r = await newPage(browser, { width: 1366, height: 768 }, { reduced: true });
+    const r = await newPage(browser, { width: 1366, height: 768 }, { reduced: true, video: true });
     try {
       await goAuth(r.page, BASE2);
       assert.equal(await r.page.locator('video.auth-video').count(), 0);
@@ -252,7 +253,7 @@ async function partLoginVideo(browser, servers) {
   });
 
   await check('B4 keskeny képernyő mobil-fájl nélkül: a nagy asztali videó nem töltődik (nincs kérés)', async () => {
-    const c = await newPage(browser, { width: 390, height: 844 });
+    const c = await newPage(browser, { width: 390, height: 844 }, { video: true });
     try {
       await goAuth(c.page, BASE2);
       assert.equal(await c.page.locator('video.auth-video').count(), 0);
@@ -279,7 +280,7 @@ async function partLoginVideo(browser, servers) {
     });
     for (const [w, h] of [[1920, 1080], [1366, 768]]) {
       await check('B6b valódi videó ' + w + '×' + h + ': autoplay + muted + loop + playsinline fut, a teljes hátteret kitölti (object-fit: cover), a statikus kép a poster / tartalék', async () => {
-        const c = await newPage(browser, { width: w, height: h });
+        const c = await newPage(browser, { width: w, height: h }, { video: true });
         try {
           await c.page.addInitScript(() => { document.addEventListener('kb:login-video', (e) => { if (e.detail === 'playing' && !window.__vidAt) window.__vidAt = performance.now(); }); });
           await goAuth(c.page, BASE);
@@ -312,7 +313,7 @@ async function partLoginVideo(browser, servers) {
       });
     }
     await check('B6c telefonon (≤700 px) mobil-fájl nélkül a nagy videó nem töltődik: statikus háttér, nincs videó-kérés', async () => {
-      const c = await newPage(browser, { width: 390, height: 844 });
+      const c = await newPage(browser, { width: 390, height: 844 }, { video: true });
       try {
         await goAuth(c.page, BASE);
         assert.equal(await c.page.locator('video.auth-video').count(), 0);
@@ -321,7 +322,7 @@ async function partLoginVideo(browser, servers) {
       } finally { await c.context.close(); }
     });
     await check('B6d a valódi videó sem tölt be (megszakított kérés): a statikus háttérkép marad, a login nem sérül', async () => {
-      const c = await newPage(browser, { width: 1366, height: 768 });
+      const c = await newPage(browser, { width: 1366, height: 768 }, { video: true });
       try {
         await c.page.route('**/assets/video/login-loop.mp4*', (route) => route.abort());
         await goAuth(c.page, BASE);
@@ -334,7 +335,7 @@ async function partLoginVideo(browser, servers) {
 
   await check('B7 a belépőoldalon nincs előtér-figura (bíró / ügyész): se elem, se kép a login képernyőn – csak a háttér (videó vagy statikus kép) látszik; videóval, tartalékkal és telefonon is', async () => {
     const run = async (viewport, setup, base, what) => {
-      const c = await newPage(browser, viewport);
+      const c = await newPage(browser, viewport, { video: true });
       try {
         if (setup) await setup(c.page);
         await goAuth(c.page, base);
@@ -350,10 +351,33 @@ async function partLoginVideo(browser, servers) {
     await run({ width: 390, height: 844 }, null, BASE, 'telefonon');
   });
 
+  await check('B8 alapból (loginVideo nélkül) nincs login-videó akkor sem, ha a fájl megvan: a játék teremképe a háttér, a beégetett cím levágva, lassú rá- és visszanagyítás', async () => {
+    for (const viewport of [{ width: 1366, height: 768 }, { width: 390, height: 844 }]) {
+      const c = await newPage(browser, viewport);
+      try {
+        await goAuth(c.page, BASE);
+        await c.page.waitForTimeout(600);
+        const st = await c.page.evaluate(() => {
+          const bg = document.querySelector('.auth-background'), cs = getComputedStyle(bg), r = bg.getBoundingClientRect();
+          return { video: document.querySelectorAll('video.auth-video').length, on: document.documentElement.classList.contains('auth-video-on'), src: bg.getAttribute('src'),
+            ok: bg.complete && bg.naturalWidth > 0 && cs.display !== 'none' && cs.visibility !== 'hidden', anim: cs.animationName, dur: cs.animationDuration, crop: -r.top / r.height, bottom: r.bottom - innerHeight };
+        });
+        const what = viewport.width + '×' + viewport.height + ': ';
+        assert.equal(st.video, 0, what + 'nem lehet <video>'); assert.equal(st.on, false, what + 'auth-video-on');
+        assert.equal(videoReq(c.requests), 0, what + 'videó-kérés alapállapotban');
+        assert.equal(st.src, '/assets/terem-hatter.webp', what + 'a játék teremképe'); assert.ok(st.ok, what + 'a teremkép betöltött és látszik');
+        assert.ok(/aw-drift/.test(st.anim) && /22s/.test(st.dur), what + 'rá- és visszanagyítás: ' + st.anim + ' ' + st.dur);
+        assert.ok(st.crop >= 0.3, what + 'a kép teteje (beégetett cím) a képernyőn kívül: ' + st.crop.toFixed(2));
+        assert.ok(st.bottom >= -1, what + 'a kép alja a képernyő alján (nincs üres sáv): ' + st.bottom.toFixed(1));
+        assert.deepEqual(c.errors, []);
+      } finally { await c.context.close(); }
+    }
+  });
+
   const b64 = await recordWebm(browser).catch(() => '');
   if (!b64) { skip('B5 elérhető videó lejátszása', 'a böngésző nem tud WebM-et rögzíteni (MediaRecorder) – valódi videó-asset nincs, a teszt-videót is így állítjuk elő'); return; }
   await check('B5 elérhető videó: autoplay + muted + loop + playsinline, "playing" után auth-video-on; a belépőoldal elhagyásakor eltávolítódik', async () => {
-    const c = await newPage(browser, { width: 1366, height: 768 });
+    const c = await newPage(browser, { width: 1366, height: 768 }, { video: true });
     try {
       await c.page.route('**/assets/video/login-loop.webm*', (route) => route.fulfill({ status: 200, contentType: 'video/webm', body: Buffer.from(b64, 'base64') }));
       await goAuth(c.page, BASE2);

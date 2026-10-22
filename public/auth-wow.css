@@ -1,7 +1,8 @@
 /* ============================================================
    BELÉPŐOLDAL – "a tárgyalóterem ajtaja" (index.html #screen-auth.aw, public/auth-fx.js)
    A meglévő belépő-stílusra (style.css .auth-*) épülő réteg; az azonosítók és az űrlapok változatlanok.
-   - háttér: a login-videó / állókép a beégetett felirat nélkül (a felső ~32% a képernyőn kívül, mint a menüben), fénysugár, szálló por, vignetta;
+   - háttér: a játék teremképe (terem-hatter.webp) a beégetett felirat nélkül (a felső ~32% a képernyőn kívül, mint a menüben), lassú rá- és visszanagyítással,
+     fénysugár, szálló por, vignetta (a login-videó csak window.kbCourtConfig = { loginVideo: true } mellett indul, lásd media.js);
      előtér-figura NINCS (a felhasználó kérése: csak a háttér – test/cinema.js B7)
    - bal oldal: animált arany cím, piros "KI A BŰNÖS?" pecsét, nagy kártyák: FOLYTATÁS (ha van fiók), JÁTÉK VENDÉGKÉNT (idézés), ÉLŐ sáv
    - jobb oldal: egy akta-kártya fülekkel (BEJELENTKEZÉS / REGISZTRÁCIÓ) – minden méreten egyszerre egy látszik
@@ -12,7 +13,7 @@
 .aw .auth-background, .aw .auth-video {
   inset: auto; left: 50%; bottom: 0; top: auto; width: max(100vw, 261vh); height: auto; max-width: none;
   transform: translateX(-50%); transform-origin: 50% 100%; object-fit: cover; object-position: 50% 100%;
-  animation: aw-drift 38s ease-in-out infinite alternate;
+  animation: aw-drift 22s ease-in-out infinite alternate;
 }
 .aw .auth-shade {
   background:
@@ -149,7 +150,7 @@
 .aw .auth-stamp { font-size: 9px; opacity: 0.8; }
 
 /* ---- belépő ---- */
-.aw-enter .auth-background, .aw-enter .auth-video { animation: aw-zoom 2s cubic-bezier(0.22, 1, 0.36, 1) both, aw-drift 38s ease-in-out 2s infinite alternate; }
+.aw-enter .auth-background, .aw-enter .auth-video { animation: aw-zoom 2s cubic-bezier(0.22, 1, 0.36, 1) both, aw-drift 22s ease-in-out 2s infinite alternate; }
 .aw-enter .auth-eyebrow { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both; }
 .aw-enter .auth-logo { animation: mm-drop 0.55s cubic-bezier(0.55, 0, 0.75, 0.2) 0.2s both, mm-gold 7s linear infinite; }
 .aw-enter .auth-ribbon { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.65s both; }
@@ -160,7 +161,7 @@
 .aw-enter .auth-forms { animation: aw-slide 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.7s both; }
 .aw-enter .auth-features { animation: mm-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.4s both; }
 
-@keyframes aw-drift { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-51%) scale(1.05); } }
+@keyframes aw-drift { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.07); } } /* lassú rá- és visszanagyítás (alternate); az alja a rögzített pont, így a levágott beégetett cím nem jön be */
 @keyframes aw-zoom { from { transform: translateX(-50%) scale(1.14); filter: brightness(0.25); } to { transform: translateX(-50%) scale(1); filter: none; } }
 @keyframes aw-stamp { 0% { opacity: 0; transform: rotate(-4deg) scale(2.2); } 60% { opacity: 1; transform: rotate(-4deg) scale(0.93); } 100% { opacity: 1; transform: rotate(-4deg) scale(1); } }
 @keyframes aw-rise { from { opacity: 0; transform: translateY(26px) rotateX(18deg); } }

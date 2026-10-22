@@ -6,7 +6,8 @@
 // A szerver a GET /api/media címen megmondja, melyik opcionális fájl van ténylegesen feltöltve (assets/video/, assets/audio/). Ez a modul CSAK azt tölti be,
 // ami megvan: nincs 404-zaj, nincs törött elem. Fájl nélkül minden a régi módon megy (statikus háttér, szintetizált hang).
 //
-// 1) LOGIN VIDEÓ (assets/video/login-loop.webm | .mp4, mobilra: login-loop-mobile.webm | .mp4, állókép: login-poster.webp):
+// 1) LOGIN VIDEÓ – ALAPBÓL KI: a belépőoldal háttere a játék teremképe, lassú rá- és visszanagyítással (auth-wow.css). A videó csak
+//    window.kbCourtConfig = { loginVideo: true } mellett indul (assets/video/login-loop.webm | .mp4, mobilra: login-loop-mobile.webm | .mp4, állókép: login-poster.webp):
 //    autoplay, muted, loop, playsinline, object-fit: cover; a login-űrlap HTML/CSS marad, a videó fölött finom vignetta. Statikus háttérre esik vissza, ha:
 //    nincs fájl · csökkentett mozgás · adattakarékos / 2G kapcsolat · keskeny (≤ 700 px) képernyő mobil-fájl nélkül · a videó hibázik / 6 mp alatt nem indul ·
 //    a lap rejtett (a videó megáll, az akkut nem meríti). A videó csak a belépőoldalon létezik: elhagyáskor leáll és eltávolítódik (nincs memória-szivárgás).
@@ -65,7 +66,7 @@
     if (!state.loaded) return;
     const screen = $one('#screen-auth');
     if (!screen) return;
-    const wanted = onAuth() && !videoFailed && !reduced() && !saveData() && document.visibilityState === 'visible';
+    const wanted = cfg().loginVideo === true && onAuth() && !videoFailed && !reduced() && !saveData() && document.visibilityState === 'visible';
     if (!wanted) { if (video) dropVideo('off'); return; }
     if (video) { if (video.paused) video.play().catch(() => {}); return; }
     const sources = pickSources();
